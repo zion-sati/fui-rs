@@ -54,6 +54,34 @@ Rust (wasm32-unknown-unknown)        C++ UI Runtime
 FUI-RS calls the same C ABI as fui-as and fui-kt — the binding layer is the
 only difference.
 
+## 🗺️ Future slice: retained tree with parent back-pointers
+
+Currently `BuiltNode` owns its children via `Vec<BuiltNode>` with no parent
+reference.  When the tree supports ancestor traversal (e.g. the ScrollView
+lookup from fui-as) the following design should be adopted:
+
+```
+use std::rc::{Rc, Weak};
+use std::cell::RefCell;
+
+pub struct BuiltNode {
+    handle:    u64,
+    children:  Vec<Rc<RefCell<BuiltNode>>>,
+    parent:    Weak<RefCell<BuiltNode>>,   // weak — breaks the Rc cycle
+    destroyed: bool,
+}
+```
+
+- `Rc<RefCell<>>` so children can be shared and mutated during reconciliation.
+- `Weak` for `parent` avoids a hard reference cycle:  parent → Rc → child → Weak → parent.
+  When the root `Rc` is dropped the whole tree is freed (no leak).
+- `replace_children()` should NOT blindly `destroy()` removed children — callers
+  may re-add the same nodes (e.g. `gapNode`, `labelHost`).  Instead, callers
+  that permanently discard nodes are responsible for calling `destroy()` after
+  `replace_children()`.  The pattern from fui-as: `Slider`, `Dropdown`, and
+  `PressableLabeledControl` all call `previousRoot.dispose()` after
+  `replaceChildren`.
+
 ## License
 
 AGPL-3.0-only (or commercial — see [COMMERCIAL.md](COMMERCIAL.md)).
