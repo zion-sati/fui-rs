@@ -1,4 +1,5 @@
 import type { BridgeRuntime, BridgeState, WasmHandleLike } from '../../browser-bridge/src/index.js';
+import { normalizePointerForWasm } from '../../browser-bridge/src/bridge/utils/encoding.js';
 
 declare global {
   interface Window {
@@ -67,17 +68,21 @@ function readAppUtf8(ptr: number, len: number): string {
   return decoder.decode(new Uint8Array(appMemory.buffer, ptr, len));
 }
 
-function withUiUtf8(runtime: BridgeRuntime, text: string, callback: (ptr: number, len: number) => void): void {
+function withUiUtf8(runtime: BridgeRuntime, text: string, callback: (ptr: WasmHandleLike | number, len: number) => void): void {
   if (text.length === 0) {
     callback(0, 0);
     return;
   }
   const bytes = encoder.encode(text);
-  const ptr = runtime.ui._malloc(bytes.length);
-  const numericPtr = toNumberHandle(ptr);
-  runtime.ui.HEAPU8.set(bytes, numericPtr);
-  callback(numericPtr, bytes.length);
-  runtime.ui._free(ptr);
+  const rawPtr = runtime.ui._malloc(bytes.length);
+  const ptr = normalizePointerForWasm(runtime.ui, rawPtr);
+  const offset = Number(ptr);
+  runtime.ui.refreshHeapViews?.();
+  if (bytes.length > 0) {
+    runtime.ui.HEAPU8.set(bytes, offset);
+  }
+  callback(ptr, bytes.length);
+  runtime.ui._free(rawPtr);
 }
 
 function updateWindowState(): void {
@@ -166,9 +171,7 @@ function createUiImports(runtime: BridgeRuntime): Record<string, unknown> {
     ui_set_text(handle: AppHandleLike, ptr: number, len: number): void {
       const text = readAppUtf8(ptr, len);
       withUiUtf8(runtime, text, (uiPtr, uiLen) => {
-        // wasm64 UI expects i64 (BigInt) for pointer args — pass the
-        // original _malloc result rather than the number-cast used for HEAPU8.
-        runtime.ui._ui_set_text(toBigIntHandle(handle), toBigIntHandle(uiPtr), uiLen);
+        runtime.ui._ui_set_text(toBigIntHandle(handle), uiPtr, uiLen);
       });
     },
     ui_commit_frame(): void {

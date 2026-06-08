@@ -20,6 +20,12 @@ export default defineConfig({
         browserName: 'chromium',
       },
     },
+    {
+      name: 'webkit',
+      use: {
+        browserName: 'webkit',
+      },
+    },
   ],
   reporter: [
     ['list'],
