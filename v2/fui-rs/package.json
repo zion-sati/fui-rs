@@ -1,0 +1,19 @@
+{
+  "name": "@effindomv2/fui-rs",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
+  "type": "module",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "test:unit": "bash -lc 'source \"$HOME/.cargo/env\" && cargo test --manifest-path Cargo.toml'",
+    "test:integration": "npm --prefix ../.. run build:v2:browser-bridge && npm run build && playwright test -c playwright.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1",
+    "@types/node": "^24.10.1",
+    "esbuild": "^0.27.7",
+    "typescript": "^5.9.3"
+  }
+}

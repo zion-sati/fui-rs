@@ -1,0 +1,37 @@
+# Git & version control
+.git
+.gitignore
+.github
+
+# Build artifacts
+build/
+build-wasm/
+
+# Dependencies
+node_modules/
+*.npm
+npm-debug.log*
+
+# Temporary/cache
+.DS_Store
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation & examples
+docs/
+examples/
+*.md
+
+# CI/environment files
+.env
+.env.local
+
+# Build caches
+cmake-build-*/
+.vscode/
+
+# Node cache
+.npm
+package-lock.json.bak

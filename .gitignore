@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────
+# Build output directories
+# ─────────────────────────────────────────────
+/build/
+v2/fui-as/build/
+/v2/browser-bridge/dist/
+/v2/fui-rs/build/
+/v2/fui-rs/target/
+/out/
+/published/
+/v2/create-fui-as-app/dist/
+
+# ─────────────────────────────────────────────
+# CMake generated files (in-source, if ever)
+# ─────────────────────────────────────────────
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+install_manifest.txt
+Testing/
+
+# ─────────────────────────────────────────────
+# Compiled / linked binaries
+# ─────────────────────────────────────────────
+*.o
+*.a
+*.so
+*.dylib
+*.wasm
+*.js.map
+*.sym
+
+# /skia/ holds local Skia support caches (libskia.a, headers, modules,
+# skia.version) staged by the Skia build scripts. They are intentionally local
+# build caches, not versioned browser artifacts.
+/skia/
+
+# public/ is a generated staging directory for local serving and test runs.
+public/
+published/
+
+# ─────────────────────────────────────────────
+# Node.js / npm
+# ─────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# ─────────────────────────────────────────────
+# Playwright
+# ─────────────────────────────────────────────
+**/test-results/
+**/playwright-report/
+**/tests/report/
+**/tests/integration/report/
+**/tests/integration/snapshots/*.png
+
+# ─────────────────────────────────────────────
+# IDE / editor
+# ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+__pycache__/
+
+# ─────────────────────────────────────────────
+# vcpkg (optional toolchain)
+# ─────────────────────────────────────────────
+vcpkg_installed/
+.vcpkg-root
