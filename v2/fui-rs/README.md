@@ -1,6 +1,6 @@
 # FUI-RS — Rust bindings for EffinDom v2
 
-> **⚠️ Early stage.** FUI-RS is a thin Rust binding over the shared C++ ABI.
+> **⚠️ Early stage - instructions are temporary and likely to break.** FUI-RS is a thin Rust binding over the shared C++ ABI.
 > It currently provides a bare-bones smoke app and a fluent node builder.
 > Controls, theming, signals, and component reconciliation are planned for
 > future slices.  Expect breaking changes.
@@ -13,13 +13,14 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
 # Clone and build
-git clone https://github.com/zion-sati/EffinDOM.git
-cd EffinDOM
+git clone https://github.com/zion-sati/fui-rs.git
+cd fui-rs
 npm ci
-npm run build:v2:browser-bridge
-npm run build:v2:fui-rs
+npm run build
 npm run serve
 ```
+
+Open `http://127.0.0.1:8080/index.html`.
 
 Open `http://127.0.0.1:8080/v2/fui-rs/index.html`.
 
