@@ -1,16 +1,17 @@
-# FUI-RS — Rust bindings for EffinDom v2
+# FUI-RS - Rust SDK for EffinDom v2
 
-> **⚠️ Early stage - instructions are temporary and likely to break.** FUI-RS is a thin Rust binding over the shared C++ ABI.
-> It currently provides a bare-bones smoke app and a fluent node builder.
-> Controls, theming, signals, and component reconciliation are planned for
-> future slices.  Expect breaking changes.
+FUI-RS is the Rust retained-mode SDK for building EffinDom v2 WebAssembly UI
+apps. It provides retained controls, layout nodes, text input, overlays,
+custom drawing, host services, workers, routing support, and app lifecycle
+macros for browser-hosted Rust WASM apps.
 
 ## Quickstart
 
 ```bash
-# Prerequisites: Rust + wasm32-unknown-unknown target
+# Prerequisites: Rust + wasm32-unknown-unknown target + Binaryen
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
+brew install binaryen
 
 # Clone and build
 git clone https://github.com/zion-sati/fui-rs.git
@@ -20,69 +21,68 @@ npm run build
 npm run serve
 ```
 
-Open `http://127.0.0.1:8080/index.html`.
+Open:
 
-Open `http://127.0.0.1:8080/v2/fui-rs/index.html`.
+```text
+http://127.0.0.1:8080/v2/fui-rs/demo/index.html
+```
 
-Full quickstart: [docs/v2/fui-rs/QUICKSTART.md](docs/v2/fui-rs/QUICKSTART.md)
+Full quickstart: [docs/v2/fui-rs/QUICKSTART.md](../../docs/v2/fui-rs/QUICKSTART.md)
 
-## What's here (Slice 1)
+## Minimal app
 
-| Primitive | Status |
+```rust
+use fui_rs::prelude::*;
+
+fn build_page() -> FlexBox {
+    ui! {
+        column().fill_size().padding(24.0, 24.0, 24.0, 24.0) {
+            text("Hello from Rust"),
+            button("Click me").on_click(|_| logger::info("App", "clicked")),
+        }
+    }
+}
+
+fui_app!(FlexBox, build_page);
+```
+
+## SDK docs
+
+- [SDK docs index](../../docs/v2/fui-rs/SDK_INDEX.md)
+- [API reference](../../docs/v2/fui-rs/API_REFERENCE.md)
+- [Controls and nodes](../../docs/v2/fui-rs/CONTROLS_AND_NODES.md)
+- [Events and callbacks](../../docs/v2/fui-rs/EVENTS_AND_CALLBACKS.md)
+- [Text input reference](../../docs/v2/fui-rs/TEXT_INPUT_REFERENCE.md)
+- [Forms and autofill](../../docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
+- [Theming and style matrix](../../docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
+
+## What is included
+
+| Area | Status |
 |---|---|
-| `FlexBox` / `TextNode` builders | ✅ |
-| `Component` + `Application::run` | ✅ |
-| `state` / `derived` reactivity | ✅ |
-| Destroy-and-remount reconciliation | ✅ |
-| Controls (Button, Slider, etc.) | 🔜 Slice 2 |
-| Theming / styles | 🔜 Slice 2 |
-| Signal-based reactivity | 🔜 Slice 2 |
+| Retained app lifecycle macros | Available |
+| `ui!` mixed child tree macro | Available |
+| Flex/Grid layout nodes | Available |
+| Text, rich text, image, SVG | Available |
+| Buttons, toggles, slider, dropdown, combobox | Available |
+| TextInput/TextArea | Available |
+| Context menu, popup, dialog, tooltip | Available |
+| Selection, mobile text handles, context toolbar | Available |
+| ScrollView, ScrollBox, VirtualList | Available |
+| Custom drawing and text layouts | Available |
+| Browser file/fetch/worker bridges | Available |
+| Host services/events generator support | Available |
 
 ## Architecture
 
-```
-Rust (wasm32-unknown-unknown)        C++ UI Runtime
-┌──────────────────────┐            ┌────────────────┐
-│  ffi::ui_set_text()  │──imports──▶│  _ui_set_text() │
-│  Node::build()       │            │  _ui_commit_frame()
-│  Component::render() │            │                 │
-└──────────────────────┘            └────────────────┘
-         │                                    │
-         └──────────── JS bridge ──────────────┘
-              (harness.ts wires both sides)
-```
+FUI-RS builds Rust retained UI objects into the EffinDom v2 runtime through the
+browser bridge. Rust app WASM and the UI runtime WASM are separate modules;
+strings and command data cross the bridge through explicit UTF-8/runtime ABI
+calls.
 
-FUI-RS calls the same C ABI as fui-as and fui-kt — the binding layer is the
-only difference.
-
-## 🗺️ Future slice: retained tree with parent back-pointers
-
-Currently `BuiltNode` owns its children via `Vec<BuiltNode>` with no parent
-reference.  When the tree supports ancestor traversal (e.g. the ScrollView
-lookup from fui-as) the following design should be adopted:
-
-```
-use std::rc::{Rc, Weak};
-use std::cell::RefCell;
-
-pub struct BuiltNode {
-    handle:    u64,
-    children:  Vec<Rc<RefCell<BuiltNode>>>,
-    parent:    Weak<RefCell<BuiltNode>>,   // weak — breaks the Rc cycle
-    destroyed: bool,
-}
-```
-
-- `Rc<RefCell<>>` so children can be shared and mutated during reconciliation.
-- `Weak` for `parent` avoids a hard reference cycle:  parent → Rc → child → Weak → parent.
-  When the root `Rc` is dropped the whole tree is freed (no leak).
-- `replace_children()` should NOT blindly `destroy()` removed children — callers
-  may re-add the same nodes (e.g. `gapNode`, `labelHost`).  Instead, callers
-  that permanently discard nodes are responsible for calling `destroy()` after
-  `replace_children()`.  The pattern from fui-as: `Slider`, `Dropdown`, and
-  `PressableLabeledControl` all call `previousRoot.dispose()` after
-  `replaceChildren`.
+Retained controls are cheap clone handles. Cloning a control gives another Rust
+handle to the same retained UI object.
 
 ## License
 
-AGPL-3.0-only (or commercial — see [COMMERCIAL.md](COMMERCIAL.md)).
+AGPL-3.0-only, or commercial license. See [COMMERCIAL.md](COMMERCIAL.md).

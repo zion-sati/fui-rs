@@ -1,0 +1,53 @@
+{
+  "routes": [
+    {
+      "key": "home",
+      "routePath": "/v2/fui-rs/demo/index.html",
+      "matchPath": "/v2/fui-rs/demo/",
+      "wasmPath": "/v2/fui-rs/demo/home.wasm",
+      "title": "Dashboard"
+    },
+    {
+      "key": "workbench",
+      "routePath": "/v2/fui-rs/demo/workbench/",
+      "wasmPath": "/v2/fui-rs/demo/workbench.wasm",
+      "title": "Workbench"
+    },
+    {
+      "key": "stage4",
+      "routePath": "/v2/fui-rs/demo/stage4/",
+      "wasmPath": "/v2/fui-rs/demo/stage4.wasm",
+      "title": "Stage 4 verification"
+    },
+    {
+      "key": "stage5",
+      "routePath": "/v2/fui-rs/demo/stage5/",
+      "wasmPath": "/v2/fui-rs/demo/stage5.wasm",
+      "title": "Stage 5.1 dropdown"
+    },
+    {
+      "key": "home",
+      "routePath": "/",
+      "wasmPath": "/home.wasm",
+      "title": "Dashboard"
+    },
+    {
+      "key": "workbench",
+      "routePath": "/workbench/",
+      "wasmPath": "/workbench.wasm",
+      "title": "Workbench"
+    },
+    {
+      "key": "stage4",
+      "routePath": "/stage4/",
+      "wasmPath": "/stage4.wasm",
+      "title": "Stage 4 verification"
+    },
+    {
+      "key": "stage5",
+      "routePath": "/stage5/",
+      "wasmPath": "/stage5.wasm",
+      "title": "Stage 5.1 dropdown"
+    }
+  ]
+}

@@ -1,12 +1,24 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM"],
-    "types": ["node", "@playwright/test"]
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node",
+      "@playwright/test"
+    ]
   },
-  "include": ["browser/**/*.ts", "tests/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "browser/**/*.ts",
+    "demo/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts"
+  ]
 }

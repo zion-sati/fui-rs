@@ -1,17 +1,33 @@
 [package]
 name = "fui-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
+[workspace]
+members = [
+  ".",
+  "crates/demo-home",
+  "crates/demo-shared",
+  "crates/demo-stage4",
+  "crates/demo-stage5",
+  "crates/demo-worker",
+  "crates/demo-workbench",
+]
+resolver = "2"
+
+[features]
+default = []
+worker-runtime = []
+
 [dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [lib]
 name = "fui_rs"
 crate-type = ["cdylib", "rlib"]
-
-[profile.release]
-opt-level = 3
-panic = "abort"
-lto = true
-codegen-units = 1

@@ -1,24 +1,547 @@
-mod smoke;
-
+pub mod animation;
 pub mod app;
+pub mod assets;
+#[doc(hidden)]
 pub mod bindings;
-pub mod component;
+pub mod bitmap;
+#[doc(hidden)]
+pub mod bridge_callbacks;
+pub(crate) mod context_menu_manager;
+pub mod controls;
+pub mod debug;
+pub mod drag_drop;
+pub(crate) mod drag_gesture;
+pub mod drawing;
+pub mod event;
+pub mod external_drop;
+pub mod fetch;
+#[doc(hidden)]
 pub mod ffi;
+pub mod file;
+pub(crate) mod focus_adorner;
+mod focus_visibility;
+pub mod frame_scheduler;
+pub mod frame_signal;
+#[doc(hidden)]
+pub mod generated;
+pub mod host_services;
+pub mod image_sampling;
+pub(crate) mod keyboard_scroll;
+pub(crate) mod keyboard_scroll_tracker;
+pub mod logger;
+pub(crate) mod mobile_text_selection_toolbar;
+pub mod navigation;
+pub mod node;
+pub(crate) mod panic_hook;
+pub mod persisted;
+pub mod platform;
+#[doc(hidden)]
+pub mod popup_presenter;
+pub(crate) mod selection_handle_adorner;
 #[doc(hidden)]
 pub mod signal;
-pub mod state;
-pub mod node;
+pub mod text;
+pub mod theme;
+pub mod timers;
+pub mod tool_tip;
+pub(crate) mod tool_tip_manager;
+pub mod transitions;
+pub mod typography;
+pub mod viewport;
+pub mod worker;
+#[cfg(feature = "worker-runtime")]
+pub mod worker_job;
+#[cfg(feature = "worker-runtime")]
+pub mod worker_runtime;
 
-pub mod prelude {
-    pub use crate::app::Application;
-    pub use crate::component::Component;
-    pub use crate::ffi::{HandleValue, FlexDirection, NodeType, Unit};
-    pub use crate::node::{column, flex_box, row, text, FlexBox, Node, BuiltNode, TextNode};
-    pub use crate::state::{derived, state, State};
+#[macro_export]
+macro_rules! children {
+    ($($child:expr),* $(,)?) => {
+        vec![$($crate::Child::from_node(&$child)),*]
+    };
 }
 
-pub use app::Application;
-pub use component::Component;
-pub use ffi::{HandleValue, FlexDirection, NodeType, Unit};
-pub use node::{column, flex_box, row, text, FlexBox, Node, BuiltNode, TextNode};
-pub use state::{derived, state, State};
+pub trait Configure: Sized {
+    fn configure(self, configure: impl FnOnce(&Self)) -> Self {
+        configure(&self);
+        self
+    }
+}
+
+impl<T> Configure for T {}
+
+#[macro_export]
+macro_rules! fui_app {
+    ($page_ty:ty, $build_page:expr) => {
+        $crate::fui_managed_app!($page_ty, $build_page, |page: &$page_ty| page.clone());
+    };
+}
+
+#[macro_export]
+macro_rules! fui_managed_app {
+    ($page_ty:ty, $build_page:expr, $get_root:expr) => {
+        thread_local! {
+            static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
+                const { ::std::cell::RefCell::new(None) };
+        }
+
+        fn __fui_rs_with_app<T>(
+            callback: impl FnOnce(&$crate::ManagedApplication<$page_ty>) -> T,
+        ) -> T {
+            __FUI_RS_APP.with(|slot| {
+                if slot.borrow().is_none() {
+                    slot.borrow_mut()
+                        .replace($crate::ManagedApplication::new($build_page, $get_root));
+                }
+                let app = slot.borrow();
+                callback(app.as_ref().expect("FUI-RS managed app must be initialized"))
+            })
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __runApp() {
+            __fui_rs_with_app(|app| app.run());
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __disposeApp() {
+            __fui_rs_with_app(|app| app.dispose());
+        }
+    };
+    ($page_ty:ty, $build_page:expr, $get_root:expr, mount: $mount_page:expr) => {
+        thread_local! {
+            static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
+                const { ::std::cell::RefCell::new(None) };
+        }
+
+        fn __fui_rs_with_app<T>(
+            callback: impl FnOnce(&$crate::ManagedApplication<$page_ty>) -> T,
+        ) -> T {
+            __FUI_RS_APP.with(|slot| {
+                if slot.borrow().is_none() {
+                    slot.borrow_mut().replace(
+                        $crate::ManagedApplication::new($build_page, $get_root)
+                            .mount_page($mount_page),
+                    );
+                }
+                let app = slot.borrow();
+                callback(app.as_ref().expect("FUI-RS managed app must be initialized"))
+            })
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __runApp() {
+            __fui_rs_with_app(|app| app.run());
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __disposeApp() {
+            __fui_rs_with_app(|app| app.dispose());
+        }
+    };
+    ($page_ty:ty, $build_page:expr, $get_root:expr, dispose: $dispose_page:expr) => {
+        thread_local! {
+            static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
+                const { ::std::cell::RefCell::new(None) };
+        }
+
+        fn __fui_rs_with_app<T>(
+            callback: impl FnOnce(&$crate::ManagedApplication<$page_ty>) -> T,
+        ) -> T {
+            __FUI_RS_APP.with(|slot| {
+                if slot.borrow().is_none() {
+                    slot.borrow_mut().replace(
+                        $crate::ManagedApplication::new($build_page, $get_root)
+                            .dispose_page($dispose_page),
+                    );
+                }
+                let app = slot.borrow();
+                callback(app.as_ref().expect("FUI-RS managed app must be initialized"))
+            })
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __runApp() {
+            __fui_rs_with_app(|app| app.run());
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __disposeApp() {
+            __fui_rs_with_app(|app| app.dispose());
+        }
+    };
+    ($page_ty:ty, $build_page:expr, $get_root:expr, mount: $mount_page:expr, dispose: $dispose_page:expr) => {
+        thread_local! {
+            static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
+                const { ::std::cell::RefCell::new(None) };
+        }
+
+        fn __fui_rs_with_app<T>(
+            callback: impl FnOnce(&$crate::ManagedApplication<$page_ty>) -> T,
+        ) -> T {
+            __FUI_RS_APP.with(|slot| {
+                if slot.borrow().is_none() {
+                    slot.borrow_mut().replace(
+                        $crate::ManagedApplication::new($build_page, $get_root)
+                            .mount_page($mount_page)
+                            .dispose_page($dispose_page),
+                    );
+                }
+                let app = slot.borrow();
+                callback(app.as_ref().expect("FUI-RS managed app must be initialized"))
+            })
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __runApp() {
+            __fui_rs_with_app(|app| app.run());
+        }
+
+        #[no_mangle]
+        pub extern "C" fn __disposeApp() {
+            __fui_rs_with_app(|app| app.dispose());
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __fui_rs_ui_children {
+    ($parent:ident;) => {};
+    ($parent:ident; , $($rest:tt)*) => {
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    };
+    ($parent:ident; $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* } , $($rest:tt)*) => {{
+        let __fui_child = $crate::ui! {
+            $ctor($($args)*) $( . $method($($method_args)*) )* { $($children)* }
+        };
+        $parent.child(&__fui_child);
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    }};
+    ($parent:ident; $type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* } , $($rest:tt)*) => {{
+        let __fui_child = $crate::ui! {
+            $type_name::$ctor($($args)*) $( . $method($($method_args)*) )* { $($children)* }
+        };
+        $parent.child(&__fui_child);
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    }};
+    ($parent:ident; $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* } $(,)?) => {{
+        let __fui_child = $crate::ui! {
+            $ctor($($args)*) $( . $method($($method_args)*) )* { $($children)* }
+        };
+        $parent.child(&__fui_child);
+    }};
+    ($parent:ident; $type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* } $(,)?) => {{
+        let __fui_child = $crate::ui! {
+            $type_name::$ctor($($args)*) $( . $method($($method_args)*) )* { $($children)* }
+        };
+        $parent.child(&__fui_child);
+    }};
+    ($parent:ident; $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* , $($rest:tt)*) => {{
+        let __fui_child = $crate::ui! {
+            $ctor($($args)*) $( . $method($($method_args)*) )*
+        };
+        $parent.child(&__fui_child);
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    }};
+    ($parent:ident; $type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* , $($rest:tt)*) => {{
+        let __fui_child = $crate::ui! {
+            $type_name::$ctor($($args)*) $( . $method($($method_args)*) )*
+        };
+        $parent.child(&__fui_child);
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    }};
+    ($parent:ident; $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* $(,)?) => {{
+        let __fui_child = $crate::ui! {
+            $ctor($($args)*) $( . $method($($method_args)*) )*
+        };
+        $parent.child(&__fui_child);
+    }};
+    ($parent:ident; $type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* $(,)?) => {{
+        let __fui_child = $crate::ui! {
+            $type_name::$ctor($($args)*) $( . $method($($method_args)*) )*
+        };
+        $parent.child(&__fui_child);
+    }};
+    ($parent:ident; $child:expr, $($rest:tt)*) => {{
+        $parent.child(&$child);
+        $crate::__fui_rs_ui_children!($parent; $($rest)*);
+    }};
+    ($parent:ident; $child:expr $(,)?) => {{
+        $parent.child(&$child);
+    }};
+}
+
+#[macro_export]
+macro_rules! ui {
+    ($base:ident { $($children:tt)* }) => {{
+        let __fui_node = $base;
+        $crate::__fui_rs_ui_children!(__fui_node; $($children)*);
+        __fui_node
+    }};
+    ($type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* }) => {{
+        let __fui_node = $type_name::$ctor($($args)*);
+        $(
+            __fui_node.$method($($method_args)*);
+        )*
+        $crate::__fui_rs_ui_children!(__fui_node; $($children)*);
+        __fui_node
+    }};
+    ($ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* }) => {{
+        let __fui_node = $ctor($($args)*);
+        $(
+            __fui_node.$method($($method_args)*);
+        )*
+        $crate::__fui_rs_ui_children!(__fui_node; $($children)*);
+        __fui_node
+    }};
+    ($ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )*) => {{
+        let __fui_node = $ctor($($args)*);
+        $(
+            __fui_node.$method($($method_args)*);
+        )*
+        __fui_node
+    }};
+    ($type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )*) => {{
+        let __fui_node = $type_name::$ctor($($args)*);
+        $(
+            __fui_node.$method($($method_args)*);
+        )*
+        __fui_node
+    }};
+    ($expr:expr) => {
+        $expr
+    };
+}
+
+pub mod prelude {
+    pub use crate::animation::{
+        animate_color, animate_color_with, animate_float, animate_float_with,
+        get_animation_manager, reset_animations, tick_animations, Animation, AnimationManager,
+        AnimationTiming, Easing, Easings,
+    };
+    pub use crate::app::{Application, ApplicationRegistration, ManagedApplication};
+    pub use crate::bitmap::{Bitmap, BitmapTextReadyEventArgs};
+    pub use crate::bridge_callbacks::current_route;
+    pub use crate::controls::{
+        anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
+        create_default_button_presenter, create_default_checkbox_indicator_presenter,
+        create_default_dropdown_chevron_presenter, create_default_dropdown_field_presenter,
+        create_default_dropdown_option_row_presenter, create_default_radio_indicator_presenter,
+        create_default_slider_presenter, create_default_switch_indicator_presenter,
+        create_default_text_input_presenter, dialog, dropdown, form, get_control_templates,
+        nav_link, popup, progress_bar, radio_button, radio_group, selection_area, slider, switch,
+        text_area, text_input, use_control_templates, AntiSelectionArea, Button, ButtonColors,
+        ButtonPresenter, ButtonTemplate, ButtonVisualState, CheckState, Checkbox,
+        CheckboxChangedEventArgs, CheckboxIndicatorPresenter, CheckboxIndicatorTemplate,
+        CheckboxIndicatorVisualState, ClickEventArgs, ComboBox, ComboBoxChangedEventArgs,
+        ComboBoxCommitMode, ComboBoxFilterMode, ComboBoxItem, ContextMenu, ContextMenuAction,
+        ContextMenuVisibilityChangedEventArgs, ControlTemplateSet, DefaultButtonTemplate,
+        DefaultCheckboxIndicatorTemplate, DefaultDropdownChevronTemplate,
+        DefaultDropdownFieldTemplate, DefaultDropdownOptionRowTemplate,
+        DefaultRadioIndicatorTemplate, DefaultSliderTemplate, DefaultSwitchIndicatorTemplate,
+        DefaultTextInputTemplate, Dialog, DialogShownEventArgs, Dropdown, DropdownChangedEventArgs,
+        DropdownChevronMetrics, DropdownChevronPresenter, DropdownChevronTemplate,
+        DropdownChevronVisualState, DropdownColors, DropdownFieldMetrics, DropdownFieldPresenter,
+        DropdownFieldTemplate, DropdownFieldVisualState, DropdownItem, DropdownOptionRowMetrics,
+        DropdownOptionRowPresenter, DropdownOptionRowTemplate, DropdownOptionRowVisualState,
+        DropdownSizing, Form, LabeledControlColors, LabeledControlSizing, MenuItem, NavLink,
+        NavigateEventArgs, Popup, PressableIndicatorMetrics, PressableIndicatorPresenter,
+        PressableIndicatorVisualState, ProgressBar, RadioButton, RadioButtonChangedEventArgs,
+        RadioGroup, RadioGroupChangedEventArgs, RadioIndicatorPresenter, RadioIndicatorTemplate,
+        RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
+        SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
+        Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
+        SwitchIndicatorVisualState, TextArea, TextInput, TextInputColors, TextInputPresenter,
+        TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
+        DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
+        DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
+        DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE,
+        DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
+    };
+    pub use crate::drag_drop::{
+        DragCompletedEventArgs, DragDataObject, DragDropEffects, DragEventArgs, DragSession,
+        DropProposal,
+    };
+    pub use crate::drawing::{DrawContext, Paint, Path};
+    pub use crate::event::{
+        FocusChangedEventArgs, GestureEventArgs, GestureEventKind, GestureEventPhase,
+        GestureIntent, KeyEventArgs, LongPressEventArgs, PointerEventArgs, PointerType,
+        SelectionChangedEventArgs, TextChangedEventArgs, WheelEventArgs,
+    };
+    pub use crate::external_drop::{
+        ExternalDropEventArgs, ExternalDropItemInfo, ExternalDropItemKind,
+    };
+    pub use crate::fetch::{Fetch, FetchErrorEventArgs, FetchRequest, FetchResponse};
+    pub use crate::ffi::{
+        AlignItems, AlignSelf, BorderStyle, CursorStyle, FlexDirection, FlexWrap, GridUnit,
+        JustifyContent, KeyEventType, KeyModifier, ObjectFit, Orientation, PointerEventType,
+        PositionType, SemanticCheckedState, SemanticRole, TextAlign, TextOverflow,
+        TextVerticalAlign, Unit, Visibility,
+    };
+    pub use crate::file::{
+        BrowserFile, BrowserFileWriter, File, FileCapabilities, FileErrorEventArgs,
+        FileOpenEventArgs, FileOpenRequest, FileReadChunk, FileRequestGuard, FileSaveMode,
+        FileSaveRequest, FileSaveResult, FileWorkerProcessProgress, FileWorkerProcessRequest,
+        FileWorkerProcessResult, FileWriteProgress,
+    };
+    pub use crate::focus_visibility::show_keyboard_focus_for_key_event;
+    pub use crate::image_sampling::{ImageSampling, ImageSamplingMode};
+    pub use crate::logger;
+    pub use crate::navigation;
+    pub use crate::node::{
+        auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row,
+        scroll_box, scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border,
+        Child, ContextMenuEventArgs, CustomDrawable, FlexBox, FlexBoxSurface, GradientStop, Grid,
+        GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node, ScrollBar, ScrollBarVisibility,
+        ScrollBox, ScrollState, ScrollView, Svg, SvgNode, Text, TextCore, TextNode, VirtualList,
+    };
+    pub use crate::persisted;
+    pub use crate::platform;
+    pub use crate::popup_presenter::PopupPlacement;
+    pub use crate::signal::Subscription;
+    pub use crate::text::{
+        span, DynamicTextLayout, DynamicTextOverflow, RichText, RichTextSpan, TextLayout,
+        TextLayoutReadyEventArgs, TextMetrics,
+    };
+    pub use crate::theme::{
+        bind_theme, current_theme, default_dark_theme, default_light_theme, generate_theme,
+        is_dark_mode, is_using_system_theme, set_accent_color, subscribe, use_custom_theme,
+        use_system_theme, Colors, ContextMenuItemTheme, ContextMenuTheme, Fonts, Spacing, Theme,
+        ToolTipTheme,
+    };
+    pub use crate::timers::{cancel_timeout, set_timeout, TimerHandle};
+    pub use crate::tool_tip::ToolTip;
+    pub use crate::transitions::NodeTransitions;
+    pub use crate::typography::{
+        FontFace, FontFaceLoadedEventArgs, FontFamily, FontStack, FontStackLoadedEventArgs,
+        FontStyle, FontWeight, FontsLoadedEventArgs,
+    };
+    pub use crate::viewport::{
+        viewport_height_signal, viewport_width_signal, ViewportSignalHandle,
+    };
+    pub use crate::worker::{
+        Worker, WorkerCompletedEventArgs, WorkerErrorEventArgs, WorkerProgressEventArgs,
+    };
+    #[cfg(feature = "worker-runtime")]
+    pub use crate::worker_job::{WorkerJob, WorkerJobState};
+    #[cfg(feature = "worker-runtime")]
+    pub use crate::worker_runtime::{file_read_chunk, file_worker_write_chunk, WorkerRuntime};
+    pub use crate::{children, fui_app, fui_managed_app, ui, Configure};
+}
+
+pub use animation::{
+    animate_color, animate_color_with, animate_float, animate_float_with, get_animation_manager,
+    reset_animations, tick_animations, Animation, AnimationManager, AnimationTiming, Easing,
+    Easings,
+};
+pub use app::{Application, ApplicationRegistration, ManagedApplication};
+pub use assets::*;
+pub use bitmap::{Bitmap, BitmapTextReadyEventArgs};
+pub use bridge_callbacks::current_route;
+pub use controls::{
+    anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
+    create_default_button_presenter, create_default_checkbox_indicator_presenter,
+    create_default_dropdown_chevron_presenter, create_default_dropdown_field_presenter,
+    create_default_dropdown_option_row_presenter, create_default_radio_indicator_presenter,
+    create_default_slider_presenter, create_default_switch_indicator_presenter,
+    create_default_text_input_presenter, dialog, dropdown, form, get_control_templates, nav_link,
+    popup, progress_bar, radio_button, radio_group, selection_area, slider, switch, text_area,
+    text_input, use_control_templates, AntiSelectionArea, Button, ButtonColors, ButtonPresenter,
+    ButtonTemplate, ButtonVisualState, CheckState, Checkbox, CheckboxChangedEventArgs,
+    CheckboxIndicatorPresenter, CheckboxIndicatorTemplate, CheckboxIndicatorVisualState,
+    ClickEventArgs, ComboBox, ComboBoxChangedEventArgs, ComboBoxCommitMode, ComboBoxFilterMode,
+    ComboBoxItem, ContextMenu, ContextMenuAction, ContextMenuVisibilityChangedEventArgs,
+    ControlTemplateSet, DefaultButtonTemplate, DefaultCheckboxIndicatorTemplate,
+    DefaultDropdownChevronTemplate, DefaultDropdownFieldTemplate, DefaultDropdownOptionRowTemplate,
+    DefaultRadioIndicatorTemplate, DefaultSliderTemplate, DefaultSwitchIndicatorTemplate,
+    DefaultTextInputTemplate, Dialog, DialogShownEventArgs, Dropdown, DropdownChangedEventArgs,
+    DropdownChevronMetrics, DropdownChevronPresenter, DropdownChevronTemplate,
+    DropdownChevronVisualState, DropdownColors, DropdownFieldMetrics, DropdownFieldPresenter,
+    DropdownFieldTemplate, DropdownFieldVisualState, DropdownItem, DropdownOptionRowMetrics,
+    DropdownOptionRowPresenter, DropdownOptionRowTemplate, DropdownOptionRowVisualState,
+    DropdownSizing, Form, LabeledControlColors, LabeledControlSizing, MenuItem, NavLink,
+    NavigateEventArgs, Popup, PressableIndicatorMetrics, PressableIndicatorPresenter,
+    PressableIndicatorVisualState, ProgressBar, RadioButton, RadioButtonChangedEventArgs,
+    RadioGroup, RadioGroupChangedEventArgs, RadioIndicatorPresenter, RadioIndicatorTemplate,
+    RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
+    SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
+    Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
+    SwitchIndicatorVisualState, TextArea, TextInput, TextInputColors, TextInputPresenter,
+    TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
+    DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
+    DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
+    DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE,
+    DEFAULT_TEXT_INPUT_TEMPLATE,
+};
+pub use debug::*;
+pub use drag_drop::{
+    DragCompletedEventArgs, DragDataObject, DragDropEffects, DragEventArgs, DragSession,
+    DropProposal,
+};
+pub use drawing::{DrawContext, Paint, Path};
+pub use event::{
+    FocusChangedEventArgs, GestureEventArgs, GestureEventKind, GestureEventPhase, GestureIntent,
+    KeyEventArgs, LongPressEventArgs, PointerEventArgs, PointerType, SelectionChangedEventArgs,
+    TextChangedEventArgs, WheelEventArgs,
+};
+pub use external_drop::{ExternalDropEventArgs, ExternalDropItemInfo, ExternalDropItemKind};
+pub use fetch::{Fetch, FetchErrorEventArgs, FetchRequest, FetchResponse};
+pub use ffi::{
+    AlignItems, AlignSelf, BorderStyle, CursorStyle, FlexDirection, FlexWrap, GridUnit,
+    JustifyContent, KeyEventType, KeyModifier, ObjectFit, Orientation, PointerEventType,
+    PositionType, SemanticCheckedState, SemanticRole, TextAlign, TextOverflow, TextVerticalAlign,
+    Unit, Visibility,
+};
+pub use file::{
+    BrowserFile, BrowserFileWriter, File, FileCapabilities, FileErrorEventArgs, FileOpenEventArgs,
+    FileOpenRequest, FileReadChunk, FileRequestGuard, FileSaveMode, FileSaveRequest,
+    FileSaveResult, FileWorkerProcessProgress, FileWorkerProcessRequest, FileWorkerProcessResult,
+    FileWriteProgress,
+};
+pub use focus_visibility::show_keyboard_focus_for_key_event;
+pub use frame_scheduler::{mark_needs_commit, on_loaded, LoadedEventArgs};
+pub use frame_signal::{frame_time_signal, FrameTimeSignalHandle};
+pub use image_sampling::{ImageSampling, ImageSamplingMode};
+pub use logger::*;
+pub use navigation::*;
+pub use node::{
+    auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row, scroll_box,
+    scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border, Child,
+    ContextMenuEventArgs, CustomDrawable, FlexBox, FlexBoxSurface, GradientStop, Grid, GridTrack,
+    HasFlexBoxRoot, Image, ImageNode, Length, Node, ScrollBar, ScrollBarVisibility, ScrollBox,
+    ScrollState, ScrollView, Svg, SvgNode, Text, TextCore, TextNode, VirtualList,
+};
+pub use persisted::*;
+pub use platform::*;
+#[doc(hidden)]
+pub use popup_presenter::{PopupPlacement, PopupPresenter};
+pub use signal::Subscription;
+pub use text::{
+    span, DynamicTextLayout, DynamicTextOverflow, RichText, RichTextSpan, TextLayout,
+    TextLayoutReadyEventArgs, TextMetrics,
+};
+pub use theme::{
+    bind_theme, current_theme, default_dark_theme, default_light_theme, generate_theme,
+    is_dark_mode, is_using_system_theme, set_accent_color, subscribe, use_custom_theme,
+    use_system_theme, Colors, ContextMenuItemTheme, ContextMenuTheme, Fonts, Spacing, Theme,
+    ToolTipTheme,
+};
+pub use timers::{cancel_timeout, set_timeout, TimerHandle};
+pub use tool_tip::ToolTip;
+pub use transitions::NodeTransitions;
+pub use typography::{
+    FontFace, FontFaceLoadedEventArgs, FontFamily, FontStack, FontStackLoadedEventArgs, FontStyle,
+    FontWeight, FontsLoadedEventArgs,
+};
+pub use viewport::{viewport_height_signal, viewport_width_signal, ViewportSignalHandle};
+pub use worker::{Worker, WorkerCompletedEventArgs, WorkerErrorEventArgs, WorkerProgressEventArgs};
+#[cfg(feature = "worker-runtime")]
+pub use worker_job::{WorkerJob, WorkerJobState};
+#[cfg(feature = "worker-runtime")]
+pub use worker_runtime::{
+    file_read_chunk, file_worker_write_chunk, handle_fetch_complete as __fui_on_fetch_complete,
+    handle_fetch_error as __fui_on_fetch_error, reset_worker_runtime,
+    worker_text_buffer_ptr as __fui_worker_text_buffer,
+    worker_text_buffer_size as __fui_worker_text_buffer_size, WorkerRuntime,
+};

@@ -11,7 +11,7 @@ fn signal_notifies_subscribers_when_changed() {
     let mut signal = Signal::new(3_i32);
     let observed = std::rc::Rc::new(std::cell::Cell::new(0_i32));
     let observed_clone = observed.clone();
-    signal.subscribe(std::rc::Rc::new(move || {
+    let _subscription = signal.subscribe(std::rc::Rc::new(move || {
         observed_clone.set(observed_clone.get() + 1);
     }));
 

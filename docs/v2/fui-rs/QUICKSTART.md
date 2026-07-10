@@ -1,21 +1,23 @@
-# FUI Rust Quickstart
+# FUI-RS Quickstart
 
-> **⚠️ Early stage.** FUI-RS is under active development. The current slice
-> provides a working smoke app, fluent node builders, and basic component
-> reactivity. Controls, theming, and signal-based reactivity are planned for
-> future slices. Expect breaking changes between slices.
+FUI-RS is the Rust SDK for EffinDom v2. It builds retained Rust UI objects into
+WebAssembly and runs them through the shared EffinDom browser bridge/runtime.
+
+Use this page to get running quickly, then use the [SDK docs index](./SDK_INDEX.md)
+for the full public docs map.
 
 ## Prerequisites
 
 Install the shared v2 toolchain first:
 
-- [docs/QUICKSTART.md](../../QUICKSTART.md)
+- [Top-level v2 quickstart](../../QUICKSTART.md)
 
-Then install Rust/Cargo (required for this guide) and the wasm target:
+Then install Rust/Cargo, the wasm target, and Binaryen:
 
 ### macOS
 
 ```bash
+brew install binaryen
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
@@ -24,82 +26,191 @@ rustup target add wasm32-unknown-unknown
 ### Linux (Debian / Ubuntu)
 
 ```bash
+sudo apt-get install -y binaryen
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
 ```
 
-## Build and run the Slice 1 smoke app
+`binaryen` provides `wasm-opt`. FUI-RS builds run `wasm-opt -O3` when available,
+preserving speed-oriented output while eliminating additional dead code.
 
-From the repository root:
+## Create a new app
 
 ```bash
-npm run build:v2:fui-rs
-npm run test:v2:fui-rs:integration
+npx @effindomv2/create-fui-rs-app my-app
+cd my-app
+npm install
+npm run dev
 ```
 
-The build stages a self-contained smoke page under `public/v2/fui-rs/` and the integration test loads it through Playwright beside the existing v2 browser bridge runtime.
+For the routed MVC starter:
 
-## Manually test the smoke app in a browser
+```bash
+npx @effindomv2/create-fui-rs-app my-routed-app -- --template mvc
+cd my-routed-app
+npm install
+npm run dev
+```
+
+The MVC template builds one WASM per route so route pages can be shipped as
+separate micro-frontends.
+
+## Build the repo demo
 
 From the repository root:
 
 ```bash
-npm run build:v2:browser-bridge
 npm run build:v2:fui-rs
 npm run serve
 ```
 
-Then open:
+Open:
 
 ```text
-http://127.0.0.1:8080/v2/fui-rs/index.html
+http://127.0.0.1:8080/v2/fui-rs/demo/index.html
 ```
 
-If port `8080` is busy, `npm run serve` prints the fallback port it chose. The page should render the blue-box smoke scene and the console should log readiness without errors.
-
-## Write a component
+## Minimal app
 
 ```rust
 use fui_rs::prelude::*;
 
-struct BlueBox {
-    color: State<u32>,
-}
-
-impl BlueBox {
-    fn new() -> Self {
-        Self {
-            color: state(0x006CFFFF),
+fn build_page() -> FlexBox {
+    ui! {
+        column().fill_size().padding(24.0, 24.0, 24.0, 24.0) {
+            text("Hello from FUI-RS").font_size(28.0),
+            button("Click me").on_click(|_| {
+                logger::info("App", "Button clicked");
+            }),
         }
     }
 }
 
-impl Component for BlueBox {
-    fn render(&self) -> Box<dyn Node> {
-        Box::new(
-            flex_box()
-                .width(120.0, Unit::Pixel)
-                .height(96.0, Unit::Pixel)
-                .bg_color(self.color.get()),
-        )
-    }
-}
+fui_app!(FlexBox, build_page);
 ```
 
-## Reactive state
+`fui_app!` emits the browser lifecycle exports required by the harness. Normal
+app code should not hand-write `#[no_mangle] pub extern "C" fn __runApp()`.
 
-- `state(initial)` creates component-owned writable state.
-- `derived(&source, |value| ...)` creates a read-only state derived from an explicit source state.
-- Mutating state marks the owning component dirty and rebuilds the widget tree.
+## Retained-mode model
 
-## Available Slice 1 primitives
+FUI-RS is retained mode. Construct controls once, store stateful controls as
+fields when you need to mutate them later, and mutate retained objects in event
+callbacks.
 
-- `Component` with `render() -> Box<dyn Node>`
-- `Application::run(...)`
-- `flex_box()` and `text(...)`
-- `State`, `state`, and `derived`
+Correct retained shape:
 
-Slice 1 uses destroy-and-remount reconciliation, so every dirty render rebuilds a fresh built-node subtree through the v2 UI ABI.
+```rust
+use fui_rs::prelude::*;
+use std::cell::Cell;
+use std::rc::Rc;
 
-The public SDK barrel is `v2/fui-rs/src/lib.rs`. The browser smoke app used by this slice is compiled from `v2/fui-rs/src/smoke.rs` so the crate root stays SDK-only.
+#[derive(Clone)]
+struct CounterPage {
+    root: FlexBox,
+    count_label: Text,
+}
+
+impl CounterPage {
+    fn new() -> Self {
+        let count_label = text("Count: 0");
+        let button = button("Increment");
+        let count = Rc::new(Cell::new(0));
+
+        button.on_click({
+            let count_label = count_label.clone();
+            let count = count.clone();
+            move |_| {
+                let next = count.get() + 1;
+                count.set(next);
+                count_label.text(format!("Count: {next}"));
+            }
+        });
+
+        let root = ui! {
+            column().padding(16.0, 16.0, 16.0, 16.0) {
+                count_label.clone(),
+                button,
+            }
+        };
+
+        Self { root, count_label }
+    }
+}
+
+fui_managed_app!(CounterPage, CounterPage::new, |page: &CounterPage| page.root.clone());
+```
+
+Do not recreate retained controls in a render loop. That loses identity, focus,
+scroll state, subscriptions, overlay state, and persisted control state.
+
+## Mixed child trees with `ui!`
+
+Rust `Vec<T>` requires one concrete item type. `ui!` is syntax sugar over
+retained builders so mixed trees do not need repeated `.child(...)` or `.into()`
+noise.
+
+```rust
+let page = ui! {
+    column().gap(12.0).fill_width() {
+        text("Profile"),
+        row().gap(8.0) {
+            text_input().configure(|input| {
+                input.placeholder("Name").fill_width();
+            }),
+            button("Save"),
+        },
+    }
+};
+```
+
+Most retained setters return `&Self` because controls are cheap cloned handles
+with interior retained state. Use `configure(...)` when a control needs several
+setters but should still be passed by value into `ui!` or another builder.
+
+Stateful controls still need explicit variables when callbacks or later methods
+must mutate them.
+
+## App entrypoint macros
+
+Use `fui_app!` for simple pages:
+
+```rust
+fn build_page() -> FlexBox { column() }
+fui_app!(FlexBox, build_page);
+```
+
+Use `fui_managed_app!` for retained page/controller ownership:
+
+```rust
+#[derive(Clone)]
+struct Page { root: FlexBox }
+
+impl Page {
+    fn new() -> Self { Self { root: column() } }
+}
+
+fui_managed_app!(Page, Page::new, |page: &Page| page.root.clone());
+```
+
+Optional `mount:` and `dispose:` callbacks are available for route pages that
+need to attach host subscriptions or release route-scoped resources.
+
+## Common imports
+
+Application code should normally use:
+
+```rust
+use fui_rs::prelude::*;
+```
+
+Avoid importing from `bindings`, `generated`, internal control modules, or raw
+FFI modules in app code.
+
+## Next docs
+
+- [SDK docs index](./SDK_INDEX.md)
+- [API reference](./API_REFERENCE.md)
+- [Controls and nodes](./CONTROLS_AND_NODES.md)
+- [Events and callbacks](./EVENTS_AND_CALLBACKS.md)

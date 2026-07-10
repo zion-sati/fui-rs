@@ -13,7 +13,7 @@ bindings, or improving the runtime integration.
 
 - **Rust** (stable) with `wasm32-unknown-unknown` target
 - **Node.js 24+** and npm
-- **`@effindomv2/runtime@0.1.15+`** — fetched via the monorepo or npm
+- **`@effindomv2/runtime@0.1.15+`** — installed through npm or a local runtime checkout
 
 If developing against a **local runtime checkout**, install from the
 [EffinDOM repo](https://github.com/zion-sati/EffinDOM) first.
@@ -23,11 +23,10 @@ If developing against a **local runtime checkout**, install from the
 ## Clone and build
 
 ```bash
-git clone https://github.com/zion-sati/EffinDOM.git
-cd EffinDOM
+git clone https://github.com/zion-sati/fui-rs.git
+cd fui-rs
 npm ci
-npm run build:v2:browser-bridge
-npm run build:v2:fui-rs
+npm run build
 ```
 
 ## Run tests
@@ -45,7 +44,7 @@ v2 browser bridge runtime.
 npm run serve
 ```
 
-Open `http://127.0.0.1:8080/v2/fui-rs/index.html`.
+Open `http://127.0.0.1:8080/v2/fui-rs/demo/index.html`.
 
 ## Repo structure
 
@@ -58,7 +57,6 @@ src/
   app.rs        — Application::run
   state.rs      — Reactive state primitives
   signal.rs     — Signal base types
-  smoke.rs      — Smoke app (compiled into library for testability)
 ```
 
 ## Docs

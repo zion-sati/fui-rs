@@ -4,4 +4,47 @@ version = 4
 
 [[package]]
 name = "fui-rs"
+version = "0.1.1"
+
+[[package]]
+name = "fui-rs-demo-home"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+ "fui-rs-demo-shared",
+]
+
+[[package]]
+name = "fui-rs-demo-shared"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+]
+
+[[package]]
+name = "fui-rs-demo-stage4"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+ "fui-rs-demo-shared",
+]
+
+[[package]]
+name = "fui-rs-demo-stage5"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+ "fui-rs-demo-shared",
+]
+
+[[package]]
+name = "fui-rs-demo-workbench"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+ "fui-rs-demo-shared",
+]
+
+[[package]]
+name = "fui-rs-demo-worker"
 version = "0.1.0"

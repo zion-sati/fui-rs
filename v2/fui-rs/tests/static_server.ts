@@ -62,6 +62,18 @@ function closeServer(server: http.Server): Promise<void> {
 
 function reservePort(server: http.Server, host: string, initialPort: number, maxPort: number): Promise<number> {
   return new Promise<number>((resolve, reject) => {
+    if (initialPort === 0) {
+      server.listen(0, host, () => {
+        const address = server.address();
+        if (address === null || typeof address === 'string') {
+          reject(new Error('Failed to resolve ephemeral static-server port.'));
+          return;
+        }
+        resolve(address.port);
+      });
+      return;
+    }
+
     const tryListen = (candidatePort: number): void => {
       const probe = http.createServer();
 

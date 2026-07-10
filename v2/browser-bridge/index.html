@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EffinDom Browser Bridge Smoke Harness</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      gap: 12px;
+    }
+
+    canvas {
+      width: 320px;
+      height: 220px;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      image-rendering: pixelated;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+      background: transparent;
+    }
+
+    #icu-error {
+      display: none;
+      padding: 12px 16px;
+      border: 1px solid #7f1d1d;
+      border-radius: 10px;
+      background: #450a0a;
+      color: #fecaca;
+      font-size: 14px;
+    }
+
+    #icu-error button {
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fui-canvas"></canvas>
+  <div id="icu-error">
+    <span id="icu-error-message">Failed to load text engine.</span>
+    <button type="button" onclick="location.reload()">Retry</button>
+  </div>
+  <script src="./bridge.js"></script>
+  <script src="./harness.js"></script>
+</body>
+</html>

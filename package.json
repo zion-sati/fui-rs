@@ -1,58 +1,31 @@
 {
-  "name": "effindom",
-  "version": "0.2.0",
-  "description": "EffinDom: Retained Mode WebGPU UI framework for WebAssembly",
+  "name": "effindom-fui-rs-repo",
   "private": true,
+  "version": "0.1.1",
+  "description": "Standalone FUI-RS repository for @effindomv2/fui-rs",
   "engines": {
     "node": ">=24"
   },
+  "workspaces": [
+    "v2/fui-rs"
+  ],
   "scripts": {
-    "build:v2:browser-bridge": "bash v2/browser-bridge/scripts/build.sh",
-    "build:v2:browser-bridge-assets": "bash v2/browser-bridge/scripts/build_assets.sh",
-    "build:v2:fui-as": "cd v2/fui-as && npm run build",
-    "build:v2:fui-as-only": "cd v2/fui-as && npm run build:only",
-    "build:v2:fui-as-full": "cd v2/fui-as && npm run build:full",
-    "build:v2:create-fui-as-app": "cd v2/create-fui-as-app && npm run build",
-    "build:v2:fui-rs": "cd v2/fui-rs && npm run build",
-    "build:v2:fui-kt": "cd v2/fui-kt && npm run build",
-    "build:v2:ui": "bash v2/ui/scripts/build_wasm_arch.sh",
-    "lint:v2": "node --experimental-strip-types ./node_modules/eslint/bin/eslint.js --config eslint.config.ts --max-warnings=0 \"v2/**/*.ts\" --ignore-pattern \"v2/fui-as/src/**/*.ts\" --ignore-pattern \"v2/fui-as/tests/unit/**/*.ts\" --ignore-pattern \"v2/fui-as/build/**/*.ts\"",
-    "publish:local:runtime": "bash scripts/publish/local/runtime.sh",
-    "publish:local:fui-as": "bash scripts/publish/local/fui-as.sh",
-    "publish:local:create-fui-as-app": "bash scripts/publish/local/create-fui-as-app.sh",
-    "publish:local:all": "bash scripts/publish/local/all.sh",
-    "publish:npm:runtime": "bash scripts/publish/npm/runtime.sh",
-    "publish:npm:fui-as": "bash scripts/publish/npm/fui-as.sh",
-    "publish:npm:create-fui-as-app": "bash scripts/publish/npm/create-fui-as-app.sh",
-    "publish:npm:all": "bash scripts/publish/npm/all.sh",
-    "oss:export": "bash scripts/oss-export/export-open-source.sh",
-    "oss:export:runtime": "bash scripts/oss-export/export-open-source.sh --profile runtime",
-    "oss:export:fui-as": "bash scripts/oss-export/export-open-source.sh --profile fui-as",
-    "test:v2:browser": "playwright test -c v2/core/playwright.config.ts && playwright test -c v2/ui/playwright.config.ts && playwright test -c v2/browser-bridge/playwright.config.ts",
-    "test:v2:browser-bridge": "playwright test -c v2/browser-bridge/playwright.config.ts",
-    "test:v2:fui-as:integration": "cd v2/fui-as && npm run test:integration",
-    "test:v2:fui-as:unit": "cd v2/fui-as && npm run test:unit",
-    "test:v2:create-fui-as-app": "cd v2/create-fui-as-app && npm test",
-    "test:v2:fui-rs:integration": "cd v2/fui-rs && npm run test:integration",
-    "test:v2:fui-rs:unit": "cd v2/fui-rs && npm run test:unit",
-    "test:v2:fui-kt:unit": "cd v2/fui-kt && npm run test",
-    "test:v2:ui:browser": "playwright test -c v2/ui/playwright.config.ts",
-    "serve": "node --experimental-strip-types scripts/serve_public.ts",
-    "typecheck:v2": "tsc -p v2/core/tsconfig.json --noEmit && tsc -p v2/ui/tsconfig.json --noEmit && tsc -p v2/browser-bridge/tsconfig.json --noEmit && tsc -p v2/fui-as/tsconfig.json --noEmit && tsc -p v2/fui-rs/tsconfig.json --noEmit && tsc -p v2/create-fui-as-app/tsconfig.json --noEmit"
+    "lint:v2": "node --experimental-strip-types ./node_modules/eslint/bin/eslint.js --config eslint.config.ts --max-warnings=0 \"v2/fui-rs/**/*.ts\"",
+    "lint": "npm run lint:v2",
+    "typecheck": "npm --workspace v2/fui-rs run typecheck",
+    "test": "npm --workspace v2/fui-rs run test:unit",
+    "build": "npm run lint:v2 && npm --workspace v2/fui-rs run typecheck && npm --workspace v2/fui-rs run build"
   },
   "devDependencies": {
-    "@assemblyscript/loader": "^0.28.17",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "1.59.1",
-    "@types/node": "^24.10.1",
-    "as-fetch": "^2.1.4",
-    "assemblyscript": "0.27.31",
-    "esbuild": "^0.27.7",
     "eslint": "^10.3.0",
-    "http-server": "14.1.1",
     "jiti": "^2.7.0",
-    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.59.2",
+    "@assemblyscript/loader": "^0.28.19"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true,
+    "fsevents@2.3.2": true
   }
 }
