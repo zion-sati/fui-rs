@@ -855,6 +855,62 @@ test('reorders a routed workbench row by dragging without hanging the app', asyn
   expect(runtimeErrors.filter(error => error.includes('Panic') || error.includes('unreachable'))).toEqual([]);
 });
 
+test('reorders a routed workbench row by touch long press and release', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Native CDP touch injection is Chromium-only.');
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => 5 });
+  });
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+  const sceneSurface = page.locator('canvas').first();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const visible = await page.evaluate(async () => {
+      const tree = await window.__fui_debug?.getDebugTree();
+      return tree?.nodes.find((entry) => entry.semanticLabel === 'Drag grip for Document Core rename')?.visibleBounds.height ?? 0;
+    });
+    if (visible > 0) break;
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(120);
+  }
+
+  const sourceBounds = await debugNodeScreenBounds(page, sceneSurface, 'Drag grip for Document Core rename');
+  const viewport = await debugNodeCenter(page, sceneSurface, 'Reorder demo viewport');
+  const start = {
+    x: sourceBounds.x + sourceBounds.width * 0.5,
+    y: sourceBounds.y + sourceBounds.height * 0.5,
+  };
+  const end = {
+    x: viewport.x,
+    y: viewport.y + 95,
+  };
+  const client = await page.context().newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ ...start, id: 72, radiusX: 8, radiusY: 8, force: 1 }],
+  });
+  await page.waitForTimeout(650);
+  for (let step = 1; step <= 8; step += 1) {
+    const progress = step / 8;
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{
+        x: start.x + (end.x - start.x) * progress,
+        y: start.y + (end.y - start.y) * progress,
+        id: 72,
+        radiusX: 8,
+        radiusY: 8,
+        force: 1,
+      }],
+    });
+    await page.waitForTimeout(35);
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => /Reorder drag status:[^\n]*/.exec(document.body.innerText)?.[0] ?? '');
+  }).toContain('moved Document Core rename');
+});
+
 test('accepts metadata-first external file drops on the routed workbench target', async ({ page }) => {
   await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);

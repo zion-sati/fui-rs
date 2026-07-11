@@ -74,7 +74,7 @@ http://127.0.0.1:8080/v2/fui-rs/demo/index.html
 ## Minimal app
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 fn build_page() -> FlexBox {
     ui! {
@@ -102,7 +102,7 @@ callbacks.
 Correct retained shape:
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -202,7 +202,7 @@ need to attach host subscriptions or release route-scoped resources.
 Application code should normally use:
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 ```
 
 Avoid importing from `bindings`, `generated`, internal control modules, or raw

@@ -1,18 +1,18 @@
 {
   "name": "@effindomv2/fui-rs",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
   "type": "module",
   "scripts": {
     "generate:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi",
     "check:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi --check",
-    "generate:host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs demo/src/host-services.ts demoHostServices crates/demo-shared/src/generated/host_services.rs fui_rs::host_services",
+    "generate:host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs demo/src/host-services.ts demoHostServices crates/demo-shared/src/generated/host_services.rs fui::host_services",
     "generate:host-events:home": "mkdir -p build && esbuild scripts/generate-host-events.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-events.mjs && node build/generate-host-events.mjs demo/src/host-events.ts demoHostEvents crates/demo-home/src/generated/host_events.rs",
     "generate:host-events:workbench": "mkdir -p build && esbuild scripts/generate-host-events.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-events.mjs && node build/generate-host-events.mjs demo/src/host-events.ts demoHostEvents crates/demo-workbench/src/generated/host_events.rs",
     "generate:host-events:stage4": "mkdir -p build && esbuild scripts/generate-host-events.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-events.mjs && node build/generate-host-events.mjs demo/src/host-events.ts demoHostEvents crates/demo-stage4/src/generated/host_events.rs",
     "generate:host-events:stage5": "mkdir -p build && esbuild scripts/generate-host-events.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-events.mjs && node build/generate-host-events.mjs demo/src/host-events.ts demoHostEvents crates/demo-stage5/src/generated/host_events.rs",
-    "generate:worker-host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs demo/src/worker-host-services.ts demoWorkerHostServices crates/demo-shared/src/generated/worker_host_services.rs fui_rs::host_services fui_host_service",
+    "generate:worker-host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs demo/src/worker-host-services.ts demoWorkerHostServices crates/demo-shared/src/generated/worker_host_services.rs fui::host_services fui_host_service",
     "generate:framework-host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs scripts/framework-host-services.ts frameworkHostServices src/generated/framework_host_services.rs crate::host_services fui_host",
     "generate:host": "npm run generate:host-services && npm run generate:host-events:home && npm run generate:host-events:workbench && npm run generate:host-events:stage4 && npm run generate:host-events:stage5 && npm run generate:worker-host-services && npm run generate:framework-host-services",
     "guard:runtime-dependency": "bash scripts/check-runtime-dependency.sh",
@@ -22,7 +22,7 @@
     "typecheck": "npm run guard:runtime-dependency && npm run check:abi && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.1.22"
+    "@effindomv2/runtime": "0.1.23"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

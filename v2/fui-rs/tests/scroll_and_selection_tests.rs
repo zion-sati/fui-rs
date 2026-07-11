@@ -1,6 +1,6 @@
-use fui_rs::bridge_callbacks;
-use fui_rs::ffi::{self, Call};
-use fui_rs::prelude::*;
+use fui::bridge_callbacks;
+use fui::ffi::{self, Call};
+use fui::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -101,7 +101,7 @@ fn selection_area_sets_bridge_flag_and_receives_cross_selection_text() {
     )));
 
     let text = "picked";
-    fui_rs::event::__fui_on_cross_selection_changed(
+    fui::event::__fui_on_cross_selection_changed(
         area.handle().raw(),
         text.as_ptr(),
         text.len() as u32,
@@ -155,7 +155,7 @@ fn virtual_list_mounts_selection_barrier_and_visible_window() {
 #[test]
 fn virtual_list_restores_persisted_scroll_through_inner_scroll_box() {
     ffi::test::reset();
-    fui_rs::persisted::store_scroll_offset("demo-dashboard:sidebar-list", 0.0, 80.0);
+    fui::persisted::store_scroll_offset("demo-dashboard:sidebar-list", 0.0, 80.0);
     let _ = ffi::test::take_calls();
 
     let labels: Rc<RefCell<HashMap<usize, TextNode>>> = Rc::new(RefCell::new(HashMap::new()));

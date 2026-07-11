@@ -882,7 +882,7 @@ impl NodeRef {
     }
 
     pub(crate) fn has_long_press_for_routing(&self) -> bool {
-        self.inner.borrow().handlers.long_press.is_some()
+        self.inner.borrow().handlers.long_press.is_some() || self.has_drag_source()
     }
 
     pub(crate) fn scroll_routing_state(&self) -> Option<ScrollRoutingState> {
@@ -1073,6 +1073,7 @@ impl NodeRef {
                             event.x,
                             event.y,
                             event.modifiers,
+                            matches!(event.pointer_type, PointerType::Touch | PointerType::Pen),
                         );
                         let mut core = self.inner.borrow_mut();
                         core.drag_click_pending = handlers.pointer_click.is_some();
@@ -1380,6 +1381,16 @@ impl NodeRef {
         [event.x, event.y] = self.absolute_to_local_position(event.scene_x, event.scene_y);
         if let Some(handler) = self.inner.borrow().handlers.long_press.clone() {
             handler(event);
+        }
+        if !event.handled
+            && matches!(event.pointer_type, PointerType::Touch | PointerType::Pen)
+            && self.has_drag_source()
+        {
+            event.handled = self.ensure_drag_gesture().borrow_mut().handle_long_press(
+                event.x,
+                event.y,
+                event.modifiers,
+            );
         }
     }
 

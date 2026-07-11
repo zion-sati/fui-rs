@@ -1,11 +1,11 @@
-use fui_rs::bridge_callbacks::{
+use fui::bridge_callbacks::{
     self, current_route, is_context_menu_visible, last_context_menu_request, last_font_loaded,
     last_scroll_event, last_svg_failed, last_svg_loaded, last_texture_failed, last_texture_loaded,
     persisted_capture_count, persisted_restore_count, AssetFailure, AssetReady, ContextMenuRequest,
     ScrollEvent,
 };
-use fui_rs::ffi::{self, Call};
-use fui_rs::prelude::*;
+use fui::ffi::{self, Call};
+use fui::prelude::*;
 
 #[test]
 fn viewport_callback_resizes_ui() {
@@ -47,7 +47,7 @@ fn context_menu_callbacks_record_and_hide_request() {
     let handle = target.handle().raw();
 
     assert!(bridge_callbacks::__fui_can_show_context_menu(
-        fui_rs::ffi::HandleValue::Invalid as u64
+        fui::ffi::HandleValue::Invalid as u64
     ));
     assert!(bridge_callbacks::__fui_can_show_context_menu(handle));
     bridge_callbacks::__fui_on_context_menu(handle, 12.0, 34.0);
@@ -63,7 +63,7 @@ fn context_menu_callbacks_record_and_hide_request() {
     bridge_callbacks::__fui_hide_active_context_menu();
     assert!(!is_context_menu_visible());
 
-    let invalid = fui_rs::ffi::HandleValue::Invalid as u64;
+    let invalid = fui::ffi::HandleValue::Invalid as u64;
     bridge_callbacks::__fui_on_context_menu(invalid, 56.0, 78.0);
     assert!(is_context_menu_visible());
     assert_eq!(

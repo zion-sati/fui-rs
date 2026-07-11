@@ -14,7 +14,7 @@ Retained context menu surface.
 
 - This is a retained control. Clone values are cheap handles to the same control.
 - Store the control in a page/controller field when callbacks need to mutate it later.
-- Use `use fui_rs::prelude::*;` in app code.
+- Use `use fui::prelude::*;` in app code.
 
 ## See also
 

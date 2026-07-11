@@ -1,4 +1,4 @@
-use fui_rs::signal::Signal;
+use fui::signal::Signal;
 
 #[test]
 fn signal_returns_current_value() {

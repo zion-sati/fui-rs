@@ -1115,6 +1115,11 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
       }
       return getLongPressMovementTolerance(toBigIntHandle(handle));
     };
+    callbacks.longPressContinuesPointerEvents = (handle) => {
+      const session = currentSession;
+      const continues = session?.exports.__fui_long_press_continues_pointer_events;
+      return session !== null && typeof continues === 'function' && isHandledResult(continues(toBigIntHandle(handle)));
+    };
     callbacks.onLongPressEventWithCoords = (handle, x, y, pointerId, pointerType, modifiers, durationMs) => {
       const session = currentSession;
       const onLongPressEvent = session?.exports.__fui_on_long_press_event;

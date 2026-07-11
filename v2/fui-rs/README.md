@@ -32,7 +32,7 @@ Full quickstart: [docs/v2/fui-rs/QUICKSTART.md](../../docs/v2/fui-rs/QUICKSTART.
 ## Minimal app
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 fn build_page() -> FlexBox {
     ui! {

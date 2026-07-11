@@ -1,7 +1,7 @@
 # FUI-RS Controls and Nodes (v2)
 
 This page is the practical guide to the retained UI building blocks exported by
-`fui_rs::prelude::*`.
+`fui::prelude::*`.
 
 For the complete export list, see:
 
@@ -93,7 +93,7 @@ of the parent.
 ## Layout sizing guide: fill vs percent
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 let page = ui! {
     row().fill_size().gap(12.0) {

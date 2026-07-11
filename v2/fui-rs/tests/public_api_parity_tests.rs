@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use fui_rs::ffi::{self, Call, NodeType};
-use fui_rs::prelude::*;
-use fui_rs::*;
+use fui::ffi::{self, Call, NodeType};
+use fui::prelude::*;
+use fui::*;
 
 fn assert_type<T: ?Sized>() {}
 

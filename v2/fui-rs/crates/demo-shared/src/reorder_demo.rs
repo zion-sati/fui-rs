@@ -1,6 +1,6 @@
 use crate::{demo_text, spacer, stage4_panel};
-use fui_rs::bindings::ui;
-use fui_rs::prelude::*;
+use fui::bindings::ui;
+use fui::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 use {AlignItems, CursorStyle, JustifyContent, PositionType, Visibility};
@@ -1161,7 +1161,7 @@ impl ReorderDemoPanel {
             .child(&viewport_status_text)
             .child(&spacer(10.0))
             .child(&demo_text(
-                "Drag a grip to reorder the list. Hold near the viewport edge to auto-scroll the inner ScrollBox while the outer page remains scrollable.",
+                "Drag a grip with a mouse, or touch and hold before moving. Release to drop. Hold near the viewport edge to auto-scroll the inner ScrollBox while the outer page remains scrollable.",
                 15.0,
                 0x475569FF,
             ))

@@ -1,15 +1,15 @@
-use fui_rs::event::{self, FocusChangedEventArgs, GestureIntent};
-use fui_rs::ffi::{
+use fui::event::{self, FocusChangedEventArgs, GestureIntent, PointerType};
+use fui::ffi::{
     self, Call, CursorStyle, HandleValue, KeyEventType, KeyModifier, NodeType, Orientation,
     PointerEventType, PositionType, Visibility,
 };
-use fui_rs::on_loaded;
-use fui_rs::prelude::*;
-use fui_rs::{
+use fui::on_loaded;
+use fui::prelude::*;
+use fui::{
     context_menu, dialog, form, popup, ContextMenuAction, Dialog, MenuItem, PopupPlacement,
     PopupPresenter,
 };
-use fui_rs::{DragDataObject, DragDropEffects, DropProposal};
+use fui::{DragDataObject, DragDropEffects, DropProposal};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -739,6 +739,124 @@ fn drag_drop_session_updates_target_and_completes_drop() {
 }
 
 #[test]
+fn touch_drag_waits_for_long_press_then_drops_on_release() {
+    ffi::test::reset();
+    let source = flex_box();
+    let target = flex_box();
+    let dropped = Rc::new(Cell::new(false));
+
+    source
+        .interactive(true)
+        .drag_allowed_effects(DragDropEffects::Move)
+        .drag_data(|| Some(DragDataObject::new().set_text("Touch payload")));
+    target
+        .interactive(true)
+        .allow_drop(true)
+        .on_drag_enter(|_args| DropProposal::new(DragDropEffects::Move, true))
+        .on_drag_over(|_args| DropProposal::new(DragDropEffects::Move, true))
+        .on_drop({
+            let dropped = dropped.clone();
+            move |_args| dropped.set(true)
+        });
+
+    let root = column();
+    root.child(&source).child(&target);
+    Application::mount(root);
+    ffi::test::take_calls();
+
+    assert_eq!(
+        event::__fui_resolve_long_press_owner(source.handle().raw()),
+        source.handle().raw()
+    );
+    event::__fui_on_pointer_event_with_metadata(
+        PointerEventType::Down as u32,
+        source.handle().raw(),
+        10.0,
+        10.0,
+        0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        1,
+        0.0,
+        0.0,
+        0.0,
+        0,
+    );
+    event::__fui_on_pointer_event_with_metadata(
+        PointerEventType::Move as u32,
+        source.handle().raw(),
+        20.0,
+        20.0,
+        0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        1,
+        0.0,
+        0.0,
+        0.0,
+        0,
+    );
+    assert!(!event::__fui_on_pointer_event_with_metadata(
+        PointerEventType::Move as u32,
+        target.handle().raw(),
+        30.0,
+        30.0,
+        0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        1,
+        0.0,
+        0.0,
+        0.0,
+        0,
+    ));
+    assert!(event::__fui_on_long_press_event(
+        source.handle().raw(),
+        20.0,
+        20.0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        500,
+    ));
+    event::__fui_on_pointer_event_with_metadata(
+        PointerEventType::Move as u32,
+        target.handle().raw(),
+        30.0,
+        30.0,
+        0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        1,
+        0.0,
+        0.0,
+        0.0,
+        0,
+    );
+    event::__fui_on_pointer_event_with_metadata(
+        PointerEventType::Up as u32,
+        target.handle().raw(),
+        30.0,
+        30.0,
+        0,
+        7,
+        PointerType::Touch as u32,
+        0,
+        0,
+        0.0,
+        0.0,
+        0.0,
+        0,
+    );
+
+    assert!(dropped.get());
+}
+
+#[test]
 fn popup_presenter_syncs_overlay_bounds_from_root_bounds_and_viewport() {
     ffi::test::reset();
     ffi::test::set_viewport(640.0, 480.0);
@@ -972,7 +1090,7 @@ fn dialog_click_inside_card_does_not_dismiss_and_backdrop_click_cancels() {
         })
         .expect("overlay scope handle");
     let card_handle = handle_with_semantic_role(&calls, SemanticRole::Dialog);
-    let card_bounds = fui_rs::bindings::ui::get_bounds(card_handle).expect("card bounds");
+    let card_bounds = fui::bindings::ui::get_bounds(card_handle).expect("card bounds");
 
     primary_click(card_handle, 1);
     assert!(dialog.is_open());
@@ -1384,7 +1502,7 @@ fn wheel_gesture_and_long_press_use_local_coordinates_and_visibility_enabled_gua
     root.child(&child);
     Application::mount(root);
     let child_handle = child.handle().raw();
-    let bounds = fui_rs::bindings::ui::get_bounds(child_handle).expect("child bounds");
+    let bounds = fui::bindings::ui::get_bounds(child_handle).expect("child bounds");
     let scene_x = bounds[0] + 9.0;
     let scene_y = bounds[1] + 13.0;
 
@@ -1432,7 +1550,7 @@ fn wheel_gesture_and_long_press_use_local_coordinates_and_visibility_enabled_gua
         .on_wheel(move |_event| disabled_hits_clone.set(disabled_hits_clone.get() + 1));
     Application::mount(disabled.clone());
     let disabled_bounds =
-        fui_rs::bindings::ui::get_bounds(disabled.handle().raw()).expect("disabled bounds");
+        fui::bindings::ui::get_bounds(disabled.handle().raw()).expect("disabled bounds");
     assert!(!event::__fui_on_wheel_event(
         disabled.handle().raw(),
         disabled_bounds[0] + 4.0,
@@ -1592,7 +1710,7 @@ fn keyboard_scroll_pointer_up_selects_scroll_fallback_candidate_without_focus() 
     Application::mount(outer);
 
     let bottom_bounds =
-        fui_rs::bindings::ui::get_bounds(bottom.handle().raw()).expect("bottom bounds");
+        fui::bindings::ui::get_bounds(bottom.handle().raw()).expect("bottom bounds");
     pointer_event(
         PointerEventType::Up,
         bottom_text.handle().raw(),
@@ -2064,7 +2182,7 @@ fn built_in_context_menu_matches_fui_as_text_and_background_items() {
     Application::mount(target.clone());
     ffi::test::take_calls();
 
-    fui_rs::bridge_callbacks::__fui_on_context_menu(target.handle().raw(), 12.0, 18.0);
+    fui::bridge_callbacks::__fui_on_context_menu(target.handle().raw(), 12.0, 18.0);
     let calls = ffi::test::take_calls();
     let copy_handle = handle_with_semantic_label(&calls, "Copy");
     assert!(calls
@@ -2092,9 +2210,9 @@ fn built_in_context_menu_matches_fui_as_text_and_background_items() {
         "FUI-AS ContextMenu entries leave TextCore vertical alignment at its default; forcing center clips tight menu text."
     );
 
-    fui_rs::bridge_callbacks::__fui_hide_active_context_menu();
+    fui::bridge_callbacks::__fui_hide_active_context_menu();
     ffi::test::take_calls();
-    fui_rs::bridge_callbacks::__fui_on_context_menu(HandleValue::Invalid as u64, 20.0, 24.0);
+    fui::bridge_callbacks::__fui_on_context_menu(HandleValue::Invalid as u64, 20.0, 24.0);
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(|call| matches!(
         call,
@@ -2870,14 +2988,14 @@ fn node_context_menu_handler_and_disable_follow_fui_as_ancestor_routing() {
     Application::mount(root.clone());
     ffi::test::take_calls();
 
-    fui_rs::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
+    fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
     assert_eq!(invoked.get(), 1);
 
     root.disable_context_menu(true);
-    assert!(!fui_rs::bridge_callbacks::__fui_can_show_context_menu(
+    assert!(!fui::bridge_callbacks::__fui_can_show_context_menu(
         child.handle().raw()
     ));
-    fui_rs::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
+    fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
     assert_eq!(invoked.get(), 1);
 }
 
@@ -2906,8 +3024,7 @@ fn context_menu_disabled_item_and_separator_do_not_invoke() {
     let calls = ffi::test::take_calls();
     let disabled_handle = handle_with_semantic_label(&calls, "Disabled");
 
-    let disabled_bounds =
-        fui_rs::bindings::ui::get_bounds(disabled_handle).expect("disabled bounds");
+    let disabled_bounds = fui::bindings::ui::get_bounds(disabled_handle).expect("disabled bounds");
     pointer_event(
         PointerEventType::Enter,
         disabled_handle,
@@ -2975,8 +3092,8 @@ fn context_menu_disabled_item_and_separator_do_not_invoke() {
         .count();
     assert_eq!(button_role_count, 2);
 
-    let enabled_bounds = fui_rs::bindings::ui::get_bounds(enabled_handle).expect("enabled bounds");
-    let other_bounds = fui_rs::bindings::ui::get_bounds(other_handle).expect("other bounds");
+    let enabled_bounds = fui::bindings::ui::get_bounds(enabled_handle).expect("enabled bounds");
+    let other_bounds = fui::bindings::ui::get_bounds(other_handle).expect("other bounds");
     let enabled_bottom = enabled_bounds[1] + enabled_bounds[3];
     if other_bounds[1] > enabled_bottom {
         let separator_y = (enabled_bottom + other_bounds[1]) / 2.0;
@@ -3002,7 +3119,7 @@ fn context_menu_hover_pressed_pointer_up_invokes_once_and_opening_suppression_bl
     menu.show_from_context_pointer(24.0, 32.0);
     let calls = ffi::test::take_calls();
     let item_handle = handle_with_semantic_label(&calls, "Primary");
-    let bounds = fui_rs::bindings::ui::get_bounds(item_handle).expect("item bounds");
+    let bounds = fui::bindings::ui::get_bounds(item_handle).expect("item bounds");
 
     pointer_event(
         PointerEventType::Enter,
@@ -3064,7 +3181,7 @@ fn context_menu_stale_opening_suppression_does_not_block_later_primary_item_clic
     menu.show_from_context_pointer(24.0, 32.0);
     let calls = ffi::test::take_calls();
     let item_handle = handle_with_semantic_label(&calls, "Primary");
-    let bounds = fui_rs::bindings::ui::get_bounds(item_handle).expect("item bounds");
+    let bounds = fui::bindings::ui::get_bounds(item_handle).expect("item bounds");
 
     pointer_event(
         PointerEventType::Enter,
@@ -3240,7 +3357,7 @@ fn scrollbar_thumb_drag_uses_pointer_capture_and_updates_scroll_offset() {
     state.set_content_height(400.0);
     let scrollbar = ScrollBar::new(state.clone(), Orientation::Vertical);
     Application::mount(scrollbar.render());
-    let theme = fui_rs::theme::current_theme();
+    let theme = fui::theme::current_theme();
     let mount_calls = ffi::test::take_calls();
     let thumb_handle = *handles_with_bg_color(&mount_calls, theme.colors.scrollbar_thumb)
         .first()

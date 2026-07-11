@@ -58,7 +58,7 @@ does not hand-write browser lifecycle exports.
 ## Minimal app
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 fn build_page() -> FlexBox {
     ui! {

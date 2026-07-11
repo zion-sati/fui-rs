@@ -1,6 +1,6 @@
 [package]
 name = "fui-rs"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
@@ -29,5 +29,5 @@ codegen-units = 1
 panic = "abort"
 
 [lib]
-name = "fui_rs"
+name = "fui"
 crate-type = ["cdylib", "rlib"]

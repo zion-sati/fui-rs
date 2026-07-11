@@ -1,5 +1,5 @@
 use crate::{demo_text, spacer, stage4_panel};
-use fui_rs::prelude::*;
+use fui::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 

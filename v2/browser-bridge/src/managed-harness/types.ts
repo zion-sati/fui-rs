@@ -73,6 +73,7 @@ export interface HarnessExports {
   __fui_resolve_long_press_owner?(this: void, handle: bigint): bigint;
   __fui_get_long_press_minimum_duration_ms?(this: void, handle: bigint): number;
   __fui_get_long_press_movement_tolerance?(this: void, handle: bigint): number;
+  __fui_long_press_continues_pointer_events?(this: void, handle: bigint): boolean | number;
   __fui_on_long_press_event?(this: void, 
     handle: bigint,
     x: number,

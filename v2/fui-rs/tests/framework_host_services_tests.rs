@@ -1,5 +1,5 @@
-use fui_rs::ffi;
-use fui_rs::generated::framework_host_services;
+use fui::ffi;
+use fui::generated::framework_host_services;
 
 #[test]
 fn framework_host_services_read_non_wasm_test_state() {

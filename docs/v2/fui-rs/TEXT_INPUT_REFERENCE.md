@@ -3,7 +3,7 @@
 Public imports:
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 ```
 
 FUI-RS editable text APIs expose user-facing caret/selection positions as

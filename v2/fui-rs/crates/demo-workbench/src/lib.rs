@@ -1,6 +1,6 @@
 mod generated;
 
-use fui_rs::prelude::*;
+use fui::prelude::*;
 use fui_rs_demo_shared::{clear_demo_shared_state, Stage4Showcase};
 use std::cell::RefCell;
 use std::rc::Rc;

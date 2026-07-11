@@ -3,8 +3,8 @@ pub mod generated;
 mod reorder_demo;
 
 use external_drop_demo::ExternalDropDemoPanel;
-use fui_rs::prelude::*;
-use fui_rs::{
+use fui::prelude::*;
+use fui::{
     current_route, device_pixel_ratio, get_svg_asset_error, get_svg_asset_height,
     get_svg_asset_state, get_svg_asset_width, get_texture_asset_error, get_texture_asset_height,
     get_texture_asset_state, get_texture_asset_state_value, get_texture_asset_width, load_svg,

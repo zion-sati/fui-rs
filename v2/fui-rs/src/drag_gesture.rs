@@ -30,6 +30,8 @@ pub(crate) struct DragGesture {
     threshold_value: f32,
     pointer_down_value: bool,
     drag_started_value: bool,
+    awaiting_long_press_value: bool,
+    pointer_captured_value: bool,
     start_x: f32,
     start_y: f32,
     last_pointer_x: f32,
@@ -48,6 +50,8 @@ impl DragGesture {
             threshold_value: DEFAULT_DRAG_THRESHOLD,
             pointer_down_value: false,
             drag_started_value: false,
+            awaiting_long_press_value: false,
+            pointer_captured_value: false,
             start_x: 0.0,
             start_y: 0.0,
             last_pointer_x: 0.0,
@@ -77,12 +81,19 @@ impl DragGesture {
         self.drag_started_value
     }
 
-    pub(crate) fn handle_pointer_down(&mut self, x: f32, y: f32, modifiers: u32) {
+    pub(crate) fn handle_pointer_down(
+        &mut self,
+        x: f32,
+        y: f32,
+        modifiers: u32,
+        wait_for_long_press: bool,
+    ) {
         if self.pointer_down_value {
             self.cancel();
         }
         self.pointer_down_value = true;
         self.drag_started_value = false;
+        self.awaiting_long_press_value = wait_for_long_press;
         self.start_x = x;
         self.start_y = y;
         self.last_pointer_x = x;
@@ -90,8 +101,10 @@ impl DragGesture {
         self.last_dispatched_x = x;
         self.last_dispatched_y = y;
         self.last_modifiers = modifiers;
-        self.capture_drag_pointer();
-        if self.threshold_value <= 0.0 {
+        if !wait_for_long_press {
+            self.capture_drag_pointer();
+        }
+        if !wait_for_long_press && self.threshold_value <= 0.0 {
             self.begin_drag(x, y, modifiers);
         }
     }
@@ -103,6 +116,9 @@ impl DragGesture {
         self.last_pointer_x = x;
         self.last_pointer_y = y;
         self.last_modifiers = modifiers;
+        if self.awaiting_long_press_value {
+            return;
+        }
         if !self.drag_started_value
             && !self.has_exceeded_threshold(x - self.start_x, y - self.start_y)
         {
@@ -112,6 +128,24 @@ impl DragGesture {
             self.begin_drag(x, y, modifiers);
         }
         self.emit_delta(x, y);
+    }
+
+    pub(crate) fn handle_long_press(&mut self, x: f32, y: f32, modifiers: u32) -> bool {
+        if !self.pointer_down_value {
+            self.pointer_down_value = true;
+            self.drag_started_value = false;
+            self.start_x = x;
+            self.start_y = y;
+            self.last_dispatched_x = x;
+            self.last_dispatched_y = y;
+        }
+        self.awaiting_long_press_value = false;
+        self.last_pointer_x = x;
+        self.last_pointer_y = y;
+        self.last_modifiers = modifiers;
+        self.capture_drag_pointer();
+        self.begin_drag(x, y, modifiers);
+        true
     }
 
     pub(crate) fn handle_pointer_up(&mut self, x: f32, y: f32, modifiers: u32) {
@@ -136,6 +170,7 @@ impl DragGesture {
         }
         self.pointer_down_value = false;
         self.drag_started_value = false;
+        self.awaiting_long_press_value = false;
         self.release_drag_pointer();
     }
 
@@ -157,6 +192,7 @@ impl DragGesture {
         }
         self.pointer_down_value = false;
         self.drag_started_value = false;
+        self.awaiting_long_press_value = false;
         self.release_drag_pointer();
     }
 
@@ -188,7 +224,10 @@ impl DragGesture {
             >= (self.threshold_value * self.threshold_value)
     }
 
-    fn capture_drag_pointer(&self) {
+    fn capture_drag_pointer(&mut self) {
+        if self.pointer_captured_value {
+            return;
+        }
         let Some(host) = self.host.upgrade() else {
             return;
         };
@@ -196,11 +235,16 @@ impl DragGesture {
         if handle == NodeHandle::INVALID {
             return;
         }
+        self.pointer_captured_value = true;
         event::capture_pointer(handle);
         unsafe { crate::ffi::fui_set_pointer_capture(handle.raw()) };
     }
 
-    fn release_drag_pointer(&self) {
+    fn release_drag_pointer(&mut self) {
+        if !self.pointer_captured_value {
+            return;
+        }
+        self.pointer_captured_value = false;
         let Some(host) = self.host.upgrade() else {
             return;
         };

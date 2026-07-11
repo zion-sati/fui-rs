@@ -1539,6 +1539,11 @@ pub extern "C" fn __fui_get_long_press_movement_tolerance(handle: u64) -> f32 {
 }
 
 #[no_mangle]
+pub extern "C" fn __fui_long_press_continues_pointer_events(handle: u64) -> bool {
+    registered_node(handle).is_some_and(|node| node.has_drag_source())
+}
+
+#[no_mangle]
 pub extern "C" fn __fui_on_long_press_event(
     handle: u64,
     scene_x: f32,

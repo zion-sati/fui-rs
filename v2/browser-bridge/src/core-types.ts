@@ -797,6 +797,7 @@ export interface EffinDomCallbacks {
   resolveLongPressOwner?: (handle: WasmHandleLike) => WasmHandleLike | null | undefined;
   getLongPressMinimumDurationMs?: (handle: WasmHandleLike) => number | undefined;
   getLongPressMovementTolerance?: (handle: WasmHandleLike) => number | undefined;
+  longPressContinuesPointerEvents?: (handle: WasmHandleLike) => boolean | undefined;
   onLongPressEventWithCoords?: (
     handle: WasmHandleLike,
     x: number,

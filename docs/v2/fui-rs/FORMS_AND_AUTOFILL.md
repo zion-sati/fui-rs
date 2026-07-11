@@ -14,7 +14,7 @@ Use all of the following:
 4. Mark password fields with `password(true)`.
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 let username = text_input();
 username

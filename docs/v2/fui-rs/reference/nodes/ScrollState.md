@@ -13,7 +13,7 @@ Shared scroll metrics/state object.
 ## Notes
 
 - This is retained SDK state or a retained runtime resource.
-- Prefer public constructors/helpers from `fui_rs::prelude::*`.
+- Prefer public constructors/helpers from `fui::prelude::*`.
 - Avoid raw runtime handles in app code; use public node/resource APIs.
 
 ## See also

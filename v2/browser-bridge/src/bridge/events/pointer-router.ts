@@ -101,6 +101,7 @@ interface ActiveLongPressGesture {
   readonly timeoutId: number;
   fired: boolean;
   handled: boolean;
+  continuesWithPointerCapture: boolean;
 }
 
 function resolvePrimaryTouchAxis(deltaX: number, deltaY: number): 'x' | 'y' {
@@ -469,6 +470,7 @@ export function installPointerHandlers(
     }
     gesture.fired = true;
     const scenePoint = runtime.screenToScenePoint(gesture.startX, gesture.startY);
+    runtime.setCapturedPointerHandle(null);
     gesture.handled = window.__effindomCallbacks?.onLongPressEventWithCoords?.(
       gesture.ownerHandle,
       scenePoint.x,
@@ -478,6 +480,8 @@ export function installPointerHandlers(
       gesture.modifiers,
       gesture.durationMs,
     ) === true;
+    gesture.continuesWithPointerCapture =
+      window.__effindomCallbacks?.longPressContinuesPointerEvents?.(gesture.ownerHandle) === true;
     if (gesture.handled) {
       interactionState.cancelTouchTextFocusDeferral();
       triggerLongPressHapticFeedback();
@@ -528,6 +532,7 @@ export function installPointerHandlers(
       timeoutId,
       fired: false,
       handled: false,
+      continuesWithPointerCapture: false,
     };
   };
 
@@ -864,7 +869,11 @@ export function installPointerHandlers(
         event.height,
         0,
       );
-      if (handled || activeTouchGesture.startedOnTextbox) {
+      if (
+        handled ||
+        activeTouchGesture.startedOnTextbox ||
+        activeLongPressGesture?.continuesWithPointerCapture === true
+      ) {
         activeTouchGesture = transitionTouchGesture(activeTouchGesture, {
           type: 'move',
           x: position.x,
@@ -1034,7 +1043,12 @@ export function installPointerHandlers(
     let touchTapCandidateHandle: bigint | null = null;
     let touchTapDiscarded = false;
 
-    if (isTouchEvent && activeLongPressGesture?.pointerId === event.pointerId && activeLongPressGesture.handled) {
+    if (
+      isTouchEvent &&
+      activeLongPressGesture?.pointerId === event.pointerId &&
+      activeLongPressGesture.handled &&
+      !activeLongPressGesture.continuesWithPointerCapture
+    ) {
       if (type === UI_EVENT_POINTER_MOVE) {
         event.preventDefault();
         return;

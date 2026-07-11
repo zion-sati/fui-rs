@@ -1,7 +1,7 @@
 # FUI-RS API Reference (v2)
 
 This page documents the public Rust SDK surface exported by `v2/fui-rs/src/lib.rs`
-and `fui_rs::prelude::*`.
+and `fui::prelude::*`.
 
 For practical control guidance, see [Controls and nodes](./CONTROLS_AND_NODES.md).
 For navigation across the full doc set, see [SDK docs index](./SDK_INDEX.md).
@@ -11,7 +11,7 @@ For navigation across the full doc set, see [SDK docs index](./SDK_INDEX.md).
 Use this in app code:
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 ```
 
 The crate root also re-exports the public surface, but the prelude is the
@@ -35,7 +35,7 @@ Normal apps and route pages should use the macros. They emit the browser harness
 `__runApp` / `__disposeApp` exports and keep ABI details out of user code.
 
 ```rust
-use fui_rs::prelude::*;
+use fui::prelude::*;
 
 fn build_page() -> FlexBox {
     ui! { column().fill_size() { text("Hello") } }

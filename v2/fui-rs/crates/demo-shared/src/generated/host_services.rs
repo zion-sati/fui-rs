@@ -19,10 +19,10 @@ unsafe extern "C" {
 pub fn demo_shell_accent_color_hex() -> String {
   #[cfg(target_arch = "wasm32")]
   {
-    let result_ptr = fui_rs::host_services::host_service_result_buffer_ptr();
-    let result_cap = fui_rs::host_services::host_service_result_buffer_size();
+    let result_ptr = fui::host_services::host_service_result_buffer_ptr();
+    let result_cap = fui::host_services::host_service_result_buffer_size();
     let raw_result = unsafe { __host_demoShellAccentColorHex(result_ptr, result_cap) };
-    fui_rs::host_services::decode_host_service_string_result(result_ptr, raw_result, "demoShellAccentColorHex")
+    fui::host_services::decode_host_service_string_result(result_ptr, raw_result, "demoShellAccentColorHex")
   }
   #[cfg(not(target_arch = "wasm32"))]
   {

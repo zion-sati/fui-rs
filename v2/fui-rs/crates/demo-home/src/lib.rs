@@ -1,6 +1,6 @@
 mod generated;
 
-use fui_rs::prelude::*;
+use fui::prelude::*;
 use fui_rs_demo_shared::generated::host_services::{
     demo_shell_accent_color_hex, demo_shell_clock_tick_seconds, demo_shell_is_dark_mode,
     demo_shell_wall_clock_since_epoch_ms,

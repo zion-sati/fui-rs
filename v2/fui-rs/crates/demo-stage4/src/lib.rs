@@ -1,6 +1,6 @@
 mod generated;
 
-use fui_rs::controls::{
+use fui::controls::{
     clear_control_templates, use_control_templates, ButtonColors, ButtonPresenter, ButtonTemplate,
     ButtonVisualState, CheckboxIndicatorPresenter, CheckboxIndicatorTemplate,
     CheckboxIndicatorVisualState, ControlTemplateSet, LabeledControlColors, LabeledControlSizing,
@@ -8,7 +8,7 @@ use fui_rs::controls::{
     RadioIndicatorTemplate, RadioIndicatorVisualState, SliderColors, SliderSizing,
     DEFAULT_SLIDER_TEMPLATE,
 };
-use fui_rs::prelude::*;
+use fui::prelude::*;
 use fui_rs_demo_shared::clear_demo_shared_state;
 use std::rc::Rc;
 

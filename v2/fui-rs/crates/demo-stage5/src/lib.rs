@@ -1,7 +1,7 @@
 mod generated;
 
-use fui_rs::prelude::*;
-use fui_rs::TextInputColors;
+use fui::prelude::*;
+use fui::TextInputColors;
 use fui_rs_demo_shared::{
     clear_demo_shared_state, demo_card, demo_page_root, track_demo_theme_guard,
 };

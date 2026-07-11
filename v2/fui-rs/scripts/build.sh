@@ -122,12 +122,12 @@ generate_host_events() {
   node "${HOST_EVENT_GENERATOR_BUILD}" "${definition_file}" "${export_name}" "${output_file}"
 }
 
-generate_host_services "demo/src/host-services.ts" "demoHostServices" "crates/demo-shared/src/generated/host_services.rs" "fui_rs::host_services"
+generate_host_services "demo/src/host-services.ts" "demoHostServices" "crates/demo-shared/src/generated/host_services.rs" "fui::host_services"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-home/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-workbench/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-stage4/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-stage5/src/generated/host_events.rs"
-generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-shared/src/generated/worker_host_services.rs" "fui_rs::host_services" "fui_host_service"
+generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-shared/src/generated/worker_host_services.rs" "fui::host_services" "fui_host_service"
 generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-worker/src/generated/worker_host_services.rs" "" "fui_host_service"
 generate_host_services "scripts/framework-host-services.ts" "frameworkHostServices" "src/generated/framework_host_services.rs" "crate::host_services" "fui_host"
 
