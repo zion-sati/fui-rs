@@ -138,7 +138,7 @@ build_demo_route() {
   local wasm_name="$2"
   local wasm_out="$3"
 
-  cargo build --package "${package}" --target wasm32-unknown-unknown --target-dir "${PACKAGE_DIR}/target" --release
+  cargo build --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "${package}" --target wasm32-unknown-unknown --target-dir "${PACKAGE_DIR}/target" --release
   cp "${PACKAGE_DIR}/target/wasm32-unknown-unknown/release/${wasm_name}.wasm" "${wasm_out}"
   optimize_wasm "${wasm_out}"
 }
