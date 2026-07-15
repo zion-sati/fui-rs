@@ -199,7 +199,6 @@ test('browser bridge falls back atomically when CDN runtime assets are unavailab
   });
   await page.addInitScript((runtimeSetHash) => {
     window.__effindomRuntime = {
-      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
       manifestUrls: [
         '/cdn-runtime-manifest.json',
         '/v2/browser-bridge/effindom.v2.manifest.json',
@@ -233,7 +232,6 @@ test('browser bridge rejects a mismatched CDN runtime set before loading its ass
   });
   await page.addInitScript((runtimeSetHash) => {
     window.__effindomRuntime = {
-      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
       manifestUrls: [
         '/cdn-runtime-manifest.json',
         '/v2/browser-bridge/effindom.v2.manifest.json',
@@ -297,10 +295,8 @@ test('ICU load failure shows the dedicated error UI and prevents rendering', asy
   });
 
   await page.addInitScript(() => {
-    (window as typeof window & {
-      __effindomRuntime?: { manifestUrl: string };
-    }).__effindomRuntime = {
-      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
+    window.__effindomRuntime = {
+      manifestUrls: ['/v2/browser-bridge/effindom.v2.manifest.json'],
     };
   });
   await page.goto(`${getBaseUrl()}/v2/browser-bridge/index.html`);

@@ -316,11 +316,13 @@ impl ExternalDropDemoState {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct ExternalDropDemoPanel {
-    pub(crate) root: FlexBox,
+    root: FlexBox,
     _state: Rc<ExternalDropDemoState>,
-    _guards: Vec<Subscription>,
 }
+
+fui_component!(ExternalDropDemoPanel => root);
 
 impl ExternalDropDemoPanel {
     pub(crate) fn new() -> Self {
@@ -449,19 +451,15 @@ impl ExternalDropDemoPanel {
             }
         });
 
-        let guards = vec![bind_theme({
+        root.bind_theme({
             let state = Rc::downgrade(&state);
-            move |theme| {
+            move |_root, theme| {
                 if let Some(state) = state.upgrade() {
                     state.apply_theme(&theme);
                 }
             }
-        })];
+        });
 
-        Self {
-            root,
-            _state: state,
-            _guards: guards,
-        }
+        Self { root, _state: state }
     }
 }

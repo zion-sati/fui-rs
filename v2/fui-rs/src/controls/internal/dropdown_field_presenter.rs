@@ -138,10 +138,9 @@ pub struct DefaultDropdownFieldPresenter {
 
 impl DefaultDropdownFieldPresenter {
     pub fn new(metrics: DropdownFieldMetrics) -> Self {
-        let theme = crate::theme::current_theme();
         let value_node = text("");
         value_node
-            .selectable(false, theme.colors.selection)
+            .selectable(false)
             .fill_size()
             .text_limits(0, 1)
             .wrapping(false);

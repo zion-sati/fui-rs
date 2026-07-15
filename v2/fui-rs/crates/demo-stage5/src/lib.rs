@@ -3,7 +3,7 @@ mod generated;
 use fui::prelude::*;
 use fui::TextInputColors;
 use fui_rs_demo_shared::{
-    clear_demo_shared_state, demo_card, demo_page_root, track_demo_theme_guard,
+    clear_demo_shared_state, demo_card, demo_page_root,
 };
 use std::cell::Cell;
 use std::rc::Rc;
@@ -80,7 +80,7 @@ impl DropdownOptionRowTemplate for Stage5DropdownTemplate {
             .unwrap_or(DropdownOptionRowMetrics::new(34.0, 14.0, 14.0, 16.0));
         let label = ui! {
             text("")
-                .selectable(false, crate::current_theme().colors.selection)
+                .selectable(false)
                 .fill_size()
                 .wrapping(false)
                 .text_limits(0, 1)
@@ -116,16 +116,15 @@ fn themed_text(content: &str, muted: bool) -> TextNode {
         theme.colors.text_primary
     })
     };
-    track_demo_theme_guard(bind_theme({
-        let node = node.clone();
-        move |theme| {
+    node.bind_theme({
+        move |node, theme| {
             node.text_color(if muted {
                 theme.colors.text_muted
             } else {
                 theme.colors.text_primary
             });
         }
-    }));
+    });
     node
 }
 
@@ -1131,10 +1130,10 @@ fn build_page() -> FlexBox {
         let sync_font_mode = sync_font_mode.clone();
         move |_event| sync_font_mode()
     });
-    track_demo_theme_guard(bind_theme({
+    page.bind_theme({
         let sync_font_mode = sync_font_mode.clone();
-        move |_theme| sync_font_mode()
-    }));
+        move |_root, _theme| sync_font_mode()
+    });
     visibility_dropdown.on_changed({
         let text_area = text_area.clone();
         let visibility_dropdown = visibility_dropdown.clone();
@@ -1217,12 +1216,12 @@ fn build_page() -> FlexBox {
         .enabled(false)
         .colors(Some(disabled_text_input_colors(&current_theme())))
     };
-    track_demo_theme_guard(bind_theme({
+    page.bind_theme({
         let disabled = disabled.clone();
-        move |theme| {
+        move |_root, theme| {
             disabled.colors(Some(disabled_text_input_colors(&theme)));
         }
-    }));
+    });
     let disabled_card = demo_card(
         "Disabled + themed",
         "Disabled input must suppress editing while still going through the public colors API rather than demo-only styling hacks.",
@@ -1318,9 +1317,9 @@ fn build_page() -> FlexBox {
             }
         })
     };
-    track_demo_theme_guard(bind_theme({
+    page.bind_theme({
         let gesture_probe = gesture_probe.clone();
-        move |theme| {
+        move |_page, theme| {
             gesture_probe
                 .border(1.0, theme.colors.border)
                 .bg_color(if is_dark_mode() {
@@ -1329,7 +1328,7 @@ fn build_page() -> FlexBox {
                     0xEFF6FFFF
                 });
         }
-    }));
+    });
 
     phase57_card
         .child(&ui! {

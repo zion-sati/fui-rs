@@ -93,10 +93,9 @@ pub struct DefaultDropdownOptionRowPresenter {
 
 impl DefaultDropdownOptionRowPresenter {
     pub fn new(metrics: DropdownOptionRowMetrics) -> Self {
-        let theme = crate::theme::current_theme();
         let label_node = text("");
         label_node
-            .selectable(false, theme.colors.selection)
+            .selectable(false)
             .fill_size()
             .text_limits(0, 1)
             .wrapping(false);

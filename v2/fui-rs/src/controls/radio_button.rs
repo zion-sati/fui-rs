@@ -195,6 +195,20 @@ impl RadioButton {
     }
 }
 
+impl LabeledControlTextStyle for RadioButton {
+    fn set_label_font_family(&self, family: crate::FontFamily) {
+        self.base.font_family(family);
+    }
+
+    fn set_label_font_size(&self, size: f32) {
+        self.base.font_size(size);
+    }
+
+    fn set_label_text_color(&self, color: u32) {
+        self.base.text_color(color);
+    }
+}
+
 impl Node for RadioButton {
     fn retained_node_ref(&self) -> NodeRef {
         self.root.retained_node_ref()

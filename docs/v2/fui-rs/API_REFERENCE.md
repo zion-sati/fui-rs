@@ -30,6 +30,7 @@ Public lifecycle types and macros:
 - `fui_managed_app!(PageType, build_page, get_root, mount: mount_page)`
 - `fui_managed_app!(PageType, build_page, get_root, dispose: dispose_page)`
 - `fui_managed_app!(PageType, build_page, get_root, mount: mount_page, dispose: dispose_page)`
+- `fui_component!(ComponentType => root_field)`
 
 Normal apps and route pages should use the macros. They emit the browser harness
 `__runApp` / `__disposeApp` exports and keep ABI details out of user code.
@@ -77,6 +78,8 @@ FUI-RS follows Rust conventions while keeping the UI model retained and explicit
 
 - Use `fui_app!` and `fui_managed_app!` so app authors do not write browser lifecycle exports manually.
 - Use `ui!` for static mixed child trees when Rust's concrete collection types would otherwise require noisy conversions.
+- Fluent borrowed expressions can be placed directly in `ui!`; they preserve the original retained identity.
+- Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot` forwarding for retained wrappers.
 - Use ordinary Rust closure capture for event handlers and callbacks.
 - Keep RAII guards alive for subscriptions, pending file requests, timers, workers, and similar resources when the API returns one.
 - Treat cloned controls as cheap handles to the same retained UI object, not as duplicated controls.
@@ -99,6 +102,7 @@ Constructors and helpers:
 - `px(value)`, `pct(value)`, `auto()`, `fill()`
 - `viewport_width()`, `viewport_height()`
 - `children![...]`, `ui! { ... }`
+- `fui_component!(Type => root)`
 
 Common public style/layout types:
 
@@ -155,6 +159,7 @@ Public template/style types:
 - `DropdownFieldTemplate`, `DropdownChevronTemplate`, `DropdownOptionRowTemplate`
 - `TextInputTemplate`, `TextInputPresenter`, `TextInputVisualState`, `TextInputColors`
 - `LabeledControlColors`, `LabeledControlSizing`, `DropdownColors`, `DropdownSizing`
+- `LabeledControlTextStyle` for shared `font_family`, `font_size`, and `text_color`
 - `DEFAULT_*_TEMPLATE` constants and `create_default_*_presenter(...)` helpers
 
 See [Control customization and templating](./CONTROL_CUSTOMIZATION.md).
@@ -184,8 +189,8 @@ Theme APIs:
 - `use_custom_theme(theme)`
 - `set_accent_color(color)`
 - `current_theme()`
-- `bind_theme(owner, handler)`
-- `subscribe(handler)`
+- `node.bind_theme(handler)` for node-owned, cycle-safe styling
+- `subscribe(handler)` for advanced non-node lifetimes where the caller retains the RAII guard
 - `is_dark_mode()`
 - `is_using_system_theme()`
 - `default_light_theme()`, `default_dark_theme()`, `generate_theme(...)`

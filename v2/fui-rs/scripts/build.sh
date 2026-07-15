@@ -196,9 +196,14 @@ if [ -f "${SHARED_DEMO_TEXTURE}" ]; then
   cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/stage4/demo-texture.png"
   cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/stage5/demo-texture.png"
 fi
-cat > "${OUT_DIR}/effindom-runtime-config.js" << 'RUNTIMECFG'
+RUNTIME_SET_HASH="$(node -e 'const fs=require("fs"); const value=JSON.parse(fs.readFileSync(process.argv[1], "utf8")).runtime_set_hash; if (typeof value !== "string" || value.length === 0) process.exit(1); process.stdout.write(value);' "${RUNTIME_DIST_DIR}/effindom.v2.manifest.json")"
+cat > "${OUT_DIR}/effindom-runtime-config.js" << RUNTIMECFG
 window.__effindomRuntime = Object.assign({}, window.__effindomRuntime, {
-  manifestUrl: './effindom.v2.manifest.json',
+  manifestUrls: [
+    'https://runtimes.effindom.dev/v2/manifests/${RUNTIME_SET_HASH}.json',
+    './effindom.v2.manifest.json',
+  ],
+  expectedRuntimeSetHash: '${RUNTIME_SET_HASH}',
 });
 RUNTIMECFG
 cp "${OUT_DIR}/effindom-runtime-config.js" "${DEMO_OUT_DIR}/effindom-runtime-config.js"

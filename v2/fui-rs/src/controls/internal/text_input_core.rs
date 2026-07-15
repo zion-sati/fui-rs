@@ -174,7 +174,7 @@ impl TextInputCore {
             .semantic_role(SemanticRole::Textbox)
             .reflect_semantic_disabled_from_enabled()
             .focusable(true, 0)
-            .selectable(true, 0)
+            .selectable(true)
             .editable(true);
         let placeholder_text = TextCore::new("");
         let placeholder_host = flex_box();
@@ -891,7 +891,7 @@ impl TextInputCore {
     }
 
     fn sync_editor_editability(&self) {
-        self.editor_text.selectable(is_enabled(&self.root), 0);
+        self.editor_text.selectable(is_enabled(&self.root));
         self.editor_text
             .editable(!self.read_only_value.get() && is_enabled(&self.root));
     }

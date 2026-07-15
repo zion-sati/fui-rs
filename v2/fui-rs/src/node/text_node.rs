@@ -81,6 +81,19 @@ impl TextNode {
         self
     }
 
+    pub fn bind_theme(&self, handler: impl Fn(&TextNode, crate::theme::Theme) + 'static) -> &Self {
+        let weak_core = Rc::downgrade(&self.core);
+        let weak_props = Rc::downgrade(&self.props);
+        let guard = crate::theme::subscribe(move |theme| {
+            let (Some(core), Some(props)) = (weak_core.upgrade(), weak_props.upgrade()) else {
+                return;
+            };
+            handler(&TextNode { core, props }, theme);
+        });
+        self.retained_node_ref().retain_attachment(Rc::new(guard));
+        self
+    }
+
     pub fn width(&self, width: f32, unit: Unit) -> &Self {
         self.props.borrow_mut().width = Some((width, unit));
         {
@@ -281,19 +294,30 @@ impl TextNode {
         self
     }
 
-    pub fn selectable(&self, selectable: bool, selection_color: u32) -> &Self {
-        let resolved_selection_color = if selection_color == 0 {
-            theme::current_theme().colors.selection
-        } else {
-            selection_color
-        };
+    pub fn selectable(&self, selectable: bool) -> &Self {
         let mut props = self.props.borrow_mut();
+        let resolved_selection_color = props
+            .selectable
+            .map(|(_, color)| color)
+            .unwrap_or_else(|| theme::current_theme().colors.selection);
         props.selectable = Some((selectable, resolved_selection_color));
-        props.uses_theme_selection_color = selection_color == 0;
         drop(props);
         self.core.borrow_mut().behavior.selectable_text = selectable;
         if self.has_built_handle() {
             ui::set_selectable(self.handle().raw(), selectable, resolved_selection_color);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    pub fn selection_color(&self, color: u32) -> &Self {
+        let mut props = self.props.borrow_mut();
+        let selectable = props.selectable.map(|(value, _)| value).unwrap_or(false);
+        props.selectable = Some((selectable, color));
+        props.uses_theme_selection_color = false;
+        drop(props);
+        if self.has_built_handle() {
+            ui::set_selectable(self.handle().raw(), selectable, color);
             self.notify_retained_mutation();
         }
         self

@@ -8,7 +8,7 @@ This page documents theme defaults and explicit style override behavior.
 - `use_custom_theme(theme)` applies an explicit `Theme`.
 - `set_accent_color(color)` rebuilds the active theme with a custom accent.
 - `current_theme()` returns the current effective theme.
-- `bind_theme(owner, handler)` subscribes retained custom controls to theme changes.
+- `node.bind_theme(|node, theme| ...)` stores a cycle-safe subscription on the retained node.
 - `subscribe(handler)` returns a RAII subscription guard.
 
 Core theme structs:
@@ -31,8 +31,8 @@ Core theme structs:
 
 | Control | Theme-driven defaults | Explicit override examples |
 |---|---|---|
-| `Button` | accent/background/hover/pressed/border/radius/font/text | `colors(...)`, `template(...)`, inherited box/text styling |
-| `Checkbox` / `Switch` / `RadioButton` | indicator/control colors and focus chrome | `colors(...)`, `sizing(...)`, `template(...)` |
+| `Button` | accent/background/hover/pressed/border/radius/font/text | `colors(...)`, `template(...)`, `font_family(...)`, `font_size(...)`, `text_color(...)` |
+| `Checkbox` / `Switch` / `RadioButton` | indicator/control colors and focus chrome | `colors(...)`, `sizing(...)`, `template(...)`, shared labeled-text styling |
 | `Slider` | track/thumb/focus/value colors | `colors(...)`, `sizing(...)`, `template(...)` |
 | `Dropdown` | trigger surface, popup border/shadow, option rows | `colors(...)`, `sizing(...)`, field/chevron/row templates |
 | `ComboBox` | text editor surface plus popup chrome | text input colors/templates plus popup settings |
@@ -40,31 +40,34 @@ Core theme structs:
 | `ContextMenu` | panel/item/separator/shadow/theme metrics | item and panel styling APIs |
 | `Dialog` | backdrop, card surface, border, radius, shadow, text styles | backdrop/card/action styling APIs |
 | `ScrollBar` | track/thumb colors | track/thumb colors and geometry APIs |
-| `NavLink` | link cursor, focus chrome, inherited text/box style | inherited node/text style APIs |
+| `NavLink` | link cursor, focus chrome, inherited text/box style | `font_family(...)`, `font_size(...)`, `text_color(...)`, inherited box styling |
 
 ## Node style matrix
 
 | Node | Theme defaults | Explicit styling |
 |---|---|---|
 | `FlexBox`, `Grid`, `Portal` | none by default | background, border, radius, gradient, blur, shadow, opacity |
-| `Text` | default theme typography and selection color | font, color, alignment, selection style |
+| `Text` | default theme typography and selection color | font, color, alignment, `selectable(...)`, `selection_color(...)` |
 | `ScrollView`, `ScrollBox`, `VirtualList` | scrollbar chrome through `ScrollBar` | scrollbars and child surface styling |
 | `Image`, `Svg` | none by default | tint, object fit, sampling, box styling |
 
 ## Example
 
 ```rust
-let theme = current_theme();
 let card = column();
-card
-    .bg_color(theme.colors.surface)
-    .border(1.0, theme.colors.border)
-    .corner_radius(14.0)
-    .padding(16.0, 16.0, 16.0, 16.0);
+card.corner_radius(14.0)
+    .padding(16.0, 16.0, 16.0, 16.0)
+    .bind_theme(|card, theme| {
+        card.bg_color(theme.colors.surface)
+            .border(1.0, theme.colors.border);
+    });
 ```
 
-For custom controls, keep the subscription guard in the retained control so the
-subscription remains active for the control lifetime.
+The retained node owns the RAII guard and the signal callback holds only a weak
+target. A parent-owned child therefore remains themed even if its configuring
+wrapper is dropped, and dropping the retained node unsubscribes automatically.
+Do not capture the themed node strongly inside its own callback; use the node
+argument supplied to the callback.
 
 ## See also
 

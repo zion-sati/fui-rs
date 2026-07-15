@@ -118,11 +118,11 @@ impl Dialog {
         let root = portal();
         let title_node = TextNode::new("");
         title_node
-            .selectable(false, theme.colors.selection)
+            .selectable(false)
             .semantic_role(SemanticRole::Heading);
         let body_node = TextNode::new("");
         body_node
-            .selectable(false, theme.colors.selection)
+            .selectable(false)
             .semantic_role(SemanticRole::StaticText);
         let content_host = flex_box();
         content_host

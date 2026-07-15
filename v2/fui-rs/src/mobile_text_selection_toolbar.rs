@@ -174,7 +174,7 @@ fn create_label(label: &str, slot: i32) -> TextNode {
         .font_size(theme.context_menu.item.font_size)
         .text_color(theme.context_menu.item.text_color)
         .text_overflow(TextOverflow::Ellipsis)
-        .selectable(false, theme.colors.selection)
+        .selectable(false)
         .interactive(true)
         .preserve_selection_on_pointer_down(true)
         .on_pointer_up(move |event| {

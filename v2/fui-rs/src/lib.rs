@@ -314,6 +314,31 @@ macro_rules! ui {
     };
 }
 
+#[macro_export]
+macro_rules! fui_component {
+    ($component:ty => $root:ident) => {
+        impl $crate::Node for $component {
+            fn retained_node_ref(&self) -> $crate::node::NodeRef {
+                $crate::Node::retained_node_ref(&self.$root)
+            }
+
+            fn retained_owner_attachment(&self) -> Option<std::rc::Rc<dyn std::any::Any>> {
+                $crate::Node::retained_owner_attachment(&self.$root)
+            }
+
+            fn build_self(&self) {
+                $crate::Node::build_self(&self.$root);
+            }
+        }
+
+        impl $crate::HasFlexBoxRoot for $component {
+            fn flex_box_root(&self) -> &$crate::FlexBox {
+                $crate::HasFlexBoxRoot::flex_box_root(&self.$root)
+            }
+        }
+    };
+}
+
 pub mod prelude {
     pub use crate::animation::{
         animate_color, animate_color_with, animate_float, animate_float_with,
@@ -345,19 +370,19 @@ pub mod prelude {
         DropdownChevronVisualState, DropdownColors, DropdownFieldMetrics, DropdownFieldPresenter,
         DropdownFieldTemplate, DropdownFieldVisualState, DropdownItem, DropdownOptionRowMetrics,
         DropdownOptionRowPresenter, DropdownOptionRowTemplate, DropdownOptionRowVisualState,
-        DropdownSizing, Form, LabeledControlColors, LabeledControlSizing, MenuItem, NavLink,
-        NavigateEventArgs, Popup, PressableIndicatorMetrics, PressableIndicatorPresenter,
-        PressableIndicatorVisualState, ProgressBar, RadioButton, RadioButtonChangedEventArgs,
-        RadioGroup, RadioGroupChangedEventArgs, RadioIndicatorPresenter, RadioIndicatorTemplate,
-        RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
-        SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
-        Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
-        SwitchIndicatorVisualState, TextArea, TextInput, TextInputColors, TextInputPresenter,
-        TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
-        DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
-        DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
-        DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE,
-        DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
+        DropdownSizing, Form, LabeledControlColors, LabeledControlSizing, LabeledControlTextStyle,
+        MenuItem, NavLink, NavigateEventArgs, Popup, PressableIndicatorMetrics,
+        PressableIndicatorPresenter, PressableIndicatorVisualState, ProgressBar, RadioButton,
+        RadioButtonChangedEventArgs, RadioGroup, RadioGroupChangedEventArgs,
+        RadioIndicatorPresenter, RadioIndicatorTemplate, RadioIndicatorVisualState, SelectionArea,
+        Slider, SliderChangedEventArgs, SliderColors, SliderPresenter, SliderPresenterMetrics,
+        SliderSizing, SliderTemplate, SliderVisualState, Switch, SwitchChangedEventArgs,
+        SwitchIndicatorPresenter, SwitchIndicatorTemplate, SwitchIndicatorVisualState, TextArea,
+        TextInput, TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
+        DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
+        DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
+        DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
+        DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
     };
     pub use crate::drag_drop::{
         DragCompletedEventArgs, DragDataObject, DragDropEffects, DragEventArgs, DragSession,
@@ -386,6 +411,7 @@ pub mod prelude {
         FileWorkerProcessResult, FileWriteProgress,
     };
     pub use crate::focus_visibility::show_keyboard_focus_for_key_event;
+    pub use crate::fui_component;
     pub use crate::image_sampling::{ImageSampling, ImageSamplingMode};
     pub use crate::logger;
     pub use crate::navigation;

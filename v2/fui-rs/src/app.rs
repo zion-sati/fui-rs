@@ -109,7 +109,7 @@ impl ApplicationRegistration {
         }
     }
 
-    pub fn page<TNode: Node>(mut self, build_page: impl Fn() -> TNode + 'static) -> Self {
+    pub fn page<TNode: Node + 'static>(mut self, build_page: impl Fn() -> TNode + 'static) -> Self {
         self.build_page_fn = Rc::new(move || {
             let node = build_page();
             let shell = flex_box();
@@ -133,7 +133,7 @@ pub struct ManagedApplication<TPage: 'static> {
 }
 
 impl<TPage: 'static> ManagedApplication<TPage> {
-    pub fn new<TNode: Node>(
+    pub fn new<TNode: Node + 'static>(
         build_page: impl Fn() -> TPage + 'static,
         get_root: impl Fn(&TPage) -> TNode + 'static,
     ) -> Self {

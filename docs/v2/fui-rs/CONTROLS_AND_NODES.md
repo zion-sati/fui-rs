@@ -28,6 +28,10 @@ For the complete export list, see:
 | `Dialog` | Modal overlay with actions | `dialog(title, body)`, `show()`, `hide()`, `on_accept(...)`, `on_cancel(...)`, modal styling |
 | `ContextMenu` / `MenuItem` | Retained context menu surface | `context_menu(items)`, `ContextMenu::new()`, `show(...)`, `hide()`, styling and visibility callbacks |
 
+`Button`, `NavLink`, `Checkbox`, `RadioButton`, and `Switch` share
+`LabeledControlTextStyle`, providing `font_family(...)`, `font_size(...)`, and
+`text_color(...)` with explicit overrides that survive theme updates.
+
 `Grid` uses typed `GridTrack` values: `GridTrack::px(...)`,
 `GridTrack::star(...)`, and `GridTrack::auto()`.
 | `Popup` | Generic popup overlay | `popup()`, child overlay content, show/hide behavior |
@@ -135,6 +139,35 @@ let root = ui! {
     }
 };
 ```
+
+Fluent setters return borrowed handles, and `ui!` accepts those borrowed
+expressions directly without cloning or rebuilding the retained node:
+
+```rust
+let root = ui! {
+    column() {
+        button("Save").margin(0.0, 8.0, 0.0, 0.0),
+        text("Not selectable")
+            .selectable(false)
+            .selection_color(0x3B82F680),
+    }
+};
+```
+
+Use `fui_component!` for a retained wrapper with a designated layout root:
+
+```rust
+#[derive(Clone)]
+struct SettingsHeader {
+    root: FlexBox,
+}
+
+fui_component!(SettingsHeader => root);
+```
+
+The macro delegates `Node` and `HasFlexBoxRoot`; it does not create another UI
+node. Keep an intermediate variable when callbacks or later mutations need the
+control. Do not use `Deref` to imitate UI inheritance.
 
 ## Common node state APIs
 

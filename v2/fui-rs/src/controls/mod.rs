@@ -69,6 +69,30 @@ pub struct SliderChangedEventArgs {
     pub value: f32,
 }
 
+pub trait LabeledControlTextStyle: Sized {
+    #[doc(hidden)]
+    fn set_label_font_family(&self, family: crate::FontFamily);
+    #[doc(hidden)]
+    fn set_label_font_size(&self, size: f32);
+    #[doc(hidden)]
+    fn set_label_text_color(&self, color: u32);
+
+    fn font_family(&self, family: crate::FontFamily) -> &Self {
+        self.set_label_font_family(family);
+        self
+    }
+
+    fn font_size(&self, size: f32) -> &Self {
+        self.set_label_font_size(size);
+        self
+    }
+
+    fn text_color(&self, color: u32) -> &Self {
+        self.set_label_text_color(color);
+        self
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DropdownChangedEventArgs<T> {
     pub item: T,

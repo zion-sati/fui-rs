@@ -92,7 +92,7 @@ function applyHarnessRuntimeOptions(options: {
   if (Object.keys(update).length === 0) {
     return;
   }
-  const runtimeWindow = window as unknown as Window & { __effindomRuntime?: Partial<Record<'manifestUrl' | 'buildMode' | 'devToolsDomMirror' | 'pageZoom', string>> };
+  const runtimeWindow = window as unknown as Window & { __effindomRuntime?: Partial<Record<'buildMode' | 'devToolsDomMirror' | 'pageZoom', string>> };
   runtimeWindow.__effindomRuntime = Object.assign({}, runtimeWindow.__effindomRuntime, update);
 }
 

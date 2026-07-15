@@ -112,6 +112,8 @@ struct CounterPage {
     count_label: Text,
 }
 
+fui_component!(CounterPage => root);
+
 impl CounterPage {
     fn new() -> Self {
         let count_label = text("Count: 0");
@@ -139,7 +141,7 @@ impl CounterPage {
     }
 }
 
-fui_managed_app!(CounterPage, CounterPage::new, |page: &CounterPage| page.root.clone());
+fui_managed_app!(CounterPage, CounterPage::new, |page: &CounterPage| page.clone());
 ```
 
 Do not recreate retained controls in a render loop. That loses identity, focus,
@@ -166,8 +168,8 @@ let page = ui! {
 ```
 
 Most retained setters return `&Self` because controls are cheap cloned handles
-with interior retained state. Use `configure(...)` when a control needs several
-setters but should still be passed by value into `ui!` or another builder.
+with interior retained state. `ui!` accepts those borrowed fluent expressions
+directly and preserves the original retained identity.
 
 Stateful controls still need explicit variables when callbacks or later methods
 must mutate them.

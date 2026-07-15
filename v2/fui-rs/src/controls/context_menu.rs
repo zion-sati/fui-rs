@@ -364,7 +364,7 @@ impl ContextMenuEntry {
             )
             .text_color(theme.context_menu.item.text_color)
             .text_overflow(TextOverflow::Ellipsis)
-            .selectable(false, theme.colors.selection);
+            .selectable(false);
         let shortcut_node = TextNode::new("");
         shortcut_node
             .font_family(theme.context_menu.item.font_family.clone())
@@ -376,7 +376,7 @@ impl ContextMenuEntry {
             )
             .text_color(theme.colors.text_muted)
             .text_align(TextAlign::Left)
-            .selectable(false, theme.colors.selection);
+            .selectable(false);
 
         root.width(100.0, Unit::Percent)
             .height(theme.context_menu.item.height, Unit::Pixel)

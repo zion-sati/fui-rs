@@ -22,8 +22,7 @@ declare const HEAPU32: Uint32Array | undefined;
 
 declare global {
   interface EffinDomRuntimeConfig {
-    manifestUrl?: string;
-    manifestUrls?: readonly string[];
+    manifestUrls: readonly string[];
     expectedRuntimeSetHash?: string;
     buildMode?: 'debug' | 'release';
     devToolsDomMirror?: 'disabled' | 'enabled' | 'on-requested';
@@ -247,7 +246,7 @@ function selectManifestArchitecture(manifest: RuntimeManifest, requestedArchitec
 function readManifestUrls(): readonly string[] {
   const runtimeConfig = window.__effindomRuntime;
   if (runtimeConfig === undefined) {
-    throw new Error('Missing effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrl before bridge.js loads.');
+    throw new Error('Missing effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrls before bridge.js loads.');
   }
   const configuredManifestUrls: unknown = runtimeConfig.manifestUrls;
   if (Array.isArray(configuredManifestUrls)) {
@@ -261,10 +260,7 @@ function readManifestUrls(): readonly string[] {
       return manifestUrls;
     }
   }
-  if (typeof runtimeConfig.manifestUrl !== 'string' || runtimeConfig.manifestUrl.length === 0) {
-    throw new Error('Malformed effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrl to be a non-empty string.');
-  }
-  return [runtimeConfig.manifestUrl];
+  throw new Error('Malformed effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrls to be a non-empty string array.');
 }
 
 function resolveManifestAssetUrl(manifestUrl: string, assetUrl: string): string {

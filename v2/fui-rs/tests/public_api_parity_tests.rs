@@ -4,6 +4,14 @@ use fui::ffi::{self, Call, NodeType};
 use fui::prelude::*;
 use fui::*;
 
+#[derive(Clone)]
+struct ParityComponent {
+    root: FlexBox,
+    value: std::rc::Rc<std::cell::Cell<i32>>,
+}
+
+fui_component!(ParityComponent => root);
+
 fn assert_type<T: ?Sized>() {}
 
 fn public_prelude_exports_compile() {
@@ -170,6 +178,43 @@ fn rust_ui_macros_build_retained_mixed_child_trees() {
 }
 
 #[test]
+fn rust_ui_macro_accepts_borrowed_fluent_nodes_without_changing_identity() {
+    ffi::test::reset();
+
+    let retained_button = button("Borrowed");
+    let root = ui! {
+        column() {
+            retained_button
+                .node_id("borrowed-button")
+                .margin(1.0, 2.0, 3.0, 4.0),
+        }
+    };
+
+    Application::mount(root);
+
+    let calls = ffi::test::take_calls();
+    let borrowed_handle = calls
+        .iter()
+        .find_map(|call| match call {
+            Call::SetNodeId { handle, node_id } if node_id == "borrowed-button" => Some(*handle),
+            _ => None,
+        })
+        .expect("borrowed button should retain its configured identity");
+    assert_eq!(
+        calls
+            .iter()
+            .filter(
+                |call| matches!(call, Call::CreateNode { handle, .. } if *handle == borrowed_handle)
+            )
+            .count(),
+        1
+    );
+    assert!(calls.iter().any(|call| {
+        matches!(call, Call::NodeAddChild { child, .. } if *child == borrowed_handle)
+    }));
+}
+
+#[test]
 fn rust_children_macro_builds_mixed_child_vectors() {
     ffi::test::reset();
 
@@ -184,6 +229,118 @@ fn rust_children_macro_builds_mixed_child_vectors() {
         .filter(|call| matches!(call, Call::NodeAddChild { .. }))
         .count();
     assert!(child_add_count >= 3);
+}
+
+#[test]
+fn labeled_controls_share_fluent_text_styling_and_selection_properties_are_independent() {
+    ffi::test::reset();
+
+    let family = current_theme().fonts.body_family;
+    let root = ui! {
+        column() {
+            button("Button").font_family(family.clone()).font_size(18.0).text_color(0x112233FF),
+            NavLink::with_label("/docs", "Docs").font_family(family.clone()).font_size(19.0).text_color(0x223344FF),
+            checkbox("Check").font_family(family.clone()).font_size(20.0).text_color(0x334455FF),
+            radio_button("Radio").font_family(family.clone()).font_size(21.0).text_color(0x445566FF),
+            switch("Switch").font_family(family).font_size(22.0).text_color(0x556677FF),
+            text("Selectable").selection_color(0x667788FF).selectable(false),
+            TextCore::new("Core text").selection_color(0x778899FF),
+        }
+    };
+
+    Application::mount(root);
+    let calls = ffi::test::take_calls();
+    for color in [0x112233FF, 0x223344FF, 0x334455FF, 0x445566FF, 0x556677FF] {
+        assert!(
+            calls.iter().any(
+                |call| matches!(call, Call::SetTextColor { color: actual, .. } if *actual == color)
+            ),
+            "missing configured labeled-control color {color:#010x}"
+        );
+    }
+    assert!(calls.iter().any(|call| {
+        matches!(call, Call::SetSelectable { selectable: false, selection_color, .. }
+            if *selection_color == 0x667788FF)
+    }));
+    assert!(calls.iter().any(|call| {
+        matches!(call, Call::SetSelectable { selectable: false, selection_color, .. }
+            if *selection_color == 0x778899FF)
+    }));
+}
+
+#[test]
+fn node_owned_theme_binding_survives_wrapper_drop_without_external_guard() {
+    ffi::test::reset();
+    let previous_theme = current_theme();
+    let parent = column();
+    {
+        let themed = column();
+        themed.bind_theme(|root, theme| {
+            root.bg_color(theme.colors.accent);
+        });
+        parent.child(&themed);
+    }
+    Application::mount(parent);
+    ffi::test::take_calls();
+
+    let changed = generate_theme(false, 0x2468ACFF);
+    use_custom_theme(changed.clone());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| {
+        matches!(call, Call::SetBgColor { color, .. } if *color == changed.colors.accent)
+    }));
+
+    use_custom_theme(previous_theme);
+}
+
+#[test]
+fn node_owned_theme_binding_unsubscribes_when_the_retained_node_drops() {
+    let previous_theme = current_theme();
+    let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+    {
+        let root = column();
+        root.bind_theme({
+            let calls = calls.clone();
+            move |_root, _theme| calls.set(calls.get() + 1)
+        });
+        assert_eq!(calls.get(), 1);
+    }
+
+    use_custom_theme(generate_theme(false, 0x13579BFF));
+    assert_eq!(calls.get(), 1);
+    use_custom_theme(previous_theme);
+}
+
+#[test]
+fn component_macro_delegates_to_the_designated_retained_root_without_wrapper_nodes() {
+    ffi::test::reset();
+    let component = ParityComponent {
+        root: row().node_id("component-root").clone(),
+        value: std::rc::Rc::new(std::cell::Cell::new(7)),
+    };
+    let state = component.value.clone();
+    let root = ui! { column() { component.margin(1.0, 1.0, 1.0, 1.0) } };
+    Application::mount(root);
+
+    assert_eq!(state.get(), 7);
+    let calls = ffi::test::take_calls();
+    let component_handle = calls
+        .iter()
+        .find_map(|call| match call {
+            Call::SetNodeId { handle, node_id } if node_id == "component-root" => Some(*handle),
+            _ => None,
+        })
+        .expect("component root should be built directly");
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|call| matches!(call, Call::CreateNode { handle, .. } if *handle == component_handle))
+            .count(),
+        1
+    );
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::NodeAddChild { child, .. } if *child == component_handle)
+    ));
 }
 
 #[test]

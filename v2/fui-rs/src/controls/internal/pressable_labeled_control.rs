@@ -37,7 +37,9 @@ pub(crate) struct PressableLabeledControl {
     key_pressed_state: Rc<Cell<bool>>,
     pointer_pressed_state: Rc<Cell<bool>>,
     enabled_state: Rc<Cell<bool>>,
+    label_font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
     label_font_size_override: Rc<Cell<f32>>,
+    label_text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     activation: Rc<RefCell<Option<ActivationCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
@@ -78,7 +80,9 @@ impl PressableLabeledControl {
             key_pressed_state: Rc::new(Cell::new(false)),
             pointer_pressed_state: Rc::new(Cell::new(false)),
             enabled_state: Rc::new(Cell::new(true)),
+            label_font_family_override: Rc::new(RefCell::new(None)),
             label_font_size_override: Rc::new(Cell::new(0.0)),
+            label_text_color_override: Rc::new(Cell::new(None)),
             colors_value: Rc::new(Cell::new(None)),
             activation: Rc::new(RefCell::new(None)),
             state_changed: Rc::new(RefCell::new(None)),
@@ -131,6 +135,21 @@ impl PressableLabeledControl {
     pub(crate) fn set_label_font_size_override(&self, font_size: f32) {
         self.label_font_size_override
             .set(if font_size > 0.0 { font_size } else { 0.0 });
+        self.sync_base_theme();
+    }
+
+    pub(crate) fn font_family(&self, family: crate::FontFamily) {
+        self.label_font_family_override.replace(Some(family));
+        self.sync_base_theme();
+    }
+
+    pub(crate) fn font_size(&self, size: f32) {
+        self.label_font_size_override.set(size);
+        self.sync_base_theme();
+    }
+
+    pub(crate) fn text_color(&self, color: u32) {
+        self.label_text_color_override.set(Some(color));
         self.sync_base_theme();
     }
 
@@ -251,7 +270,9 @@ impl PressableLabeledControl {
             key_pressed_state: self.key_pressed_state.clone(),
             pointer_pressed_state: self.pointer_pressed_state.clone(),
             enabled_state: self.enabled_state.clone(),
+            label_font_family_override: self.label_font_family_override.clone(),
             label_font_size_override: self.label_font_size_override.clone(),
+            label_text_color_override: self.label_text_color_override.clone(),
             colors_value: self.colors_value.clone(),
             activation: self.activation.clone(),
             state_changed: self.state_changed.clone(),
@@ -265,6 +286,8 @@ impl PressableLabeledControl {
             &self.label_node,
             &self.gap_node,
             self.label_font_size_override.get(),
+            self.label_font_family_override.borrow().clone(),
+            self.label_text_color_override.get(),
             self.colors_value.get(),
             self.enabled_state.get(),
         );
@@ -284,6 +307,8 @@ fn sync_base_theme_parts(
     label_node: &TextCore,
     gap_node: &FlexBox,
     label_font_size_override: f32,
+    label_font_family_override: Option<crate::FontFamily>,
+    label_text_color_override: Option<u32>,
     colors: Option<LabeledControlColors>,
     enabled: bool,
 ) {
@@ -304,7 +329,7 @@ fn sync_base_theme_parts(
     root.opacity(if enabled { 1.0 } else { 0.6 });
     gap_node.width(theme.spacing.sm, Unit::Pixel);
     label_node
-        .font_family(theme.fonts.body_family.clone())
+        .font_family(label_font_family_override.unwrap_or_else(|| theme.fonts.body_family.clone()))
         .font_size(if label_font_size_override > 0.0 {
             label_font_size_override
         } else {
@@ -321,7 +346,7 @@ fn sync_base_theme_parts(
             .map(|colors| colors.text_muted_color())
             .unwrap_or(theme.colors.text_muted)
     };
-    label_node.text_color(label_color);
+    label_node.text_color(label_text_color_override.unwrap_or(label_color));
 }
 
 fn sync_focus_chrome_parts(root: &FlexBox, focused: bool, enabled: bool) {
@@ -347,7 +372,9 @@ struct PressableLabeledControlEventTarget {
     key_pressed_state: Rc<Cell<bool>>,
     pointer_pressed_state: Rc<Cell<bool>>,
     enabled_state: Rc<Cell<bool>>,
+    label_font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
     label_font_size_override: Rc<Cell<f32>>,
+    label_text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     activation: Rc<RefCell<Option<ActivationCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
@@ -373,6 +400,8 @@ impl PressableLabeledControlEventTarget {
             &self.label_node,
             &self.gap_node,
             self.label_font_size_override.get(),
+            self.label_font_family_override.borrow().clone(),
+            self.label_text_color_override.get(),
             self.colors_value.get(),
             self.enabled_state.get(),
         );

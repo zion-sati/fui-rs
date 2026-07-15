@@ -32,8 +32,10 @@ mod svg_node;
 mod text_node;
 mod virtual_list;
 
+#[doc(hidden)]
+pub use core::NodeRef;
 pub use core::{ContextMenuEventArgs, Node, NodeHandle};
-pub(crate) use core::{NodeRef, WeakFlexBox, WeakNodeRef};
+pub(crate) use core::{WeakFlexBox, WeakNodeRef};
 pub use custom_drawable::CustomDrawable;
 pub use flex_box::{Border, FlexBox, GradientStop};
 pub use grid::{Grid, GridTrack};
@@ -59,7 +61,25 @@ pub trait HasFlexBoxRoot {
     fn flex_box_root(&self) -> &FlexBox;
 }
 
+impl HasFlexBoxRoot for FlexBox {
+    fn flex_box_root(&self) -> &FlexBox {
+        self
+    }
+}
+
 pub trait FlexBoxSurface: HasFlexBoxRoot {
+    fn bind_theme(&self, handler: impl Fn(&FlexBox, crate::theme::Theme) + 'static) -> &Self {
+        let root = self.flex_box_root();
+        let weak_root = root.downgrade();
+        let guard = crate::theme::subscribe(move |theme| {
+            if let Some(root) = weak_root.upgrade() {
+                handler(&root, theme);
+            }
+        });
+        root.retained_node_ref().retain_attachment(Rc::new(guard));
+        self
+    }
+
     fn width(&self, width: f32, unit: Unit) -> &Self {
         self.flex_box_root().width(width, unit);
         self

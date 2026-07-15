@@ -26,6 +26,8 @@ pub struct Button {
     hover_background_override: Rc<Cell<Option<u32>>>,
     pressed_background_override: Rc<Cell<Option<u32>>>,
     border_override: Rc<Cell<Option<Border>>>,
+    font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
+    font_size_override: Rc<Cell<Option<f32>>>,
     text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<ButtonColors>>>,
     theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
@@ -66,6 +68,8 @@ impl Button {
             hover_background_override: Rc::new(Cell::new(None)),
             pressed_background_override: Rc::new(Cell::new(None)),
             border_override: Rc::new(Cell::new(None)),
+            font_family_override: Rc::new(RefCell::new(None)),
+            font_size_override: Rc::new(Cell::new(None)),
             text_color_override: Rc::new(Cell::new(None)),
             colors_value: Rc::new(Cell::new(None)),
             theme_guard: Rc::new(RefCell::new(None)),
@@ -250,10 +254,19 @@ impl Button {
         self
     }
 
-    pub fn text_color(&self, color: u32) -> &Self {
+    fn set_explicit_text_color(&self, color: u32) {
         self.text_color_override.set(Some(color));
         self.sync_visual_state();
-        self
+    }
+
+    fn set_explicit_font_family(&self, family: crate::FontFamily) {
+        self.font_family_override.replace(Some(family.clone()));
+        self.label.borrow().font_family(family);
+    }
+
+    fn set_explicit_font_size(&self, size: f32) {
+        self.font_size_override.set(Some(size));
+        self.label.borrow().font_size(size);
     }
 
     fn install_visual_subscriptions(&self) {
@@ -285,6 +298,8 @@ impl Button {
             hover_background_override: self.hover_background_override.clone(),
             pressed_background_override: self.pressed_background_override.clone(),
             border_override: self.border_override.clone(),
+            font_family_override: self.font_family_override.clone(),
+            font_size_override: self.font_size_override.clone(),
             text_color_override: self.text_color_override.clone(),
             colors_value: self.colors_value.clone(),
         }
@@ -328,6 +343,8 @@ impl Button {
             self.hover_background_override.get(),
             self.pressed_background_override.get(),
             self.border_override.get(),
+            self.font_family_override.borrow().clone(),
+            self.font_size_override.get(),
             self.text_color_override.get(),
             self.colors_value.get(),
         );
@@ -380,6 +397,20 @@ impl HasFlexBoxRoot for Button {
     }
 }
 
+impl LabeledControlTextStyle for Button {
+    fn set_label_font_family(&self, family: crate::FontFamily) {
+        self.set_explicit_font_family(family);
+    }
+
+    fn set_label_font_size(&self, size: f32) {
+        self.set_explicit_font_size(size);
+    }
+
+    fn set_label_text_color(&self, color: u32) {
+        self.set_explicit_text_color(color);
+    }
+}
+
 fn sync_button_visual_state(
     root: &FlexBox,
     presenter: &Rc<RefCell<Rc<dyn ButtonPresenter>>>,
@@ -391,6 +422,8 @@ fn sync_button_visual_state(
     hover_background_override: Option<u32>,
     pressed_background_override: Option<u32>,
     border_override: Option<Border>,
+    font_family_override: Option<crate::FontFamily>,
+    font_size_override: Option<f32>,
     text_color_override: Option<u32>,
     colors: Option<ButtonColors>,
 ) {
@@ -420,6 +453,12 @@ fn sync_button_visual_state(
     }
     if let Some(border) = border_override {
         root.border_config(border);
+    }
+    if let Some(family) = font_family_override {
+        presenter.label_node().font_family(family);
+    }
+    if let Some(size) = font_size_override {
+        presenter.label_node().font_size(size);
     }
     if let Some(color) = text_color_override {
         presenter.label_node().text_color(color);
@@ -462,6 +501,8 @@ struct ButtonEventTarget {
     hover_background_override: Rc<Cell<Option<u32>>>,
     pressed_background_override: Rc<Cell<Option<u32>>>,
     border_override: Rc<Cell<Option<Border>>>,
+    font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
+    font_size_override: Rc<Cell<Option<f32>>>,
     text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<ButtonColors>>>,
 }
@@ -488,6 +529,8 @@ impl ButtonEventTarget {
             self.hover_background_override.get(),
             self.pressed_background_override.get(),
             self.border_override.get(),
+            self.font_family_override.borrow().clone(),
+            self.font_size_override.get(),
             self.text_color_override.get(),
             self.colors_value.get(),
         );

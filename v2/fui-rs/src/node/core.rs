@@ -514,7 +514,7 @@ impl NodeRef {
         }
     }
 
-    pub(crate) fn from_node<T: Node>(inner: Rc<RefCell<NodeCore>>, node: T) -> Self {
+    pub(crate) fn from_node<T: Node + 'static>(inner: Rc<RefCell<NodeCore>>, node: T) -> Self {
         Self {
             inner,
             build_callback: Some(Rc::new(move || node.build())),
@@ -1561,7 +1561,7 @@ impl NodeRef {
     }
 }
 
-pub trait Node: Clone + 'static {
+pub trait Node: Clone {
     #[doc(hidden)]
     fn node_ref(&self) -> NodeRef {
         self.retained_node_ref()
@@ -2206,5 +2206,19 @@ pub trait Node: Clone + 'static {
         node_ref.inner.borrow_mut().behavior.tool_tip = None;
         crate::tool_tip_manager::ToolTipManager::handle_tool_tip_changed(&node_ref, None);
         self
+    }
+}
+
+impl<T: Node + ?Sized> Node for &T {
+    fn retained_node_ref(&self) -> NodeRef {
+        (*self).retained_node_ref()
+    }
+
+    fn retained_owner_attachment(&self) -> Option<Rc<dyn Any>> {
+        (*self).retained_owner_attachment()
+    }
+
+    fn build_self(&self) {
+        (*self).build_self();
     }
 }

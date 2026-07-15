@@ -62,6 +62,7 @@ fui_app!(FlexBox, build_page);
 |---|---|
 | Retained app lifecycle macros | Available |
 | `ui!` mixed child tree macro | Available |
+| `fui_component!` retained component delegation | Available |
 | Flex/Grid layout nodes | Available |
 | Text, rich text, image, SVG | Available |
 | Buttons, toggles, slider, dropdown, combobox | Available |

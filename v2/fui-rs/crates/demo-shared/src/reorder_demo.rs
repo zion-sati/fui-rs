@@ -808,11 +808,14 @@ impl ReorderDemoState {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct ReorderDemoPanel {
-    pub(crate) root: FlexBox,
+    root: FlexBox,
     _state: Rc<RefCell<ReorderDemoState>>,
-    _guards: Vec<Subscription>,
+    _guards: Rc<Vec<Subscription>>,
 }
+
+fui_component!(ReorderDemoPanel => root);
 
 impl ReorderDemoPanel {
     pub(crate) fn new() -> Self {
@@ -1173,13 +1176,13 @@ impl ReorderDemoPanel {
                 .child(&preview_ghost)
             });
 
+        panel.bind_theme({
+            let state = state.clone();
+            move |_panel, theme| {
+                state.borrow().apply_theme(theme);
+            }
+        });
         let guards = vec![
-            bind_theme({
-                let state = state.clone();
-                move |theme| {
-                    state.borrow().apply_theme(theme);
-                }
-            }),
             scroll_box.scroll_state().subscribe_offset_y({
                 let state = state.clone();
                 move || {
@@ -1199,7 +1202,7 @@ impl ReorderDemoPanel {
         Self {
             root: panel,
             _state: state,
-            _guards: guards,
+            _guards: Rc::new(guards),
         }
     }
 }

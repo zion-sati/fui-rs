@@ -42,6 +42,7 @@ pub struct NavLink {
     enter_pressed: Rc<Cell<bool>>,
     enter_pressed_open_in_new_tab: Rc<Cell<bool>>,
     preview_pinned_for_context_menu: Rc<Cell<bool>>,
+    text_color_override: Rc<Cell<Option<u32>>>,
     theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
     focus_visibility_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
@@ -88,6 +89,7 @@ impl NavLink {
             enter_pressed: Rc::new(Cell::new(false)),
             enter_pressed_open_in_new_tab: Rc::new(Cell::new(false)),
             preview_pinned_for_context_menu: Rc::new(Cell::new(false)),
+            text_color_override: Rc::new(Cell::new(None)),
             theme_guard: Rc::new(RefCell::new(None)),
             focus_visibility_guard: Rc::new(RefCell::new(None)),
         };
@@ -209,7 +211,7 @@ impl NavLink {
     fn event_target(&self) -> NavLinkEventTarget {
         NavLinkEventTarget {
             weak_root: self.root.downgrade(),
-            label: self.label.retained_node_ref(),
+            label: self.label.clone(),
             href: self.href.clone(),
             open_in_new_tab: self.open_in_new_tab.clone(),
             navigate: self.navigate.clone(),
@@ -220,7 +222,22 @@ impl NavLink {
             enter_pressed: self.enter_pressed.clone(),
             enter_pressed_open_in_new_tab: self.enter_pressed_open_in_new_tab.clone(),
             preview_pinned_for_context_menu: self.preview_pinned_for_context_menu.clone(),
+            text_color_override: self.text_color_override.clone(),
         }
+    }
+
+    fn set_explicit_font_family(&self, family: crate::FontFamily) {
+        self.label.font_family(family);
+    }
+
+    fn set_explicit_font_size(&self, size: f32) {
+        self.label.font_size(size);
+    }
+
+    fn set_explicit_text_color(&self, color: u32) {
+        self.text_color_override.set(Some(color));
+        self.label.text_color(color);
+        self.sync_visual_state();
     }
 
     pub fn href(&self) -> String {
@@ -281,10 +298,24 @@ impl HasFlexBoxRoot for NavLink {
     }
 }
 
+impl LabeledControlTextStyle for NavLink {
+    fn set_label_font_family(&self, family: crate::FontFamily) {
+        self.set_explicit_font_family(family);
+    }
+
+    fn set_label_font_size(&self, size: f32) {
+        self.set_explicit_font_size(size);
+    }
+
+    fn set_label_text_color(&self, color: u32) {
+        self.set_explicit_text_color(color);
+    }
+}
+
 #[derive(Clone)]
 struct NavLinkEventTarget {
     weak_root: WeakFlexBox,
-    label: NodeRef,
+    label: TextNode,
     href: Rc<RefCell<String>>,
     open_in_new_tab: Rc<Cell<bool>>,
     navigate: Rc<RefCell<Option<NavigateCallback>>>,
@@ -295,6 +326,7 @@ struct NavLinkEventTarget {
     enter_pressed: Rc<Cell<bool>>,
     enter_pressed_open_in_new_tab: Rc<Cell<bool>>,
     preview_pinned_for_context_menu: Rc<Cell<bool>>,
+    text_color_override: Rc<Cell<Option<u32>>>,
 }
 
 impl NavLinkEventTarget {
@@ -371,14 +403,15 @@ impl NavLinkEventTarget {
     }
 
     fn sync_visual_state(&self) {
-        let color = if self.hovered.get() {
-            current_theme().colors.accent_hovered
-        } else {
-            current_theme().colors.accent
-        };
-        let label = &self.label;
-        if label.handle() != NodeHandle::INVALID {
-            ui::set_text_color(label.handle().raw(), color);
+        let color = self.text_color_override.get().unwrap_or_else(|| {
+            if self.hovered.get() {
+                current_theme().colors.accent_hovered
+            } else {
+                current_theme().colors.accent
+            }
+        });
+        if self.label.handle() != NodeHandle::INVALID {
+            ui::set_text_color(self.label.handle().raw(), color);
         }
     }
 

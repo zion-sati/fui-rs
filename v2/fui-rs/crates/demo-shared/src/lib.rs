@@ -39,17 +39,7 @@ const JSON_PLACEHOLDER_POST_URL: &str = "https://jsonplaceholder.typicode.com/po
 const JSON_PLACEHOLDER_POST_BODY: &str =
     "{\"title\":\"EffinDom FUI-RS workbench\",\"body\":\"Posting through the shipped Fetch API.\",\"userId\":29}";
 
-thread_local! {
-    static DEMO_THEME_GUARDS: RefCell<Vec<Subscription>> = const { RefCell::new(Vec::new()) };
-}
-
-pub fn track_demo_theme_guard(guard: Subscription) {
-    DEMO_THEME_GUARDS.with(|guards| guards.borrow_mut().push(guard));
-}
-
-pub fn clear_demo_shared_state() {
-    DEMO_THEME_GUARDS.with(|guards| guards.borrow_mut().clear());
-}
+pub fn clear_demo_shared_state() {}
 
 fn demo_card_color(theme: &Theme, color: u32) -> u32 {
     if is_dark_mode() {
@@ -918,7 +908,7 @@ impl Stage4Showcase {
             row().fill_width().margin(0.0, 18.0, 0.0, 0.0)
         };
         let reorder_panel = ReorderDemoPanel::new();
-        reorder_row.child(&reorder_panel.root);
+        reorder_row.child(&reorder_panel);
         page.child(&reorder_row);
 
         let context_row = ui! {
@@ -1253,7 +1243,7 @@ impl Stage4Showcase {
             row().fill_width().margin(0.0, 18.0, 0.0, 0.0)
         };
         let external_drop_panel = ExternalDropDemoPanel::new();
-        external_drop_row.child(&external_drop_panel.root);
+        external_drop_row.child(&external_drop_panel);
         page.child(&external_drop_row);
 
         let apply_breakpoint: Rc<dyn Fn(f32, f32)> = {
@@ -2021,8 +2011,9 @@ impl Stage4Showcase {
             }
         });
 
-        let theme_guard = bind_theme({
-            let root = root.clone();
+        root.bind_theme({
+            let vertical_scrollbar = root.vertical_scrollbar();
+            let horizontal_scrollbar = root.horizontal_scrollbar();
             let page = page.clone();
             let accent_chip = accent_chip.clone();
             let theme_body = theme_body.clone();
@@ -2037,13 +2028,13 @@ impl Stage4Showcase {
             let custom_font_direct_stack = custom_font_direct_stack.clone();
             let custom_font_comparison = custom_font_comparison.clone();
             let on_theme_accent_changed = on_theme_accent_changed.clone();
-            move |theme| {
+            move |root, theme| {
                 root.bg_color(theme.colors.background);
                 page.bg_color(theme.colors.background);
-                root.vertical_scrollbar()
+                vertical_scrollbar
                     .track_color(theme.colors.scrollbar_track)
                     .thumb_color(theme.colors.scrollbar_thumb);
-                root.horizontal_scrollbar()
+                horizontal_scrollbar
                     .track_color(theme.colors.scrollbar_track)
                     .thumb_color(theme.colors.scrollbar_thumb);
                 accent_chip.bg_color(theme.colors.accent);
@@ -2207,7 +2198,6 @@ impl Stage4Showcase {
             _external_drop_panel: external_drop_panel,
             _reorder_panel: reorder_panel,
             _guards: vec![
-                theme_guard,
                 viewport_width_guard,
                 viewport_height_guard,
                 selection_guard,
@@ -2240,9 +2230,8 @@ fn demo_route_nav_link(href: &str, label: &str, active: bool) -> NavLink {
             },
         )
     };
-    track_demo_theme_guard(bind_theme({
-        let link = link.clone();
-        move |theme| {
+    link.bind_theme({
+        move |link, theme| {
             link.bg_color(if active {
                 theme.colors.accent_hovered
             } else {
@@ -2257,7 +2246,7 @@ fn demo_route_nav_link(href: &str, label: &str, active: bool) -> NavLink {
                 },
             );
         }
-    }));
+    });
     link
 }
 
@@ -2308,17 +2297,16 @@ pub fn demo_page_root(title: &str) -> FlexBox {
         .text_color(theme.colors.text_primary)
     };
     root.child(&title_node);
-    track_demo_theme_guard(bind_theme({
-        let root = root.clone();
+    root.bind_theme({
         let title_node = title_node.clone();
-        move |theme| {
+        move |root, theme| {
             root.bg_color(theme.colors.background);
             title_node
                 .font_family(theme.fonts.heading_family.clone())
                 .font_size(28.0)
                 .text_color(theme.colors.text_primary);
         }
-    }));
+    });
     root
 }
 
@@ -2347,11 +2335,10 @@ pub fn demo_card(title: &str, body: &str, color: u32) -> FlexBox {
         .text_color(theme.colors.text_muted)
     };
     card.child(&spacer(8.0)).child(&body_node);
-    track_demo_theme_guard(bind_theme({
-        let card = card.clone();
+    card.bind_theme({
         let title_node = title_node.clone();
         let body_node = body_node.clone();
-        move |theme| {
+        move |card, theme| {
             card.bg_color(demo_card_color(&theme, color))
                 .border(1.0, theme.colors.border);
             title_node
@@ -2363,7 +2350,7 @@ pub fn demo_card(title: &str, body: &str, color: u32) -> FlexBox {
                 .font_size(15.0)
                 .text_color(theme.colors.text_muted);
         }
-    }));
+    });
 
     card
 }
@@ -2379,14 +2366,13 @@ pub(crate) fn stage4_panel(title: &str, color: u32) -> FlexBox {
     };
     let title_node = demo_text(title, 12.0, 0x64748BFF);
     panel.child(&title_node).child(&spacer(10.0));
-    track_demo_theme_guard(bind_theme({
-        let panel = panel.clone();
-        move |theme| {
+    panel.bind_theme({
+        move |panel, theme| {
             panel
                 .bg_color(demo_card_color(&theme, color))
                 .border(1.0, theme.colors.border);
         }
-    }));
+    });
     panel
 }
 
@@ -2404,14 +2390,13 @@ pub(crate) fn demo_text(content: &str, size: f32, color: u32) -> TextNode {
         .font_size(size)
         .text_color(demo_text_color(&theme, color))
     };
-    track_demo_theme_guard(bind_theme({
-        let node = node.clone();
-        move |theme| {
+    node.bind_theme({
+        move |node, theme| {
             node.font_family(theme.fonts.body_family.clone())
                 .font_size(size)
                 .text_color(demo_text_color(&theme, color));
         }
-    }));
+    });
     node
 }
 

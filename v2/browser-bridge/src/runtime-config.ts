@@ -28,8 +28,7 @@ export const PageZoomMode = {
 export type PageZoomMode = (typeof PageZoomMode)[keyof typeof PageZoomMode];
 
 export interface EffinDomRuntimeConfig {
-  readonly manifestUrl: string;
-  readonly manifestUrls?: readonly string[];
+  readonly manifestUrls: readonly string[];
   readonly expectedRuntimeSetHash?: string;
   readonly buildMode?: BuildMode;
   readonly devToolsDomMirror?: DevToolsDomMirrorMode;
@@ -100,12 +99,13 @@ export function resolveRuntimeAssetUrls(
 export function createRuntimeConfig(
   packageBaseUrl: string | URL,
   relativeTo?: string | URL,
-  overrides: Partial<Omit<EffinDomRuntimeConfig, 'manifestUrl'>> = {},
+  overrides: Partial<EffinDomRuntimeConfig> = {},
 ): EffinDomRuntimeConfig {
   const urls = resolveRuntimeAssetUrls(packageBaseUrl, relativeTo);
+  const normalized = normalizeRuntimeConfig(overrides);
   return {
-    manifestUrl: urls.manifestUrl,
-    ...normalizeRuntimeConfig(overrides),
+    ...normalized,
+    manifestUrls: normalized.manifestUrls ?? [urls.manifestUrl],
   };
 }
 
@@ -124,8 +124,7 @@ export function applyRuntimeConfig(
   destination.__effindomRuntime = Object.assign({}, destination.__effindomRuntime, config);
   const normalizedConfig = normalizeRuntimeConfig(destination.__effindomRuntime);
   const output: EffinDomRuntimeConfig = {
-    manifestUrl: destination.__effindomRuntime.manifestUrl ?? config.manifestUrl,
-    ...(normalizedConfig.manifestUrls === undefined ? {} : { manifestUrls: normalizedConfig.manifestUrls }),
+    manifestUrls: normalizedConfig.manifestUrls ?? config.manifestUrls,
     ...(normalizedConfig.expectedRuntimeSetHash === undefined
       ? {}
       : { expectedRuntimeSetHash: normalizedConfig.expectedRuntimeSetHash }),
@@ -149,11 +148,8 @@ export function createRuntimeConfigScript(
 ): string {
   const normalized = normalizeRuntimeConfig(config);
   const entries = [
-    `  manifestUrl: ${JSON.stringify(config.manifestUrl)},`,
+    `  manifestUrls: ${JSON.stringify(normalized.manifestUrls ?? config.manifestUrls)},`,
   ];
-  if (normalized.manifestUrls !== undefined) {
-    entries.push(`  manifestUrls: ${JSON.stringify(normalized.manifestUrls)},`);
-  }
   if (normalized.expectedRuntimeSetHash !== undefined) {
     entries.push(`  expectedRuntimeSetHash: ${JSON.stringify(normalized.expectedRuntimeSetHash)},`);
   }
@@ -196,7 +192,6 @@ export function normalizePageZoomMode(value: unknown): PageZoomMode | undefined 
 
 export function normalizeRuntimeConfig(config: Partial<EffinDomRuntimeConfig>): Partial<EffinDomRuntimeConfig> {
   const output: {
-    manifestUrl?: string;
     manifestUrls?: readonly string[];
     expectedRuntimeSetHash?: string;
     buildMode?: BuildMode;
@@ -206,9 +201,6 @@ export function normalizeRuntimeConfig(config: Partial<EffinDomRuntimeConfig>): 
   const buildMode = normalizeBuildMode(config.buildMode);
   const devToolsDomMirror = normalizeDevToolsDomMirrorMode(config.devToolsDomMirror);
   const pageZoom = normalizePageZoomMode(config.pageZoom);
-  if (typeof config.manifestUrl === 'string') {
-    output.manifestUrl = config.manifestUrl;
-  }
   if (Array.isArray(config.manifestUrls)) {
     const manifestUrls = config.manifestUrls.filter((value): value is string => typeof value === 'string' && value.length > 0);
     if (manifestUrls.length > 0) {

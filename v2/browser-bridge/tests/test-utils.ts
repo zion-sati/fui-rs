@@ -532,10 +532,8 @@ interface RuntimeConfigOverrides {
 
 async function gotoBridgePage(page: Page, query = '', runtimeConfig: RuntimeConfigOverrides = {}): Promise<void> {
   await page.addInitScript((config: RuntimeConfigOverrides) => {
-    (window as typeof window & {
-      __effindomRuntime?: { manifestUrl: string } & RuntimeConfigOverrides;
-    }).__effindomRuntime = {
-      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
+    window.__effindomRuntime = {
+      manifestUrls: ['/v2/browser-bridge/effindom.v2.manifest.json'],
       ...config,
     };
   }, runtimeConfig);

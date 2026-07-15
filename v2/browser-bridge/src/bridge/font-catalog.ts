@@ -37,9 +37,9 @@ export function getBridgeAssetBaseUrl(): string {
     return new URL('./', resolvedManifestUrl).toString();
   }
   const runtimeConfig = window as Window & {
-    __effindomRuntime?: { manifestUrl?: string };
+    __effindomRuntime?: { manifestUrls?: readonly string[] };
   };
-  const manifestUrl = runtimeConfig.__effindomRuntime?.manifestUrl;
+  const manifestUrl = runtimeConfig.__effindomRuntime?.manifestUrls[0];
   if (typeof manifestUrl === 'string' && manifestUrl.length > 0) {
     return new URL('./', new URL(manifestUrl, document.baseURI)).toString();
   }
