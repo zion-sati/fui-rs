@@ -55,6 +55,24 @@ test('focused multiline textbox page keys stay owned by the bridge instead of sc
     });
   }).toBe(true);
 
+  const hiddenEditorOverflow = await page.evaluate(() => {
+    const hiddenTextarea = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+    if (!(hiddenTextarea instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected the focused hidden textarea.');
+    }
+    const style = getComputedStyle(hiddenTextarea);
+    return {
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      scrollbarWidth: style.scrollbarWidth,
+    };
+  });
+  expect(hiddenEditorOverflow).toEqual({
+    overflowX: 'hidden',
+    overflowY: 'hidden',
+    scrollbarWidth: 'none',
+  });
+
   const initialScrollY = await page.evaluate(() => window.scrollY);
   await page.keyboard.press('PageDown');
   await page.keyboard.press('PageDown');
@@ -71,6 +89,201 @@ test('focused multiline textbox page keys stay owned by the bridge instead of sc
     scrollY: initialScrollY,
     hiddenFocused: true,
   });
+});
+
+test('focused textbox cursor keys move the retained caret and mirror it to the hidden editor', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'abcd', 0);
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handleArg = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_set_interaction_time(BigInt(Math.floor(performance.now())));
+    runtime.ui._ui_request_focus(handleArg);
+    runtime.ui._ui_set_text_selection_range(handleArg, 0, 0);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.textHandle);
+
+  await expect.poll(async () => await page.evaluate(() => {
+    const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+    return editor instanceof HTMLInputElement && document.activeElement === editor
+      ? editor.selectionStart
+      : null;
+  })).toBe(0);
+
+  await page.evaluate(() => {
+    const callbacks = window.__effindomCallbacks;
+    if (callbacks === undefined) {
+      throw new Error('Bridge callbacks are not ready.');
+    }
+    callbacks.onKeyEventWithKey = () => true;
+  });
+  await page.keyboard.press('ArrowRight');
+
+  await expect.poll(async () => await page.evaluate(() => {
+    const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+    const selection = window.__bridgeSelectionsByHandle === undefined
+      ? null
+      : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
+    return {
+      domCaret: editor instanceof HTMLInputElement ? editor.selectionStart : null,
+      runtimeStart: selection?.start ?? null,
+      runtimeEnd: selection?.end ?? null,
+    };
+  })).toEqual({ domCaret: 1, runtimeStart: 1, runtimeEnd: 1 });
+});
+
+test('textbox shift arrows preserve their anchor across repeated direction changes', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'abcdef', 2);
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_request_focus(handle);
+    runtime.ui._ui_set_text_selection_range(handle, 2, 2);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    const callbacks = window.__effindomCallbacks;
+    if (callbacks === undefined) {
+      throw new Error('Bridge callbacks are not ready.');
+    }
+    callbacks.onKeyEventWithKey = () => true;
+  }, scene.textHandle);
+
+  const expectSelection = async (start: number, end: number, direction: 'forward' | 'backward' | 'none') => {
+    await expect.poll(async () => await page.evaluate(() => {
+      const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+      const selection = window.__bridgeSelectionsByHandle === undefined
+        ? null
+        : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
+      return {
+        start: selection?.start ?? null,
+        end: selection?.end ?? null,
+        direction: editor instanceof HTMLInputElement ? editor.selectionDirection : null,
+      };
+    })).toEqual({ start, end, direction });
+  };
+
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expectSelection(2, 4, 'forward');
+
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expectSelection(2, 1, 'backward');
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expectSelection(2, 3, 'forward');
+
+  await page.evaluate(() => {
+    const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+    if (!(editor instanceof HTMLInputElement)) {
+      throw new Error('Expected the hidden text editor.');
+    }
+    editor.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowLeft',
+      code: 'ArrowLeft',
+      shiftKey: true,
+      repeat: true,
+      bubbles: true,
+      cancelable: true,
+    }));
+  });
+  await expectSelection(2, 2, 'none');
+  await page.keyboard.up('Shift');
+});
+
+test('multiline textbox shift arrows preserve their anchor across visual rows', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'ab\ncd\nef', 4, {
+    multiline: true,
+    wrapping: false,
+    nodeHeight: 120,
+  });
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_request_focus(handle);
+    runtime.ui._ui_set_text_selection_range(handle, 4, 4);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.textHandle);
+
+  const readSelection = async () => await page.evaluate(() => {
+    const selection = window.__bridgeSelectionsByHandle === undefined
+      ? null
+      : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
+    const editor = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+    return {
+      start: selection?.start ?? null,
+      end: selection?.end ?? null,
+      direction: editor instanceof HTMLTextAreaElement ? editor.selectionDirection : null,
+    };
+  });
+
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(readSelection).toEqual({ start: 4, end: 1, direction: 'backward' });
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(readSelection).toEqual({ start: 4, end: 4, direction: 'none' });
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(readSelection).toEqual({ start: 4, end: 7, direction: 'forward' });
+  await page.keyboard.up('Shift');
+});
+
+test('backward hidden-editor selections retain directional start and end in the runtime', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'abcdef', 4);
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    runtime.ui._ui_request_focus(bridge.handleToBigInt(textHandle));
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.textHandle);
+
+  await expect.poll(async () => await page.evaluate(() => {
+    const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+    return editor instanceof HTMLInputElement && document.activeElement === editor;
+  })).toBe(true);
+
+  await page.evaluate(() => {
+    const editor = document.querySelector('input[data-effindom-hidden-editor="true"]');
+    if (!(editor instanceof HTMLInputElement)) {
+      throw new Error('Expected the hidden text editor.');
+    }
+    editor.setSelectionRange(1, 4, 'backward');
+    editor.dispatchEvent(new Event('select', { bubbles: true }));
+  });
+
+  await expect.poll(async () => await page.evaluate(() => {
+    const selection = window.__bridgeSelectionsByHandle === undefined
+      ? null
+      : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
+    return selection ?? null;
+  })).toEqual({ start: 4, end: 1 });
 });
 
 
@@ -664,5 +877,167 @@ test('textbox input preserves fast typing and keeps only the latest pending past
       hiddenInputValue: 'abcdefSECOND',
       bridgeText: 'abcdefSECOND',
     },
+  });
+});
+
+test('multiline paste normalizes Windows line endings before caret and UTF-8 synchronization', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, '', 1, { multiline: true, wrapping: false });
+
+  const state = await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_request_focus(handle);
+    runtime.ui._ui_set_text_selection_range(handle, 0, 0);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+
+    const editor = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+    if (!(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected the focused hidden textarea.');
+    }
+    const windowsText = 'Alpha\r\nBeta\r\nGamma';
+    const normalizedText = 'Alpha\nBeta\nGamma';
+    editor.dispatchEvent(new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertFromPaste',
+      data: windowsText,
+    }));
+    editor.value = normalizedText;
+    editor.setSelectionRange(normalizedText.length, normalizedText.length, 'none');
+    editor.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      inputType: 'insertFromPaste',
+      data: windowsText,
+    }));
+    runtime.flushPendingCommit();
+
+    const selection = window.__bridgeSelectionsByHandle?.[textHandle] ?? null;
+    return {
+      bridgeText: window.__bridgeTextByHandle?.[textHandle] ?? null,
+      domValue: editor.value,
+      domStart: editor.selectionStart,
+      domEnd: editor.selectionEnd,
+      retainedStart: selection?.start ?? null,
+      retainedEnd: selection?.end ?? null,
+    };
+  }, scene.textHandle);
+
+  expect(state).toEqual({
+    bridgeText: 'Alpha\nBeta\nGamma',
+    domValue: 'Alpha\nBeta\nGamma',
+    domStart: 16,
+    domEnd: 16,
+    retainedStart: 16,
+    retainedEnd: 16,
+  });
+});
+
+test('unavailable clipboard reads do not block repeated keyboard or runtime select all', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'Alpha Beta', 1, { multiline: true });
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_request_focus(handle);
+    runtime.ui._ui_set_text_selection_range(handle, 5, 5);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    window.__effindomCallbacks?.onClipboardRead?.(handle);
+  }, scene.textHandle);
+
+  const expectAllSelected = async (): Promise<void> => {
+    await expect.poll(async () => await page.evaluate((textHandle) => {
+      const editor = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+      const selection = window.__bridgeSelectionsByHandle?.[textHandle] ?? null;
+      return {
+        domStart: editor instanceof HTMLTextAreaElement ? editor.selectionStart : null,
+        domEnd: editor instanceof HTMLTextAreaElement ? editor.selectionEnd : null,
+        retainedStart: selection?.start ?? null,
+        retainedEnd: selection?.end ?? null,
+      };
+    }, scene.textHandle)).toEqual({ domStart: 0, domEnd: 10, retainedStart: 0, retainedEnd: 10 });
+  };
+
+  await page.keyboard.press('Control+A');
+  await expectAllSelected();
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    runtime.ui._ui_set_text_selection_range(bridge.handleToBigInt(textHandle), 4, 4);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.textHandle);
+  await page.keyboard.press('Control+A');
+  await expectAllSelected();
+
+  await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_set_text_selection_range(handle, 3, 3);
+    runtime.ui._ui_select_all_text(handle);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.textHandle);
+  await expectAllSelected();
+});
+
+test('focused editors leave primary paste shortcuts to the native browser paste pipeline', async ({ page }) => {
+  await gotoBridgePage(page);
+  const scene = await buildEditableTextScene(page, 'Alpha', 1, { multiline: true });
+
+  const pasteKeyState = await page.evaluate((textHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Bridge runtime is not ready.');
+    }
+    const handle = bridge.handleToBigInt(textHandle);
+    runtime.ui._ui_request_focus(handle);
+    runtime.ui._ui_set_text_selection_range(handle, 5, 5);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+
+    const pasteKey = new KeyboardEvent('keydown', {
+      key: 'v',
+      code: 'KeyV',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    const editor = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+    if (!(editor instanceof HTMLTextAreaElement) || document.activeElement !== editor) {
+      throw new Error('Expected the focused hidden textarea.');
+    }
+    editor.dispatchEvent(pasteKey);
+    return {
+      defaultPrevented: pasteKey.defaultPrevented,
+      clipboardReadRequests: window.__bridgeLogs?.clipboardReadRequests.length ?? -1,
+    };
+  }, scene.textHandle);
+
+  expect(pasteKeyState).toEqual({
+    defaultPrevented: false,
+    clipboardReadRequests: 0,
   });
 });

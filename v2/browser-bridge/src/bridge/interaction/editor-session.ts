@@ -21,7 +21,7 @@ summarizeTextChange,
 utf8ByteOffsetToCodeUnitIndex,
 } from './editor-model';
 import { createEditorMutationController } from './editor-mutations';
-import { codeUnitIndexToUtf8ByteOffset,utf8ByteLength } from './text-encoding';
+import { codeUnitIndexToUtf8ByteOffset,normalizeBrowserText,utf8ByteLength } from './text-encoding';
 
 export interface EditorSession extends BridgeInteractionState {
   handleClipboardRead(handle: WasmHandleLike): void;
@@ -43,6 +43,7 @@ export function createEditorSession(
   logs: BridgeLogs,
 ): EditorSession {
   const textByHandle = Object.create(null) as Record<string, string>;
+  const textRevisionsByHandle = Object.create(null) as Record<string, number>;
   const selectionsByHandle = Object.create(null) as Record<string, { start: number; end: number }>;
   const domTarget: EditorDomTarget = createSingleHiddenEditorTarget();
   let activeTextHandle: bigint | null = null;
@@ -61,6 +62,9 @@ export function createEditorSession(
   const textByteLengthsByHandle = Object.create(null) as Record<string, number>;
   const pendingCaretRevealByHandle = Object.create(null) as Record<string, boolean>;
   let pendingCaretRevealFrame: number | null = null;
+  let pendingSelectAllFrame: number | null = null;
+  let pendingClipboardReadCount = 0;
+  let selectAllAfterClipboardReadHandle: string | null = null;
   let pendingLocalReplacementEcho: PendingLocalReplacementEcho | null = null;
   let pendingLocalSelectionEcho: PendingLocalSelectionEcho | null = null;
   let pendingProjectedReplacementEcho: (PendingLocalReplacementEcho & { nextText: string }) | null = null;
@@ -72,6 +76,15 @@ export function createEditorSession(
   window.__bridgeTextByHandle = textByHandle;
   window.__bridgeSelectionsByHandle = selectionsByHandle;
   window.__bridgeActiveEditorWindow = { handle: null, ...activeEditorWindow };
+
+  const storeText = (handle: string, text: string): boolean => {
+    if (textByHandle[handle] === text) {
+      return false;
+    }
+    textByHandle[handle] = text;
+    textRevisionsByHandle[handle] = (textRevisionsByHandle[handle] ?? 0) + 1;
+    return true;
+  };
 
   const getActiveEditor = (): HiddenTextEditor => domTarget.getEditor(activeTextHandle?.toString() ?? null, activeTextMultiline);
 
@@ -224,7 +237,7 @@ export function createEditorSession(
     const document = runtimeRef.current?.openCanvasApi.getEditableTextDocument(handleKey) ?? null;
     const text = textByHandle[handleKey] ?? document?.text ?? '';
     const textByteLength = textByteLengthsByHandle[handleKey] ?? utf8ByteLength(text);
-    textByHandle[handleKey] ??= text;
+    storeText(handleKey, text);
     textByteLengthsByHandle[handleKey] = textByteLength;
     const selection = selectionsByHandle[handleKey] ?? { start: textByteLength, end: textByteLength };
     const { start: startByte, end: endByte } = clampSelectionToText(textByteLength, selection);
@@ -262,6 +275,7 @@ export function createEditorSession(
     textByHandle,
     selectionsByHandle,
     textByteLengthsByHandle,
+    storeText,
     getActiveEditor,
     getActiveEditorWindow: () => activeEditorWindow,
     getActiveTextEditable: () => activeTextEditable,
@@ -431,9 +445,16 @@ export function createEditorSession(
   const resetAppSession = (): void => {
     appSessionVersion += 1;
     clearRecordMap(textByHandle);
+    clearRecordMap(textRevisionsByHandle);
     clearRecordMap(textByteLengthsByHandle);
     clearRecordMap(selectionsByHandle);
     clearPendingCaretReveal();
+    if (pendingSelectAllFrame !== null) {
+      cancelAnimationFrame(pendingSelectAllFrame);
+      pendingSelectAllFrame = null;
+    }
+    pendingClipboardReadCount = 0;
+    selectAllAfterClipboardReadHandle = null;
     mutationController.reset();
     pendingLocalReplacementEcho = null;
     pendingLocalSelectionEcho = null;
@@ -525,7 +546,7 @@ export function createEditorSession(
     if (pendingLocalReplacementEcho !== null && pendingLocalReplacementEcho.handle === handleKey) {
       pendingLocalReplacementEcho = null;
     }
-    textByHandle[handleKey] = text;
+    storeText(handleKey, text);
     textByteLengthsByHandle[handleKey] = utf8ByteLength(text);
     logs.textChanges.push(summarizeTextChange(handleKey, text));
     if (activeTextHandle !== null && activeTextHandle.toString() === handleKey) {
@@ -594,7 +615,7 @@ export function createEditorSession(
         ? (projectedReplacementEcho === null ? previousText : projectedReplacementEcho.nextText)
         : applyUtf8ByteReplacementEdit(previousText, start, end, text));
     if (!isLocalEcho && !isProjectedEcho) {
-      textByHandle[handleKey] = nextText;
+      storeText(handleKey, nextText);
       textByteLengthsByHandle[handleKey] = previousTextByteLength - (end - start) + utf8ByteLength(text);
     }
     if (isLocalEcho) {
@@ -654,11 +675,42 @@ export function createEditorSession(
     }
     const handleValue = handleToBigInt(handle);
     const requestSessionVersion = appSessionVersion;
+    pendingClipboardReadCount += 1;
     logs.clipboardReadRequests.push(handleValue.toString());
-    void navigator.clipboard.readText().then((text) => {
+    const finalizeClipboardRead = (): void => {
       if (requestSessionVersion !== appSessionVersion) {
         return;
       }
+      pendingClipboardReadCount = Math.max(0, pendingClipboardReadCount - 1);
+      if (pendingClipboardReadCount !== 0 || selectAllAfterClipboardReadHandle === null) {
+        return;
+      }
+      const targetHandle = selectAllAfterClipboardReadHandle;
+      selectAllAfterClipboardReadHandle = null;
+      pendingSelectAllFrame ??= requestAnimationFrame(() => {
+        pendingSelectAllFrame = null;
+        if (activeTextHandle?.toString() === targetHandle) {
+          applySelectAllActiveText();
+        }
+      });
+    };
+    let clipboardRead: Promise<string>;
+    try {
+      const clipboard = Reflect.get(navigator, 'clipboard') as Clipboard | undefined;
+      if (clipboard === undefined || typeof clipboard.readText !== 'function') {
+        finalizeClipboardRead();
+        return;
+      }
+      clipboardRead = clipboard.readText();
+    } catch {
+      finalizeClipboardRead();
+      return;
+    }
+    void clipboardRead.then((clipboardText) => {
+      if (requestSessionVersion !== appSessionVersion) {
+        return;
+      }
+      const text = normalizeBrowserText(clipboardText);
       const handleKey = handleValue.toString();
       const currentText = textByHandle[handleKey] ?? '';
       const currentTextByteLength = textByteLengthsByHandle[handleKey] ?? utf8ByteLength(currentText);
@@ -672,7 +724,7 @@ export function createEditorSession(
         text,
         rangeStart + utf8ByteLength(text),
       );
-      textByHandle[handleKey] = clampedEdit.fullNextText;
+      storeText(handleKey, clampedEdit.fullNextText);
       textByteLengthsByHandle[handleKey] = utf8ByteLength(clampedEdit.fullNextText);
       selectionsByHandle[handleKey] = { start: clampedEdit.caretByte, end: clampedEdit.caretByte };
       if (activeTextHandle !== null && activeTextHandle.toString() === handleKey) {
@@ -709,12 +761,47 @@ export function createEditorSession(
         heapString.dispose();
       }
       runtime.commitFrame();
-    }).catch(() => undefined);
+    }).catch(() => undefined).finally(finalizeClipboardRead);
+  };
+
+  const applySelectAllActiveText = (): void => {
+    const runtime = runtimeRef.current;
+    if (runtime === null || activeTextHandle === null || !activeTextEditable) {
+      return;
+    }
+    mutationController.flushPendingTextMutationsToRuntime();
+    runtime.flushPendingCommit();
+    if (!isActiveEditorFocused()) {
+      focusHiddenEditorNow();
+    }
+    const handleKey = activeTextHandle.toString();
+    const text = textByHandle[handleKey] ?? '';
+    const textByteLength = textByteLengthsByHandle[handleKey] ?? utf8ByteLength(text);
+    selectionsByHandle[handleKey] = { start: 0, end: textByteLength };
+    pendingLocalSelectionEcho = { handle: handleKey, start: 0, end: textByteLength };
+    runtime.ui._ui_set_interaction_time(currentInteractionTimeMs());
+    runtime.ui._ui_set_text_selection_range(activeTextHandle, 0, textByteLength);
+    const editor = getActiveEditor();
+    editor.setSelectionRange(0, activeEditorWindow.text.length, 'none');
+    runtime.commitFrame();
+  };
+
+  const selectAllActiveText = (): boolean => {
+    if (runtimeRef.current === null || activeTextHandle === null || !activeTextEditable) {
+      return false;
+    }
+    if (pendingClipboardReadCount !== 0) {
+      selectAllAfterClipboardReadHandle = activeTextHandle.toString();
+      return true;
+    }
+    applySelectAllActiveText();
+    return true;
   };
 
   return {
     logs,
     textByHandle,
+    textRevisionsByHandle,
     selectionsByHandle,
     flushPendingTextMutationsToRuntime: () => {
       mutationController.flushPendingTextMutationsToRuntime();
@@ -731,6 +818,7 @@ export function createEditorSession(
     getLastInteractivePointerHandle: () => lastInteractivePointerHandle,
     isActiveTextInputFocused: isActiveEditorFocused,
     isPointerInsideCanvas: () => pointerInsideCanvas,
+    selectAllActiveText,
     applyActiveTextDeletion: (forward) => mutationController.applyActiveTextDeletion(forward),
     replaceActiveTextSelectionWithText: (text) => mutationController.replaceActiveSelectionWithText(text),
     syncActiveTextSelectionFromDom: () => {

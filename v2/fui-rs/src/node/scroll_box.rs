@@ -54,7 +54,6 @@ impl ScrollBox {
         let root = column();
         let viewport = viewport
             .bind_scroll_state(scroll_state.clone())
-            .show_scrollbars(false)
             .fill_size()
             .clone();
         let vertical_gutter = flex_box();

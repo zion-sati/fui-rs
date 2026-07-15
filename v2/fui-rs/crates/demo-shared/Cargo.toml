@@ -7,5 +7,8 @@ license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 [dependencies]
 fui-rs = { path = "../.." }
 
+[features]
+native-runtime = ["fui-rs/native-runtime"]
+
 [lib]
 name = "fui_rs_demo_shared"

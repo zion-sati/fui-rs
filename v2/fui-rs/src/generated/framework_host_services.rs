@@ -3,8 +3,8 @@
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]
-#[cfg(target_arch = "wasm32")]
-#[link(wasm_import_module = "fui_host")]
+#[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+#[cfg_attr(target_family = "wasm", link(wasm_import_module = "fui_host"))]
 unsafe extern "C" {
     #[link_name = "fui_get_accent_color"]
     fn __host_fui_get_accent_color() -> u32;
@@ -19,55 +19,55 @@ unsafe extern "C" {
 }
 
 pub fn fui_get_accent_color() -> u32 {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
   {
     unsafe { __host_fui_get_accent_color() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
   {
     unsafe { crate::ffi::fui_get_accent_color() }
   }
 }
 
 pub fn fui_get_platform_family() -> u32 {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
   {
     unsafe { __host_fui_get_platform_family() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
   {
     unsafe { crate::ffi::fui_get_platform_family() }
   }
 }
 
 pub fn fui_is_coarse_pointer() -> bool {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
   {
     unsafe { __host_fui_is_coarse_pointer() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
   {
     unsafe { crate::ffi::fui_is_coarse_pointer() }
   }
 }
 
 pub fn fui_is_dark_mode() -> bool {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
   {
     unsafe { __host_fui_is_dark_mode() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
   {
     unsafe { crate::ffi::fui_is_dark_mode() }
   }
 }
 
 pub fn fui_now_ms() -> f64 {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
   {
     unsafe { __host_fui_now_ms() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
   {
     crate::ffi::test::host_now_ms()
   }

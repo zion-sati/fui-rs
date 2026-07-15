@@ -1,6 +1,6 @@
 [package]
 name = "fui-rs"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
@@ -19,6 +19,7 @@ resolver = "2"
 [features]
 default = []
 worker-runtime = []
+native-runtime = []
 
 [dependencies]
 
@@ -30,4 +31,4 @@ panic = "abort"
 
 [lib]
 name = "fui"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]

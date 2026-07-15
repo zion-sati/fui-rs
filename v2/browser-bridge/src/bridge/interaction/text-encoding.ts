@@ -49,3 +49,7 @@ export function codeUnitIndexToUtf8ByteOffset(text: string, index: number): numb
 export function utf8ByteLength(text: string): number {
   return codeUnitIndexToUtf8ByteOffset(text, text.length);
 }
+
+export function normalizeBrowserText(text: string): string {
+  return text.includes('\r') ? text.replace(/\r\n?/g, '\n') : text;
+}

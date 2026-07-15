@@ -456,15 +456,21 @@ async function clickLargestDebugNodeByNodeId(page: Page, sceneSurface: Locator, 
 }
 
 async function waitForProjectedInput(page: Page, name: string): Promise<void> {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
     const found = await page.evaluate((fieldName) =>
       document.querySelector(`form[data-effindom-projected-form="true"] input[name="${fieldName}"]`) !== null,
     name);
     if (found) {
       return;
     }
-    await page.mouse.wheel(0, 500);
-    await page.waitForTimeout(100);
+    const delta = await page.evaluate(async (fieldName) => {
+      const tree = await window.__fui_debug?.getDebugTree();
+      const target = tree?.nodes.find((entry) => entry.nodeId === fieldName);
+      const desired = (target?.bounds.y ?? window.innerHeight) - (window.innerHeight * 0.5);
+      return Math.max(-180, Math.min(180, desired));
+    }, name);
+    await page.mouse.wheel(0, Math.abs(delta) < 1 ? 100 : delta);
+    await page.waitForTimeout(150);
   }
   await expect.poll(async () => {
     return await page.evaluate((fieldName) =>
@@ -828,6 +834,7 @@ test('reorders a routed workbench row by dragging without hanging the app', asyn
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(120);
   }
+  await page.waitForTimeout(600);
 
   const sourceBounds = await debugNodeScreenBounds(page, sceneSurface, 'Drag grip for Document Core rename');
   const source = {
@@ -1241,7 +1248,7 @@ test('routes to the stage 5 text input page and reports typing plus selection', 
   }, { timeout: 10000 }).toBe(true);
   await page.keyboard.press('Shift+ArrowLeft');
   await expect.poll(async () => {
-    return await page.evaluate(() => document.body.innerText.includes('Selection: 10..11'));
+    return await page.evaluate(() => document.body.innerText.includes('Selection: 11..10'));
   }, { timeout: 10000 }).toBe(true);
   await expect.poll(async () => {
     return await page.evaluate(() => document.body.innerText.includes('Disabled themed value'));
@@ -1517,6 +1524,23 @@ test('routes to the stage 5 text area page and reports multiline editing plus se
   await expect.poll(async () => {
     return await page.evaluate(() => window.__bridgeActiveEditorWindow?.text ?? '');
   }, { timeout: 10000 }).toContain('Line one\nLine two\nLine three\nFallback sample: 你好，你好吗？');
+
+  const textAreaHandle = await page.evaluate(() => window.__bridgeActiveEditorWindow?.handle ?? null);
+  expect(textAreaHandle).not.toBeNull();
+  await page.keyboard.press('Shift+Tab');
+  await expect.poll(async () => {
+    return await page.evaluate((handle) => window.__bridgeActiveEditorWindow?.handle !== handle, textAreaHandle);
+  }, { timeout: 10000 }).toBe(true);
+  await page.keyboard.press('Tab');
+  await expect.poll(async () => {
+    return await page.evaluate((handle) => {
+      const activeElement = document.activeElement;
+      return window.__bridgeActiveEditorWindow?.handle === handle &&
+        activeElement instanceof HTMLTextAreaElement &&
+        activeElement.dataset.effindomHiddenEditor === 'true';
+    }, textAreaHandle);
+  }, { timeout: 10000 }).toBe(true);
+
   await setHiddenEditorSelection(page, 'Line one\n'.length);
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
@@ -1656,6 +1680,166 @@ test('routes to the stage 5 text area page and reports multiline editing plus se
   }, { timeout: 10000 }).toBe(true);
 });
 
+test('stage 5 tabs preserve cross-layer editing and horizontal windowing', async ({ page }) => {
+  const authoredText = 'ab\tcd efgh ijkl\n0123\t4567 89ab cdef';
+  const withoutFirstTab = authoredText.replace('\t', '');
+
+  await page.goto(baseUrl + '/v2/fui-rs/demo/stage5/index.html?debug-logs=1');
+  await page.waitForFunction(() => window.__fuiReady === true);
+  const sceneSurface = page.locator('[data-effindom-canvas-size-source]');
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await debugNodeVisibleHeightByNodeId(page, 'stage5-text-area') > 0) {
+      break;
+    }
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(100);
+  }
+  await clickLargestDebugNodeByNodeId(page, sceneSurface, 'stage5-text-area');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText('ab');
+  await page.keyboard.press('Tab');
+  await page.keyboard.insertText('cd efgh ijkl');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('0123');
+  await page.keyboard.press('Tab');
+  await page.keyboard.insertText('4567 89ab cdef');
+  await expect.poll(async () => {
+    return await page.evaluate(() => window.__bridgeActiveEditorWindow?.text ?? '');
+  }, { timeout: 10000 }).toBe(authoredText);
+
+  await page.waitForTimeout(1000);
+  const canvasBounds = await sceneSurface.boundingBox();
+  expect(canvasBounds).not.toBeNull();
+  const textAreaBounds = await page.evaluate(async () => {
+    const tree = await window.__fui_debug?.getDebugTree();
+    return tree?.nodes.find((entry) => entry.nodeId === 'stage5-text-area')?.visibleBounds ?? null;
+  });
+  expect(textAreaBounds).not.toBeNull();
+  if (canvasBounds === null || textAreaBounds === null) {
+    throw new Error('Expected visible Stage 5 TextArea bounds.');
+  }
+  await page.mouse.click(
+    canvasBounds.x + textAreaBounds.x + 4,
+    canvasBounds.y + textAreaBounds.y + 4,
+  );
+  await expect.poll(async () => {
+    return await page.evaluate((documentLength) => {
+      const handle = window.__bridgeActiveEditorWindow?.handle;
+      const selection = handle === null || handle === undefined
+        ? null
+        : window.__bridgeSelectionsByHandle?.[handle] ?? null;
+      return selection === null ? null : {
+        collapsed: selection.start === selection.end,
+        beforeDocumentEnd: selection.end < documentLength,
+      };
+    }, authoredText.length);
+  }, { timeout: 10000 }).toEqual({ collapsed: true, beforeDocumentEnd: true });
+
+  await setHiddenEditorSelection(page, 2, 3);
+  await page.keyboard.press('Backspace');
+  await expect.poll(async () => {
+    return await page.evaluate(() => window.__bridgeActiveEditorWindow?.text ?? '');
+  }, { timeout: 10000 }).toBe(withoutFirstTab);
+  await page.keyboard.press('ControlOrMeta+Z');
+  await expect.poll(async () => {
+    return await page.evaluate(() => window.__bridgeActiveEditorWindow?.text ?? '');
+  }, { timeout: 10000 }).toBe(authoredText);
+
+  await setHiddenEditorSelection(page, 0);
+  await page.keyboard.press('Tab');
+  await expect.poll(async () => {
+    return await page.evaluate(() => window.__bridgeActiveEditorWindow?.text ?? '');
+  }, { timeout: 10000 }).toBe('\t' + authoredText);
+  await page.keyboard.press('ControlOrMeta+Z');
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await debugNodeVisibleHeightByNodeId(page, 'stage5-text-area-wrapping-toggle') > 0) {
+      break;
+    }
+    await page.mouse.wheel(0, 350);
+    await page.waitForTimeout(100);
+  }
+  await clickLargestDebugNodeByNodeId(page, sceneSurface, 'stage5-text-area-wrapping-toggle');
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await debugNodeVisibleHeightByNodeId(page, 'stage5-text-area') > 0) {
+      break;
+    }
+    await page.mouse.wheel(0, -350);
+    await page.waitForTimeout(100);
+  }
+  await clickLargestDebugNodeByNodeId(page, sceneSurface, 'stage5-text-area');
+  const longLine = 'ab\t' + 'x'.repeat(5000);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText('ab');
+  await page.keyboard.press('Tab');
+  await page.keyboard.insertText('x'.repeat(5000));
+  await page.keyboard.press('End');
+  await expect.poll(async () => {
+    return await page.evaluate((documentLength) => {
+      const editor = document.activeElement;
+      const activeHandle = window.__bridgeActiveEditorWindow?.handle ?? '';
+      return !(editor instanceof HTMLTextAreaElement) ? null : {
+        windowed: editor.value.length < documentLength,
+        docStartMoved: (window.__bridgeActiveEditorWindow?.docStart ?? 0) > 0,
+        caretAtEnd: (window.__bridgeSelectionsByHandle?.[activeHandle]?.end ?? -1) === documentLength,
+      };
+    }, longLine.length);
+  }, { timeout: 10000 }).toEqual({
+    windowed: true,
+    docStartMoved: true,
+    caretAtEnd: true,
+  });
+});
+
+test('stage 5 textarea selects a windowed pasted document on the first Meta+A', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit does not support Playwright clipboard permissions.');
+  const paragraph = 'Windowed UTF-8 selection regression: Variable-Height — 你好，你好吗？';
+  const pastedText = Array.from({ length: 400 }, () => paragraph).join('\n');
+
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseUrl });
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/stage5/index.html?debug-logs=1`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+  const sceneSurface = page.locator('[data-effindom-canvas-size-source]');
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    if (await debugNodeVisibleHeightByNodeId(page, 'stage5-text-area') > 0) {
+      break;
+    }
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(100);
+  }
+  await clickLargestDebugNodeByNodeId(page, sceneSurface, 'stage5-text-area');
+  await page.evaluate(async (value) => {
+    await navigator.clipboard.writeText(value);
+  }, pastedText);
+  await page.keyboard.press('ControlOrMeta+V');
+  await expect.poll(async () => await page.evaluate((minimumLength) => {
+    const handle = window.__bridgeActiveEditorWindow?.handle;
+    const text = handle === null || handle === undefined ? '' : window.__bridgeTextByHandle?.[handle] ?? '';
+    return text.length >= minimumLength;
+  }, pastedText.length)).toBe(true);
+
+  await page.keyboard.press('Meta+A');
+
+  await expect.poll(async () => await page.evaluate(() => {
+    const handle = window.__bridgeActiveEditorWindow?.handle;
+    if (handle === null || handle === undefined) {
+      return false;
+    }
+    const text = window.__bridgeTextByHandle?.[handle] ?? '';
+    const selection = window.__bridgeSelectionsByHandle?.[handle];
+    return selection?.start === 0 && selection.end === new TextEncoder().encode(text).length;
+  })).toBe(true);
+
+  await page.keyboard.press('Backspace');
+  await expect.poll(async () => await page.evaluate(() => {
+    const handle = window.__bridgeActiveEditorWindow?.handle;
+    return handle === null || handle === undefined
+      ? null
+      : window.__bridgeTextByHandle?.[handle] ?? null;
+  })).toBe('');
+});
+
 test('stage 5 textarea touch selection handle drag keeps a range selection', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Native CDP touch injection is Chromium-only.');
   await page.addInitScript(() => {
@@ -1689,6 +1873,7 @@ test('stage 5 textarea touch selection handle drag keeps a range selection', asy
     await page.mouse.wheel(0, 500);
     await page.waitForTimeout(100);
   }
+  await page.waitForTimeout(600);
 
   const textArea = await page.evaluate(async () => {
     const tree = await window.__fui_debug?.getDebugTree();

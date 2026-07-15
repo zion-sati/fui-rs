@@ -32,6 +32,10 @@ export function getBuiltInBridgeFont(fontId: number): BridgeFontDefinition | und
 }
 
 export function getBridgeAssetBaseUrl(): string {
+  const resolvedManifestUrl = window.__effindomResolvedRuntimeAssets?.manifestUrl;
+  if (typeof resolvedManifestUrl === 'string') {
+    return new URL('./', resolvedManifestUrl).toString();
+  }
   const runtimeConfig = window as Window & {
     __effindomRuntime?: { manifestUrl?: string };
   };
@@ -47,5 +51,9 @@ export function getBridgeAssetBaseUrl(): string {
 }
 
 export function getBridgeAssetUrl(assetFile: string): string {
+  const resolvedUrl = window.__effindomResolvedRuntimeAssets?.fontUrls[assetFile];
+  if (resolvedUrl !== undefined) {
+    return resolvedUrl;
+  }
   return new URL(`../fonts/${assetFile}`, getBridgeAssetBaseUrl()).toString();
 }

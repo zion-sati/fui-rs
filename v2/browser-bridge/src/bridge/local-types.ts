@@ -19,12 +19,14 @@ export interface SharedAssetDescriptor {
 export interface RuntimeManifest {
   readonly version: string;
   readonly manifest_hash?: string | null;
+  readonly runtime_set_hash?: string | null;
   readonly architectures: Partial<Record<Exclude<WasmArchitecture, 'auto'>, {
     readonly core: BundleAssetDescriptor;
     readonly ui: BundleAssetDescriptor;
   }>>;
   readonly assets?: {
     readonly icu?: SharedAssetDescriptor;
+    readonly fonts?: Readonly<Record<string, SharedAssetDescriptor>>;
   };
 }
 
@@ -68,6 +70,7 @@ export interface PreparedRuntimeAssets {
 export interface BridgeInteractionState {
   readonly logs: BridgeLogs;
   readonly textByHandle: Record<string, string>;
+  readonly textRevisionsByHandle: Record<string, number>;
   readonly selectionsByHandle: Record<string, { start: number; end: number }>;
   flushPendingTextMutationsToRuntime(): void;
   hasPendingTextMutations(): boolean;
@@ -82,6 +85,7 @@ export interface BridgeInteractionState {
   getLastInteractivePointerHandle(): bigint | null;
   isActiveTextInputFocused(): boolean;
   isPointerInsideCanvas(): boolean;
+  selectAllActiveText(): boolean;
   applyActiveTextDeletion(forward: boolean): boolean;
   replaceActiveTextSelectionWithText(text: string): boolean;
   syncActiveTextSelectionFromDom(): void;

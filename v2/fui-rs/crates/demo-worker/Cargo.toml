@@ -6,6 +6,9 @@ license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
 [dependencies]
 
+[features]
+native-runtime = []
+
 [lib]
 name = "fui_rs_demo_worker"
 crate-type = ["cdylib"]

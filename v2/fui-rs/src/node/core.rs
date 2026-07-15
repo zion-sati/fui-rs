@@ -373,7 +373,6 @@ pub(crate) struct ScrollViewProps {
     pub(crate) padding: Option<(f32, f32, f32, f32)>,
     pub(crate) enable_scroll_x: bool,
     pub(crate) enable_scroll_y: bool,
-    pub(crate) show_scrollbars: bool,
     pub(crate) friction: Option<f32>,
     pub(crate) smooth_scrolling: bool,
     pub(crate) scroll_offset: Option<(f32, f32)>,

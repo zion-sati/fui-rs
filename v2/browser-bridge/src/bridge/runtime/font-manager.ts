@@ -16,6 +16,7 @@ resolveIncrementalFontPackageRequests,
 type ResolvedIncrementalFontShardRequest,
 } from '../incremental-font-packages';
 import { copyBytesFromHeap, withHeapAllocation, writeBytesToHeap } from '../utils/heap';
+import type { BridgePlatformHost } from '../host/platform-host';
 
 type InternalFontLoadState = 'known' | 'loading' | 'loaded' | 'failed';
 
@@ -87,6 +88,7 @@ export class IncrementalFontManager {
     private readonly core: CoreModule,
     private readonly ui: UiModule,
     private readonly logs: BridgeLogs,
+    private readonly host: BridgePlatformHost,
     private readonly onCommitFrame: () => void,
   ) {}
 
@@ -108,7 +110,7 @@ export class IncrementalFontManager {
         throw new Error(`Ui rejected font ${String(fontId)}.`);
       }
       this.ui._ui_font_loaded(fontId);
-      window.__effindomCallbacks?.onFontLoaded?.(fontId);
+      this.host.notifyFontLoaded(fontId);
     } finally {
       coreBytes.dispose();
       uiBytes.dispose();
@@ -174,7 +176,7 @@ export class IncrementalFontManager {
     }
     this.ui._ui_unregister_font_fallback(primaryFontId, shardFontId);
     this.ui._ui_font_loaded(primaryFontId);
-    window.__effindomCallbacks?.onFontLoaded?.(primaryFontId);
+    this.host.notifyFontLoaded(primaryFontId);
   }
 
   private detachPrimaryFontShardReference(primaryFontId: number, shardFontId: number): void {
@@ -356,12 +358,12 @@ export class IncrementalFontManager {
   }
 
   private async fetchFontBytes(url: string, replay = false): Promise<Uint8Array> {
-    const response = await fetch(url);
+    const response = await this.host.loadBytes(url);
     if (!response.ok) {
       const verb = replay ? 'refetch' : 'fetch';
       throw new Error(`Failed to ${verb} font ${url}: ${String(response.status)}`);
     }
-    return new Uint8Array(await response.arrayBuffer());
+    return await response.bytes();
   }
 
   private reportNonFatalFontError(context: string, error: unknown): void {
@@ -375,7 +377,7 @@ export class IncrementalFontManager {
       this.ui._ui_register_font_fallback(fontId, fallbackId);
     }
     this.ui._ui_font_loaded(fontId);
-    window.__effindomCallbacks?.onFontLoaded?.(fontId);
+    this.host.notifyFontLoaded(fontId);
   }
 
   private async ensureRegisteredFont(
@@ -439,7 +441,7 @@ export class IncrementalFontManager {
     this.ui._ui_register_font_fallback(fontId, fallbackFontId);
     this.ui._ui_font_loaded(fontId);
     if (notifyApp) {
-      window.__effindomCallbacks?.onFontLoaded?.(fontId);
+      this.host.notifyFontLoaded(fontId);
     }
   }
 
@@ -537,7 +539,7 @@ export class IncrementalFontManager {
       }
       fontState.pendingSegmentIds.delete(shardKey);
       fontState.evictedSegmentIds.delete(shardKey);
-      window.__effindomCallbacks?.onFontLoaded?.(primaryFontId);
+      this.host.notifyFontLoaded(primaryFontId);
       this.trimShardCacheToPolicyLimit(new Set<number>([shardFontId]));
       this.onCommitFrame();
     } catch (error: unknown) {

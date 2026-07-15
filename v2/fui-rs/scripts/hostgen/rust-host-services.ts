@@ -179,6 +179,12 @@ export async function generateRustHostServicesFile(
   const registry = await loadModuleExport(modulePath, exportName, "fui-rs-host-services-");
   const methods = listHostServiceMethods(registry as never);
   const mode: RustMode = hostImportModule === "fui_host" ? "framework" : "app";
+  const hostImportCfg = mode === "framework"
+    ? 'any(target_family = "wasm", feature = "native-runtime")'
+    : 'target_family = "wasm"';
+  const fallbackCfg = mode === "framework"
+    ? 'all(not(target_family = "wasm"), not(feature = "native-runtime"))'
+    : 'not(target_family = "wasm")';
   const runtimePath =
     runtimePathArg === undefined || runtimePathArg.length === 0
       ? mode === "framework"
@@ -194,8 +200,8 @@ export async function generateRustHostServicesFile(
     "",
   ];
   const wasmExterns: string[] = [
-    '#[cfg(target_arch = "wasm32")]',
-    `#[link(wasm_import_module = "${hostImportModule}")]`,
+    `#[cfg(${hostImportCfg})]`,
+    `#[cfg_attr(target_family = "wasm", link(wasm_import_module = "${hostImportModule}"))]`,
     'unsafe extern "C" {',
   ];
   for (const method of methods) {
@@ -213,7 +219,7 @@ export async function generateRustHostServicesFile(
     const wrapperName = snakeCaseIdentifier(method.importName);
     const returnType = rustReturnType(method.returns);
     wrappers.push(`pub fn ${wrapperName}(${emitWrapperArgs(method.args)}) -> ${returnType} {`);
-    wrappers.push('  #[cfg(target_arch = "wasm32")]');
+    wrappers.push(`  #[cfg(${hostImportCfg})]`);
     wrappers.push("  {");
     if (isBufferType(method.returns)) {
       wrappers.push(`    let result_ptr = ${runtimePath}::host_service_result_buffer_ptr();`);
@@ -229,7 +235,7 @@ export async function generateRustHostServicesFile(
       wrappers.push(`    unsafe { __host_${method.importName}(${emitWasmCallArgs(method.args)}) }`);
     }
     wrappers.push("  }");
-    wrappers.push('  #[cfg(not(target_arch = "wasm32"))]');
+    wrappers.push(`  #[cfg(${fallbackCfg})]`);
     wrappers.push("  {");
     if (mode === "framework") {
       wrappers.push(...emitFrameworkNonWasmBody(method.importName, method.args));

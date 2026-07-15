@@ -329,7 +329,6 @@ pub(crate) fn apply_scroll_view_props(
         ui::set_padding(handle.raw(), left, top, right, bottom);
     }
     ui::set_scroll_enabled(handle.raw(), props.enable_scroll_x, props.enable_scroll_y);
-    ui::set_show_scrollbars(handle.raw(), props.show_scrollbars);
     ui::set_smooth_scrolling(handle.raw(), props.smooth_scrolling);
     if let Some(friction) = props.friction {
         ui::set_scroll_friction(handle.raw(), friction);

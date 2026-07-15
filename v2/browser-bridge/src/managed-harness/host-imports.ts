@@ -6,6 +6,7 @@ import type { PersistedUiStateController } from './persisted-ui-state-controller
 import type { TextSessionBridge } from './text-session-bridge';
 import type { HarnessUiChrome } from './ui-chrome';
 import { toBigIntHandle, type AppHandleLike } from './interop';
+import type { ManagedPlatformHost } from './platform-host';
 
 interface HostImportSessionLike {
   readonly exports: HarnessExports;
@@ -15,6 +16,7 @@ interface HostImportSessionLike {
 }
 
 export interface HostImportDeps {
+  platformHost: ManagedPlatformHost;
   getRuntime(): BridgeRuntime;
   getCurrentSession(): HostImportSessionLike;
   getCurrentSessionOrNull(): HostImportSessionLike | null;
@@ -84,7 +86,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       return sizeSource.clientHeight > 0 ? sizeSource.clientHeight : (rect.height > 0 ? rect.height : runtime.canvas.height);
     },
     get_device_pixel_ratio(): number {
-      return window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+      return deps.platformHost.getDevicePixelRatio();
     },
     fui_set_pointer_capture(handle: AppHandleLike): void {
       deps.getRuntime().setCapturedPointerHandle(toBigIntHandle(handle));
@@ -93,7 +95,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       deps.getRuntime().setCapturedPointerHandle(null);
     },
     fui_reload_page(): void {
-      window.location.reload();
+      deps.platformHost.reload();
     },
     fui_can_navigate_back(): number {
       return deps.canBrowserNavigateBack() ? 1 : 0;
@@ -109,7 +111,7 @@ export function createHostImportModule(deps: HostImportDeps) {
     },
     fui_copy_text(ptr: number, len: number): void {
       const text = deps.readAppUtf8(ptr, len);
-      window.__effindomCallbacks?.onClipboardWrite?.({ plainText: text });
+      deps.platformHost.publishClipboard({ plainText: text });
     },
     fui_has_text_selection_snapshot(handle: AppHandleLike): number {
       if (isPasswordTextInput(handle)) {
@@ -132,7 +134,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       if (snapshot === null) {
         return 0;
       }
-      window.__effindomCallbacks?.onClipboardWrite?.({
+      deps.platformHost.publishClipboard({
         plainText: snapshot.text.slice(snapshot.start, snapshot.end),
       });
       return 1;
@@ -152,7 +154,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       }
       const start = Math.min(selectionStart, selectionEnd);
       const end = Math.max(selectionStart, selectionEnd);
-      window.__effindomCallbacks?.onClipboardWrite?.({
+      deps.platformHost.publishClipboard({
         plainText: editor.value.slice(start, end),
       });
       editor.focus({ preventScroll: true });
@@ -171,7 +173,7 @@ export function createHostImportModule(deps: HostImportDeps) {
         return 0;
       }
       const { handleKey, text, start, end } = snapshot;
-      window.__effindomCallbacks?.onClipboardWrite?.({
+      deps.platformHost.publishClipboard({
         plainText: text.slice(start, end),
       });
       const updatedText = text.slice(0, start) + text.slice(end);
@@ -181,7 +183,7 @@ export function createHostImportModule(deps: HostImportDeps) {
         editor.value = updatedText;
         editor.setSelectionRange(start, start, 'none');
       }
-      window.setTimeout(() => {
+      deps.platformHost.defer(() => {
         runtime.ui._ui_request_focus(toBigIntHandle(handle));
         deps.textBridge.withUiUtf8('', (uiPtr, uiLen) => {
           runtime.ui._ui_replace_text_range(toBigIntHandle(handle), start, end, uiPtr, uiLen, start);
@@ -194,7 +196,7 @@ export function createHostImportModule(deps: HostImportDeps) {
           activeEditor.focus({ preventScroll: true });
           activeEditor.setSelectionRange(start, start, 'none');
         }
-      }, 0);
+      });
       deps.textBridge.clearFrozenTextSelectionSnapshot();
       return 1;
     },
@@ -216,7 +218,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       if (rangeStart === rangeEnd) {
         return 0;
       }
-      window.__effindomCallbacks?.onClipboardWrite?.({
+      deps.platformHost.publishClipboard({
         plainText: resolvedText.slice(rangeStart, rangeEnd),
       });
       const updatedText = resolvedText.slice(0, rangeStart) + resolvedText.slice(rangeEnd);
@@ -226,7 +228,7 @@ export function createHostImportModule(deps: HostImportDeps) {
         editor.value = updatedText;
         editor.setSelectionRange(rangeStart, rangeStart, 'none');
       }
-      window.setTimeout(() => {
+      deps.platformHost.defer(() => {
         deps.getRuntime().ui._ui_request_focus(toBigIntHandle(handle));
         deps.textBridge.syncEditableTextToRuntime(handle, updatedText, rangeStart);
         deps.textBridge.updateLiveTextAfterCut(handleKey, updatedText, rangeStart);
@@ -235,7 +237,7 @@ export function createHostImportModule(deps: HostImportDeps) {
           activeEditor.focus({ preventScroll: true });
           activeEditor.setSelectionRange(rangeStart, rangeStart, 'none');
         }
-      }, 0);
+      });
       return 1;
     },
     fui_delete_focused_text_range(start: number, end: number): number {
@@ -253,7 +255,7 @@ export function createHostImportModule(deps: HostImportDeps) {
     },
     fui_commit_text_action_focus(handle: AppHandleLike): void {
       const runtime = deps.getRuntime();
-      window.setTimeout(() => {
+      deps.platformHost.defer(() => {
         runtime.ui._ui_request_focus(toBigIntHandle(handle));
         runtime.commitFrame();
         deps.queueHarnessFrame();
@@ -261,7 +263,7 @@ export function createHostImportModule(deps: HostImportDeps) {
         if (editor !== null) {
           editor.focus({ preventScroll: true });
         }
-      }, 0);
+      });
     },
     fui_register_text_input_metadata(handle: AppHandleLike, isPassword: boolean, hintPtr: number, hintLen: number): void {
       const hostAutofillHint = hintLen > 0 ? deps.readAppUtf8(hintPtr, hintLen) : null;
@@ -328,7 +330,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       deps.cancelHostTimer(timerId);
       const session = deps.getCurrentSessionOrNull();
       const clampedDelayMs = Math.max(0, Math.ceil(delayMs));
-      const timeoutId = window.setTimeout(() => {
+      const timeoutId = deps.platformHost.setTimer(() => {
         if (deps.getHostTimer(timerId) !== timeoutId) {
           return;
         }
@@ -344,7 +346,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       deps.cancelHostTimer(timerId);
     },
     fui_now_ms(): number {
-      return performance.now();
+      return deps.platformHost.nowMilliseconds();
     },
     fui_worker_start_string(workerId: number, wasmPathPtr: number, wasmPathLen: number, entryPtr: number, entryLen: number, inputPtr: number, inputLen: number): void {
       deps.workerManager.startString(
@@ -373,7 +375,7 @@ export function createHostImportModule(deps: HostImportDeps) {
       deps.getRuntime().canvas.style.cursor = cursor;
     },
     fui_is_dark_mode(): number {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 1 : 0;
+      return deps.platformHost.isDarkMode() ? 1 : 0;
     },
     fui_get_accent_color(): number {
       return deps.uiChrome.readHostAccentColor();
@@ -387,7 +389,7 @@ export function createHostImportModule(deps: HostImportDeps) {
     fui_show_url_preview(ptr: number, len: number): void {
       const rawTarget = deps.readAppUtf8(ptr, len);
       try {
-        const resolvedTarget = new URL(rawTarget, window.location.href);
+        const resolvedTarget = deps.platformHost.resolveUrl(rawTarget);
         deps.uiChrome.setUrlPreviewText(resolvedTarget.href);
       } catch {
         deps.uiChrome.setUrlPreviewText(rawTarget);

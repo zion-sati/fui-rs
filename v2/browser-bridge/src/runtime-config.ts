@@ -29,6 +29,8 @@ export type PageZoomMode = (typeof PageZoomMode)[keyof typeof PageZoomMode];
 
 export interface EffinDomRuntimeConfig {
   readonly manifestUrl: string;
+  readonly manifestUrls?: readonly string[];
+  readonly expectedRuntimeSetHash?: string;
   readonly buildMode?: BuildMode;
   readonly devToolsDomMirror?: DevToolsDomMirrorMode;
   readonly pageZoom?: PageZoomMode;
@@ -120,8 +122,13 @@ export function applyRuntimeConfig(
     throw new Error('applyRuntimeConfig requires a browser window-like target outside browser contexts.');
   }
   destination.__effindomRuntime = Object.assign({}, destination.__effindomRuntime, config);
+  const normalizedConfig = normalizeRuntimeConfig(destination.__effindomRuntime);
   const output: EffinDomRuntimeConfig = {
     manifestUrl: destination.__effindomRuntime.manifestUrl ?? config.manifestUrl,
+    ...(normalizedConfig.manifestUrls === undefined ? {} : { manifestUrls: normalizedConfig.manifestUrls }),
+    ...(normalizedConfig.expectedRuntimeSetHash === undefined
+      ? {}
+      : { expectedRuntimeSetHash: normalizedConfig.expectedRuntimeSetHash }),
   };
   const buildMode = normalizeBuildMode(destination.__effindomRuntime.buildMode);
   const devToolsDomMirror = normalizeDevToolsDomMirrorMode(destination.__effindomRuntime.devToolsDomMirror);
@@ -144,6 +151,12 @@ export function createRuntimeConfigScript(
   const entries = [
     `  manifestUrl: ${JSON.stringify(config.manifestUrl)},`,
   ];
+  if (normalized.manifestUrls !== undefined) {
+    entries.push(`  manifestUrls: ${JSON.stringify(normalized.manifestUrls)},`);
+  }
+  if (normalized.expectedRuntimeSetHash !== undefined) {
+    entries.push(`  expectedRuntimeSetHash: ${JSON.stringify(normalized.expectedRuntimeSetHash)},`);
+  }
   if (normalized.buildMode !== undefined) {
     entries.push(`  buildMode: ${JSON.stringify(normalized.buildMode)},`);
   }
@@ -184,6 +197,8 @@ export function normalizePageZoomMode(value: unknown): PageZoomMode | undefined 
 export function normalizeRuntimeConfig(config: Partial<EffinDomRuntimeConfig>): Partial<EffinDomRuntimeConfig> {
   const output: {
     manifestUrl?: string;
+    manifestUrls?: readonly string[];
+    expectedRuntimeSetHash?: string;
     buildMode?: BuildMode;
     devToolsDomMirror?: DevToolsDomMirrorMode;
     pageZoom?: PageZoomMode;
@@ -193,6 +208,15 @@ export function normalizeRuntimeConfig(config: Partial<EffinDomRuntimeConfig>): 
   const pageZoom = normalizePageZoomMode(config.pageZoom);
   if (typeof config.manifestUrl === 'string') {
     output.manifestUrl = config.manifestUrl;
+  }
+  if (Array.isArray(config.manifestUrls)) {
+    const manifestUrls = config.manifestUrls.filter((value): value is string => typeof value === 'string' && value.length > 0);
+    if (manifestUrls.length > 0) {
+      output.manifestUrls = manifestUrls;
+    }
+  }
+  if (typeof config.expectedRuntimeSetHash === 'string' && config.expectedRuntimeSetHash.length > 0) {
+    output.expectedRuntimeSetHash = config.expectedRuntimeSetHash;
   }
   if (buildMode !== undefined) {
     output.buildMode = buildMode;

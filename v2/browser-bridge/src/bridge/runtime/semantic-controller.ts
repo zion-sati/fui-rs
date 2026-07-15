@@ -5,8 +5,10 @@ import { extractSemanticBuffer } from '../utils/heap';
 import type { TextDocumentController } from './text-documents';
 import type { DebugTreeSnapshot } from '../../debug-tree';
 import { buildSemanticLightDomFields } from './editable-form-model';
+import type { BridgePlatformHost } from '../host/platform-host';
 
 const SEMANTIC_ANNOUNCEMENT_DELAY_MS = 50;
+const SEMANTIC_SCROLL_IDLE_DELAY_MS = 80;
 
 export class SemanticController {
   private readonly projector: HiddenDomProjector;
@@ -16,12 +18,15 @@ export class SemanticController {
   } | undefined> = {};
   private semanticAnnouncementTimer: number | null = null;
   private scheduledSemanticAnnouncementHandle: string | null = null;
+  private semanticProjectionTimer: number | null = null;
+  private semanticProjectionDeferred = false;
 
   public constructor(
     canvas: HTMLCanvasElement,
     private readonly ui: UiModule,
     private readonly interactionState: BridgeInteractionState,
     private readonly textDocuments: TextDocumentController,
+    private readonly host: BridgePlatformHost,
     private readonly getDebugTree: () => DebugTreeSnapshot,
     private readonly getTextInputMetadata: (handle: string) => { readonly kind: 'text' | 'password' | 'email'; readonly hostAutofillHint: string | null } | null,
   ) {
@@ -40,24 +45,44 @@ export class SemanticController {
     this.semanticTree = parseSemanticBuffer(extractSemanticBuffer(this.ui));
     this.interactionState.reconcileLiveHandles(this.semanticTree.map((node) => node.handle));
     this.semanticTextLayoutsByHandle = this.buildSemanticTextLayouts();
+    this.host.publishSemanticTree(cloneSemanticTree(this.semanticTree));
+    if (this.semanticProjectionDeferred) {
+      this.scheduleDeferredProjection();
+      return;
+    }
+    this.projectCurrentSemanticState();
+  }
+
+  public deferProjectionUntilScrollIdle(): void {
+    this.semanticProjectionDeferred = true;
+    this.scheduleDeferredProjection();
+  }
+
+  private projectCurrentSemanticState(): void {
+    const debugTree = this.getDebugTree();
     const semanticLightDomFields = buildSemanticLightDomFields(
-      this.getDebugTree(),
+      debugTree,
       this.semanticTree,
       this.interactionState.textByHandle,
+      this.interactionState.textRevisionsByHandle,
       this.getTextInputMetadata,
     );
     const omittedHandles = new Set(semanticLightDomFields.map((field) => field.handle));
+    const liveHandles = new Set(Object.keys(debugTree.nodesByHandle));
     this.projector.update(
       this.semanticTree,
       this.interactionState.textByHandle,
+      this.interactionState.textRevisionsByHandle,
       this.semanticTextLayoutsByHandle,
       omittedHandles,
+      liveHandles,
     );
     this.projector.updateLightDomSemanticForms(
       semanticLightDomFields,
       (handle, editor) => {
         this.interactionState.registerSemanticTextEditor(handle, editor);
       },
+      liveHandles,
     );
     this.interactionState.syncActiveTextInputViewport();
     const focusedHandle = this.interactionState.getFocusedHandle();
@@ -66,7 +91,17 @@ export class SemanticController {
         this.scheduleSemanticAnnouncement(handle);
       }
     }
-    window.__bridgeSemanticTree = cloneSemanticTree(this.semanticTree);
+  }
+
+  private scheduleDeferredProjection(): void {
+    if (this.semanticProjectionTimer !== null) {
+      this.host.clearTimer(this.semanticProjectionTimer);
+    }
+    this.semanticProjectionTimer = this.host.setTimer(() => {
+      this.semanticProjectionTimer = null;
+      this.semanticProjectionDeferred = false;
+      this.projectCurrentSemanticState();
+    }, SEMANTIC_SCROLL_IDLE_DELAY_MS);
   }
 
   public getSemanticTree(): readonly SemanticNode[] {
@@ -80,15 +115,19 @@ export class SemanticController {
 
   public destroy(): void {
     this.cancelPendingSemanticAnnouncement();
+    if (this.semanticProjectionTimer !== null) {
+      this.host.clearTimer(this.semanticProjectionTimer);
+      this.semanticProjectionTimer = null;
+    }
     this.semanticTree = [];
     this.semanticTextLayoutsByHandle = {};
-    window.__bridgeSemanticTree = [];
+    this.host.publishSemanticTree([]);
     this.projector.destroy();
   }
 
   private cancelPendingSemanticAnnouncement(): void {
     if (this.semanticAnnouncementTimer !== null) {
-      window.clearTimeout(this.semanticAnnouncementTimer);
+      this.host.clearTimer(this.semanticAnnouncementTimer);
       this.semanticAnnouncementTimer = null;
     }
     this.scheduledSemanticAnnouncementHandle = null;
@@ -97,9 +136,9 @@ export class SemanticController {
   private scheduleSemanticAnnouncement(handle: string): void {
     this.scheduledSemanticAnnouncementHandle = handle;
     if (this.semanticAnnouncementTimer !== null) {
-      window.clearTimeout(this.semanticAnnouncementTimer);
+      this.host.clearTimer(this.semanticAnnouncementTimer);
     }
-    this.semanticAnnouncementTimer = window.setTimeout(() => {
+    this.semanticAnnouncementTimer = this.host.setTimer(() => {
       this.semanticAnnouncementTimer = null;
       const targetHandle = this.scheduledSemanticAnnouncementHandle;
       this.scheduledSemanticAnnouncementHandle = null;

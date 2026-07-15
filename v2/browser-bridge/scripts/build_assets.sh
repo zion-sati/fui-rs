@@ -49,3 +49,7 @@ npx esbuild "${REPO_ROOT}/v2/ui/browser/bridge-harness.ts" \
 
 cp "${REPO_ROOT}/v2/browser-bridge/index.html" "${OUT_DIR}/index.html"
 copy_bridge_font_assets "${REPO_ROOT}/public/v2/fonts"
+node "${REPO_ROOT}/v2/browser-bridge/scripts/finalize_runtime_manifest.mjs" \
+  "${OUT_DIR}" \
+  "${REPO_ROOT}/public/v2/fonts" \
+  "../fonts"

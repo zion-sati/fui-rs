@@ -3,19 +3,19 @@
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]
-#[cfg(target_arch = "wasm32")]
-#[link(wasm_import_module = "fui_host_service")]
+#[cfg(target_family = "wasm")]
+#[cfg_attr(target_family = "wasm", link(wasm_import_module = "fui_host_service"))]
 unsafe extern "C" {
     #[link_name = "demoWorkerClockWallClockSinceEpochMs"]
     fn __host_demoWorkerClockWallClockSinceEpochMs() -> f64;
 }
 
 pub fn demo_worker_clock_wall_clock_since_epoch_ms() -> f64 {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(target_family = "wasm")]
   {
     unsafe { __host_demoWorkerClockWallClockSinceEpochMs() }
   }
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(not(target_family = "wasm"))]
   {
     panic!("Host service demoWorkerClockWallClockSinceEpochMs is only available in wasm/browser builds.");
   }

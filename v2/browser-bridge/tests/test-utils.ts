@@ -48,6 +48,7 @@ interface EditableSceneOptions {
   readonly wrapping?: boolean;
   readonly nodeWidth?: number;
   readonly nodeHeight?: number;
+  readonly topSpacerHeight?: number;
 }
 
 interface SelectionAreaSceneState {
@@ -522,6 +523,8 @@ async function getWrappedSelectionDragPoints(
 }
 
 interface RuntimeConfigOverrides {
+  readonly manifestUrls?: readonly string[];
+  readonly expectedRuntimeSetHash?: string;
   readonly buildMode?: 'debug' | 'release';
   readonly devToolsDomMirror?: 'disabled' | 'enabled' | 'on-requested';
   readonly pageZoom?: 'disabled' | 'enabled';
@@ -878,7 +881,19 @@ async function buildScrollableEditableTextScene(
     ui._ui_set_root(root);
     ui._ui_resize_window(140, 80);
     ui._ui_node_add_child(root, scroll);
-    ui._ui_node_add_child(scroll, textNode);
+    if (scene.topSpacerHeight > 0) {
+      const content = toHandle(ui._ui_create_node(0));
+      const spacer = toHandle(ui._ui_create_node(0));
+      ui._ui_node_add_child(scroll, content);
+      ui._ui_node_add_child(content, spacer);
+      ui._ui_node_add_child(content, textNode);
+      ui._ui_set_width(content, 120, 0);
+      ui._ui_set_height(content, scene.topSpacerHeight + scene.nodeHeight, 0);
+      ui._ui_set_width(spacer, 120, 0);
+      ui._ui_set_height(spacer, scene.topSpacerHeight, 0);
+    } else {
+      ui._ui_node_add_child(scroll, textNode);
+    }
     ui._ui_set_width(root, 140, 0);
     ui._ui_set_height(root, 80, 0);
     ui._ui_set_width(scroll, 120, 0);
@@ -916,6 +931,7 @@ async function buildScrollableEditableTextScene(
     wrapping: options.wrapping ?? true,
     nodeWidth: options.nodeWidth ?? 120,
     nodeHeight: options.nodeHeight ?? 320,
+    topSpacerHeight: options.topSpacerHeight ?? 0,
   });
 }
 

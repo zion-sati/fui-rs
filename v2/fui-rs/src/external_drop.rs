@@ -2,6 +2,8 @@ use crate::drag_drop::{DragDropEffects, DropProposal};
 use crate::file::{register_browser_file, BrowserFile};
 use crate::node::NodeRef;
 use std::cell::RefCell;
+#[cfg(feature = "native-runtime")]
+use std::path::Path;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ExternalDragEventType {
@@ -71,6 +73,11 @@ impl ExternalDropItemInfo {
             size_bytes,
             file,
         }
+    }
+
+    #[cfg(feature = "native-runtime")]
+    pub fn native_path(&self) -> Option<&Path> {
+        (self.kind == ExternalDropItemKind::File).then(|| Path::new(&self.id))
     }
 }
 

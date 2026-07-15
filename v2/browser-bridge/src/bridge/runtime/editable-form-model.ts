@@ -43,6 +43,7 @@ export interface SemanticLightDomField {
   readonly semanticLabel: string;
   readonly stableFieldName: string | null;
   readonly text: string;
+  readonly textRevision: number;
 }
 
 export function resolveStableFieldName(snapshot: DebugTreeSnapshot, handle: string): string | null {
@@ -173,6 +174,7 @@ export function buildSemanticLightDomFields(
   snapshot: DebugTreeSnapshot,
   semanticTree: readonly MinimalSemanticNode[],
   textByHandle: Readonly<Record<string, string>>,
+  textRevisionsByHandle: Readonly<Record<string, number>>,
   getMetadata: (candidateHandle: string) => TextInputMetadataRecord | null,
 ): SemanticLightDomField[] {
   const semanticByHandle = new Map(semanticTree.map((node) => [node.handle, node]));
@@ -201,6 +203,7 @@ export function buildSemanticLightDomFields(
       semanticLabel: node.label,
       stableFieldName: resolveStableFieldName(snapshot, node.handle),
       text: textByHandle[node.handle] ?? '',
+      textRevision: textRevisionsByHandle[node.handle] ?? 0,
     });
   }
   return fields;

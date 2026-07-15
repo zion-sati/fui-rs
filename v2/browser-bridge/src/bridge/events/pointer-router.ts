@@ -1003,6 +1003,7 @@ export function installPointerHandlers(
     const appliedScrollDeltaY = activeTouchGesture.pullToRefreshCaptured ? 0.0 : scrollDeltaY;
 
     if (!activeTouchGesture.pullToRefreshCaptured && contentCanConsumeScroll) {
+      runtime.deferSemanticProjectionUntilScrollIdle();
       ui._ui_touch_scroll_update(scrollDeltaX, appliedScrollDeltaY, event.timeStamp);
     }
 
@@ -1554,6 +1555,7 @@ export function installPointerHandlers(
       return;
     }
     if (ui._ui_wheel_scroll_can_consume(delta.x, delta.y) !== 0) {
+      runtime.deferSemanticProjectionUntilScrollIdle();
       ui._ui_on_wheel_event(delta.x, delta.y);
       runtime.commitFrame();
       return;

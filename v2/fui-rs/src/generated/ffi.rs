@@ -208,8 +208,8 @@ pub enum SemanticCheckedState {
     Mixed = 3,
 }
 
-#[cfg(target_arch = "wasm32")]
-#[link(wasm_import_module = "effindom_v2_ui")]
+#[cfg(any(target_arch = "wasm32", feature = "native-runtime"))]
+#[cfg_attr(target_arch = "wasm32", link(wasm_import_module = "effindom_v2_ui"))]
 unsafe extern "C" {
     pub fn ui_get_abi_version() -> u32;
     pub fn ui_arena_alloc(size: u32) -> usize;
@@ -371,7 +371,6 @@ unsafe extern "C" {
     pub fn ui_set_editor_accepts_tab(handle: u64, enabled: bool);
     pub fn ui_set_scroll_proxy_target(handle: u64, scroll_handle: u64);
     pub fn ui_set_scroll_enabled(handle: u64, enabled_x: bool, enabled_y: bool);
-    pub fn ui_set_show_scrollbars(handle: u64, show_scrollbars: bool);
     pub fn ui_set_scroll_friction(handle: u64, friction: f32);
     pub fn ui_set_smooth_scrolling(handle: u64, smooth_scrolling: bool);
     pub fn ui_set_focusable(handle: u64, focusable: bool, tab_index: i32);
@@ -499,8 +498,8 @@ unsafe extern "C" {
     ) -> bool;
 }
 
-#[cfg(target_arch = "wasm32")]
-#[link(wasm_import_module = "fui_host")]
+#[cfg(any(target_arch = "wasm32", feature = "native-runtime"))]
+#[cfg_attr(target_arch = "wasm32", link(wasm_import_module = "fui_host"))]
 unsafe extern "C" {
     pub fn request_render();
     pub fn get_viewport_width() -> f32;
@@ -781,8 +780,8 @@ unsafe extern "C" {
     pub fn fui_canvas_destroy_offscreen(offscreenId: u32);
 }
 
-#[cfg(target_arch = "wasm32")]
-#[link(wasm_import_module = "fui_fetch_host")]
+#[cfg(any(target_arch = "wasm32", feature = "native-runtime"))]
+#[cfg_attr(target_arch = "wasm32", link(wasm_import_module = "fui_fetch_host"))]
 unsafe extern "C" {
     pub fn fui_fetch_start(
         requestId: u32,

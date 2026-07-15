@@ -370,9 +370,6 @@ export function createUiImportModule(deps: UiImportDeps) {
     ui_set_scroll_enabled(handle: AppHandleLike, enabledX: number, enabledY: number): void {
       deps.getRuntime().ui._ui_set_scroll_enabled(toBigIntHandle(handle), enabledX, enabledY);
     },
-    ui_set_show_scrollbars(handle: AppHandleLike, showScrollbars: number): void {
-      deps.getRuntime().ui._ui_set_show_scrollbars(toBigIntHandle(handle), showScrollbars);
-    },
     ui_set_scroll_friction(handle: AppHandleLike, friction: number): void {
       deps.getRuntime().ui._ui_set_scroll_friction(toBigIntHandle(handle), friction);
     },

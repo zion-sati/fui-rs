@@ -58,14 +58,7 @@ fn scroll_box_mounts_scroll_chrome_with_proxy_targets() {
     scroll.child(&text("hello"));
     Application::mount(scroll.clone());
 
-    let initial_calls = ffi::test::take_calls();
-    assert!(initial_calls.iter().any(|call| matches!(
-        call,
-        Call::SetShowScrollbars {
-            handle,
-            show_scrollbars
-        } if *handle == scroll.viewport().handle().raw() && !show_scrollbars
-    )));
+    let _initial_calls = ffi::test::take_calls();
 
     bridge_callbacks::__fui_on_scroll(
         scroll.viewport().handle().raw(),

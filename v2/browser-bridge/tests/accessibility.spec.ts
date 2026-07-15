@@ -5,6 +5,7 @@ buildClippedSemanticScene,
 buildEditableTextScene,
 buildMultiStaticTextScene,
 buildScrollableSemanticOrderScene,
+buildScrollableEditableTextScene,
 buildScrollableStaticTextScene,
 buildSemanticScene,
 buildStaticTextScene,
@@ -85,6 +86,150 @@ test('hidden semantic DOM projects accessible nodes with logical bounds', async 
   expect(projected.contentWhiteSpace).toBe('nowrap');
   expect(projected.hiddenInputAriaHidden).toBe('true');
   expect(projected.hiddenTextareaAriaHidden).toBe('true');
+});
+
+test('scroll-only semantic projection does not read or rewrite unchanged large editor values', async ({ page }) => {
+  await gotoBridgePage(page);
+  const text = `${'Retained editor projection must stay incremental. '.repeat(4096)}\nend`;
+  const scene = await buildScrollableEditableTextScene(page, text, 1, {
+    multiline: true,
+    wrapping: true,
+    nodeWidth: 120,
+    nodeHeight: 640,
+  });
+
+  const result = await page.evaluate(({ scrollHandle, textHandle }) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    const layer = document.getElementById('semantic-layer');
+    const editor = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    if (
+      runtime === null || runtime === undefined || bridge === undefined ||
+      !(editor instanceof HTMLInputElement || editor instanceof HTMLTextAreaElement)
+    ) {
+      throw new Error('Expected projected editor and bridge runtime.');
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(
+      editor instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+      'value',
+    );
+    if (descriptor?.get === undefined || descriptor.set === undefined) {
+      throw new Error('Expected native editor value accessors.');
+    }
+    const initialValueLength = editor.value.length;
+    const beforeRevision = editor.dataset.effindomTextRevision ?? null;
+    let valueReads = 0;
+    let valueWrites = 0;
+    Object.defineProperty(editor, 'value', {
+      configurable: true,
+      get() {
+        valueReads += 1;
+        return descriptor.get?.call(this) as string;
+      },
+      set(value: string) {
+        valueWrites += 1;
+        descriptor.set?.call(this, value);
+      },
+    });
+    runtime.ui._ui_set_scroll_offset(bridge.handleToBigInt(scrollHandle), 0, 100);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    return {
+      valueReads,
+      valueWrites,
+      valueLength: initialValueLength,
+      beforeRevision,
+      afterRevision: editor.dataset.effindomTextRevision ?? null,
+    };
+  }, scene);
+
+  expect(result.afterRevision).toBe(result.beforeRevision);
+  expect(result.valueReads).toBe(0);
+  expect(result.valueWrites).toBe(0);
+  expect(result.valueLength).toBeGreaterThan(10_000);
+});
+
+test('wheel scrolling defers large editor semantic geometry until scroll idle', async ({ page }) => {
+  await gotoBridgePage(page);
+  const text = `${'Large retained editor geometry must not churn while scrolling. '.repeat(13_000)}\nend`;
+  const scene = await buildScrollableEditableTextScene(page, text, 1, {
+    multiline: true,
+    wrapping: true,
+    nodeWidth: 120,
+    nodeHeight: 60,
+    topSpacerHeight: 120,
+  });
+
+  await page.evaluate((scrollHandle) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    if (runtime === null || runtime === undefined || bridge === undefined) {
+      throw new Error('Expected bridge runtime.');
+    }
+    runtime.ui._ui_set_scroll_offset(bridge.handleToBigInt(scrollHandle), 0, 80);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+  }, scene.scrollHandle);
+
+  const before = await page.evaluate((textHandle) => {
+    const layer = document.getElementById('semantic-layer');
+    const editor = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    if (!(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected projected textarea.');
+    }
+    return editor.style.top;
+  }, scene.textHandle);
+
+  const during = await page.evaluate(({ scrollHandle, textHandle }) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    const layer = document.getElementById('semantic-layer');
+    const editor = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    if (runtime === null || runtime === undefined || bridge === undefined || !(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected projected textarea and bridge runtime.');
+    }
+    runtime.deferSemanticProjectionUntilScrollIdle();
+    runtime.ui._ui_set_scroll_offset(bridge.handleToBigInt(scrollHandle), 0, 120);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    return editor.style.top;
+  }, scene);
+
+  expect(during).toBe(before);
+  await page.waitForTimeout(120);
+  const after = await page.evaluate((textHandle) => {
+    const layer = document.getElementById('semantic-layer');
+    const editor = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    if (!(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected projected textarea.');
+    }
+    return editor.style.top;
+  }, scene.textHandle);
+  expect(after).not.toBe(before);
+
+  const reentry = await page.evaluate(({ scrollHandle, textHandle }) => {
+    const runtime = window.EffinDomBrowserBridge?.getRuntime();
+    const bridge = window.EffinDomBrowserBridge;
+    const layer = document.getElementById('semantic-layer');
+    const editor = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    if (runtime === null || runtime === undefined || bridge === undefined || !(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected projected textarea and bridge runtime.');
+    }
+    runtime.ui._ui_set_scroll_offset(bridge.handleToBigInt(scrollHandle), 0, 0);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    const detachedWhileOffscreen = !editor.isConnected;
+    runtime.ui._ui_set_scroll_offset(bridge.handleToBigInt(scrollHandle), 0, 80);
+    runtime.commitFrame();
+    runtime.flushPendingCommit();
+    const projectedAgain = layer?.shadowRoot?.querySelector(`[data-handle="${textHandle}"]`);
+    return {
+      detachedWhileOffscreen,
+      preservedIdentity: projectedAgain === editor,
+    };
+  }, scene);
+  expect(reentry.detachedWhileOffscreen).toBe(true);
+  expect(reentry.preservedIdentity).toBe(true);
 });
 
 

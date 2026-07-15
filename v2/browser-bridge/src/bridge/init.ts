@@ -6,6 +6,7 @@ import { ensureCanvasLogicalSize, installEventHandlers } from './events';
 import { getBridgeAssetUrl, STARTUP_BRIDGE_FONTS } from './font-catalog';
 import { createBridgeRuntime } from './runtime';
 import { installRenderLoop } from './render-loop';
+import { browserBridgePlatformHost } from './host/platform-host';
 
 export interface BridgeSession {
   readonly runtime: BridgeRuntime;
@@ -36,11 +37,12 @@ export async function createBridgeSession(options: BridgeSessionOptions): Promis
     loadCoreModule(preparedAssets.coreBundle, preparedAssets.coreWasm, canvas, preparedAssets.loaderInfo),
     loadUiModule(preparedAssets.uiBundle, preparedAssets.uiWasm, preparedAssets.loaderInfo),
   ]);
-  const runtimeState = createBridgeRuntime(core, ui, canvas, interactionState, preparedAssets.loaderInfo);
+  const host = browserBridgePlatformHost;
+  const runtimeState = createBridgeRuntime(core, ui, canvas, interactionState, preparedAssets.loaderInfo, host);
   const runtime = runtimeState.runtime;
   runtimeRef.current = runtime;
 
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = host.getDevicePixelRatio();
   const fallbackLadder = buildBackendLadder(preparedAssets.loaderInfo.requestedRendererBackend);
   await initRenderer(core, canvas, dpr, preparedAssets.loaderInfo, fallbackLadder);
   ui._ui_reset();
@@ -52,8 +54,8 @@ export async function createBridgeSession(options: BridgeSessionOptions): Promis
     throw createErrorWithCause(message, error);
   }
   runtime.updateCanvasSize();
-  const disposeEventHandlers = installEventHandlers(runtime, interactionState);
-  const disposeRenderLoop = installRenderLoop(runtime, preparedAssets.loaderInfo, fallbackLadder);
+  const disposeEventHandlers = installEventHandlers(runtime, interactionState, host);
+  const disposeRenderLoop = installRenderLoop(runtime, preparedAssets.loaderInfo, fallbackLadder, host);
   await Promise.all(
     STARTUP_BRIDGE_FONTS.map((font) => runtime.registerFont({
       id: font.id,

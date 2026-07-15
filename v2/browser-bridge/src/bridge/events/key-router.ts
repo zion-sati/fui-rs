@@ -36,44 +36,6 @@ export function installKeyAndWindowHandlers(
     return node?.behavior.editorAcceptsTab === true;
   };
 
-  const selectAllActiveHiddenEditorText = (
-    handle: bigint,
-    activeElement: HTMLInputElement | HTMLTextAreaElement,
-  ): boolean => {
-    const activeEditorWindow = window.__bridgeActiveEditorWindow;
-    if (activeEditorWindow?.handle === null || activeEditorWindow?.handle === undefined) {
-      return false;
-    }
-    if (activeEditorWindow.handle !== handle.toString()) {
-      return false;
-    }
-    const handleKey = handle.toString();
-    const absoluteStart = activeEditorWindow.docStart;
-    const absoluteEnd = activeEditorWindow.docEnd;
-    const textLength = activeEditorWindow.text.length;
-    const applySelection = (): void => {
-      ui._ui_set_interaction_time(currentInteractionTimeMs());
-      ui._ui_set_text_selection_range(handle, absoluteStart, absoluteEnd);
-      activeElement.setSelectionRange(0, textLength, 'none');
-      if (window.__bridgeSelectionsByHandle !== undefined) {
-        window.__bridgeSelectionsByHandle[handleKey] = { start: absoluteStart, end: absoluteEnd };
-      }
-      runtime.commitFrame();
-    };
-    applySelection();
-    window.setTimeout(() => {
-      if (
-        document.activeElement === activeElement &&
-        window.__bridgeActiveEditorWindow?.handle === handleKey &&
-        window.__bridgeActiveEditorWindow.docStart === absoluteStart &&
-        window.__bridgeActiveEditorWindow.docEnd === absoluteEnd
-      ) {
-        applySelection();
-      }
-    }, 0);
-    return true;
-  };
-
   const dispatchKeyToRuntime = (
     type: number,
     event: KeyboardEvent,
@@ -132,6 +94,14 @@ export function installKeyAndWindowHandlers(
       !event.altKey &&
       !event.shiftKey &&
       event.key.toLowerCase() === 'a';
+    const activeEditableTextOwnsNativePasteShortcut =
+      recoveredActiveTextHandle !== null &&
+      recoveredActiveTextEditable &&
+      hiddenTextEditorFocused &&
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      event.key.toLowerCase() === 'v';
     const activeTextComboBoxCommandKey =
       activeTextUsesEditorCommandKeys(recoveredActiveTextHandle) &&
       !event.ctrlKey &&
@@ -172,10 +142,19 @@ export function installKeyAndWindowHandlers(
     if (activeTextOwnsNativeNavigationKey) {
       interactionState.flushPendingTextMutationsToRuntime();
       runtime.flushPendingCommit();
-      window.setTimeout(() => {
-        interactionState.syncActiveTextSelectionFromDom();
-        runtime.flushPendingCommit();
-      }, 0);
+      ui._ui_set_interaction_time(currentInteractionTimeMs());
+      const handled = (() => {
+        const heapString = writeUtf8ToHeap(ui, event.key);
+        try {
+          return ui._ui_on_key_event(type, heapString.ptr, heapString.len, modifiers) !== 0;
+        } finally {
+          heapString.dispose();
+        }
+      })();
+      if (handled) {
+        event.preventDefault();
+      }
+      runtime.commitFrame();
       return;
     }
     if (activeEditableTextMayOwnPlainTab) {
@@ -201,11 +180,14 @@ export function installKeyAndWindowHandlers(
     if (activeEditableTextMayOwnSelectAll) {
       if (
         type === UI_KEY_EVENT_DOWN &&
-        selectAllActiveHiddenEditorText(recoveredActiveTextHandle, activeElement)
+        interactionState.selectAllActiveText()
       ) {
         event.preventDefault();
         return;
       }
+      return;
+    }
+    if (activeEditableTextOwnsNativePasteShortcut) {
       return;
     }
     if (activeEditableTextOwnsNativeEditingKey) {

@@ -21,6 +21,7 @@ import { SemanticController } from './runtime/semantic-controller';
 import { DebugTreeController } from './runtime/debug-tree-controller';
 import { DevToolsDomMirror } from './runtime/devtools-dom-mirror';
 import { TextDocumentController } from './runtime/text-documents';
+import { browserBridgePlatformHost, type BridgePlatformHost } from './host/platform-host';
 
 const DEFAULT_LOGICAL_WIDTH = 320;
 const DEFAULT_LOGICAL_HEIGHT = 220;
@@ -33,10 +34,11 @@ export function createBridgeRuntime(
   canvas: HTMLCanvasElement,
   interactionState: BridgeInteractionState,
   loaderInfo: BridgeLoaderInfo,
+  host: BridgePlatformHost = browserBridgePlatformHost,
 ): { runtime: BridgeRuntime; destroy(): void } {
   let logicalWidth = DEFAULT_LOGICAL_WIDTH;
   let logicalHeight = DEFAULT_LOGICAL_HEIGHT;
-  let devicePixelRatio = Math.max(1, window.devicePixelRatio || 1);
+  let devicePixelRatio = host.getDevicePixelRatio();
   let pageZoomMomentumFrameScheduled = false;
   let needsCommit = false;
   let appFrameHandler: ((timestampMs: number) => void) | null = null;
@@ -48,10 +50,10 @@ export function createBridgeRuntime(
     readonly hostAutofillHint: string | null;
   }>();
 
-  const fontManager = new IncrementalFontManager(core, ui, interactionState.logs, () => {
+  const fontManager = new IncrementalFontManager(core, ui, interactionState.logs, host, () => {
     runtime.commitFrame();
   });
-  const assetManager = new AssetManager(core, fontManager, () => {
+  const assetManager = new AssetManager(core, fontManager, host, () => {
     runtime.commitFrame();
   });
   const textDocuments = new TextDocumentController(ui);
@@ -60,6 +62,7 @@ export function createBridgeRuntime(
     ui,
     interactionState,
     textDocuments,
+    host,
     () => debugTreeController.getDebugTree(),
     (handle: string) => textInputMetadataByHandle.get(handle) ?? null,
   );
@@ -96,9 +99,9 @@ export function createBridgeRuntime(
   });
 
   const syncSemanticAndFindState = (): void => {
+    debugTreeController.syncDebugTreeState();
     semanticController.syncSemanticState();
     findController.syncDocuments();
-    debugTreeController.syncDebugTreeState();
     devToolsDomMirror.sync(debugTreeController.getDebugTree());
   };
 
@@ -120,7 +123,7 @@ export function createBridgeRuntime(
       return;
     }
     pageZoomMomentumFrameScheduled = true;
-    requestAnimationFrame((timestampMs) => {
+    host.requestFrame((timestampMs) => {
       pageZoomMomentumFrameScheduled = false;
       if (core._ed_tick_viewport_pan_momentum(timestampMs) === 0) {
         syncViewportTransform();
@@ -132,7 +135,7 @@ export function createBridgeRuntime(
     });
   };
 
-  const commitUiFrame = (timestampMs: number = performance.now()): void => {
+  const commitUiFrame = (timestampMs: number = host.nowMilliseconds()): void => {
     ui._ui_commit_frame(timestampMs);
   };
 
@@ -206,7 +209,7 @@ export function createBridgeRuntime(
   };
 
   const updateCanvasSize = (): void => {
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = host.getDevicePixelRatio();
     const size = readCanvasLogicalSize(canvas);
     logicalWidth = size.width;
     logicalHeight = size.height;
@@ -295,7 +298,7 @@ export function createBridgeRuntime(
       return runtime.syncCommandBufferToCore();
     },
     hasPendingCommit: () => needsCommit || interactionState.hasPendingTextMutations(),
-    commitFrame: (timestampMs: number = performance.now()) => {
+    commitFrame: (timestampMs: number = host.nowMilliseconds()) => {
       if (interactionState.hasPendingTextMutations()) {
         if (needsCommit) {
           runtime.flushPendingCommit();
@@ -313,6 +316,9 @@ export function createBridgeRuntime(
       commitUiFrame(timestampMs);
       needsCommit = true;
       frameRequester?.();
+    },
+    deferSemanticProjectionUntilScrollIdle: () => {
+      semanticController.deferProjectionUntilScrollIdle();
     },
     requestFrame: () => {
       frameRequester?.();
@@ -490,7 +496,7 @@ export function createBridgeRuntime(
   };
 
   const refreshCanvas = (): void => {
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = host.getDevicePixelRatio();
     const size = readCanvasLogicalSize(canvas);
     const physicalWidth = Math.round(size.width * dpr);
     const physicalHeight = Math.round(size.height * dpr);

@@ -1,10 +1,10 @@
 {
   "name": "effindom-fui-rs-repo",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Standalone FUI-RS repository for @effindomv2/fui-rs",
   "engines": {
-    "node": ">=24"
+    "node": ">=18"
   },
   "workspaces": [
     "v2/fui-rs"
@@ -14,7 +14,10 @@
     "lint": "npm run lint:v2",
     "typecheck": "npm --workspace v2/fui-rs run typecheck",
     "test": "npm --workspace v2/fui-rs run test:unit",
-    "build": "npm run lint:v2 && npm --workspace v2/fui-rs run typecheck && npm --workspace v2/fui-rs run build"
+    "build": "npm run lint:v2 && npm --workspace v2/fui-rs run typecheck && npm --workspace v2/fui-rs run build",
+    "publish:local": "bash scripts/publish/local/fui-rs.sh",
+    "publish:npm": "bash scripts/publish/npm/fui-rs.sh",
+    "prepublishOnly": "npm run lint:v2 && npm run typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

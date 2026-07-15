@@ -1,6 +1,6 @@
 pub use crate::generated::ffi::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Call {
     Reset,
@@ -427,10 +427,6 @@ pub enum Call {
         handle: u64,
         enabled_x: bool,
         enabled_y: bool,
-    },
-    SetShowScrollbars {
-        handle: u64,
-        show_scrollbars: bool,
     },
     SetScrollFriction {
         handle: u64,
@@ -893,7 +889,7 @@ pub enum Call {
     },
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 thread_local! {
     static CALLS: std::cell::RefCell<Vec<Call>> = const { std::cell::RefCell::new(Vec::new()) };
     static NEXT_HANDLE: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
@@ -925,12 +921,12 @@ thread_local! {
     static VISIBLE_BOUNDS: std::cell::RefCell<Option<(f32, f32, f32, f32)>> = const { std::cell::RefCell::new(None) };
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 fn push_call(call: Call) {
     CALLS.with(|calls| calls.borrow_mut().push(call));
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub mod test {
     use super::{
         Call, BEGIN_SELECTION_ENDPOINT_DRAG_RESULT, CALLS, CAN_NAVIGATE_BACK, CAN_NAVIGATE_FORWARD,
@@ -1085,12 +1081,12 @@ pub mod test {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_reset() {
     push_call(Call::Reset);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_create_node(type_: u32) -> u64 {
     let handle = NEXT_HANDLE.with(|next| {
         let handle = next.get();
@@ -1104,27 +1100,27 @@ pub unsafe fn ui_create_node(type_: u32) -> u64 {
     handle
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_delete_node(handle: u64) {
     push_call(Call::DeleteNode { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_node_add_child(parent: u64, child: u64) {
     push_call(Call::NodeAddChild { parent, child });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_node_remove_child(parent: u64, child: u64) {
     push_call(Call::NodeRemoveChild { parent, child });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_root(handle: u64) {
     push_call(Call::SetRoot { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_node_id(handle: u64, utf8_id: *const u8, len: u32) {
     let node_id = if utf8_id.is_null() || len == 0 {
         String::new()
@@ -1134,12 +1130,12 @@ pub unsafe fn ui_set_node_id(handle: u64, utf8_id: *const u8, len: u32) {
     push_call(Call::SetNodeId { handle, node_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_role(handle: u64, role_enum: u32) {
     push_call(Call::SetSemanticRole { handle, role_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_expanded(handle: u64, has_expanded: bool, is_expanded: bool) {
     push_call(Call::SetSemanticExpanded {
         handle,
@@ -1148,7 +1144,7 @@ pub unsafe fn ui_set_semantic_expanded(handle: u64, has_expanded: bool, is_expan
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_label(handle: u64, utf8_label: *const u8, len: u32) {
     let label = if utf8_label.is_null() || len == 0 {
         String::new()
@@ -1158,7 +1154,7 @@ pub unsafe fn ui_set_semantic_label(handle: u64, utf8_label: *const u8, len: u32
     push_call(Call::SetSemanticLabel { handle, label });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_checked(handle: u64, checked_state_enum: u32) {
     push_call(Call::SetSemanticChecked {
         handle,
@@ -1166,7 +1162,7 @@ pub unsafe fn ui_set_semantic_checked(handle: u64, checked_state_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_selected(handle: u64, has_selected: bool, is_selected: bool) {
     push_call(Call::SetSemanticSelected {
         handle,
@@ -1175,7 +1171,7 @@ pub unsafe fn ui_set_semantic_selected(handle: u64, has_selected: bool, is_selec
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_disabled(handle: u64, has_disabled: bool, disabled: bool) {
     push_call(Call::SetSemanticDisabled {
         handle,
@@ -1184,7 +1180,7 @@ pub unsafe fn ui_set_semantic_disabled(handle: u64, has_disabled: bool, disabled
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_value_range(
     handle: u64,
     has_value_range: bool,
@@ -1201,7 +1197,7 @@ pub unsafe fn ui_set_semantic_value_range(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_semantic_orientation(handle: u64, orientation_enum: u32) {
     push_call(Call::SetSemanticOrientation {
         handle,
@@ -1209,12 +1205,12 @@ pub unsafe fn ui_set_semantic_orientation(handle: u64, orientation_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_request_semantic_announcement(handle: u64) {
     push_call(Call::RequestSemanticAnnouncement { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_push_semantic_scope(handle: u64) -> u32 {
     let token = NEXT_SEMANTIC_SCOPE_TOKEN.with(|next| {
         let token = next.get();
@@ -1225,17 +1221,17 @@ pub unsafe fn ui_push_semantic_scope(handle: u64) -> u32 {
     token
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_remove_semantic_scope(token: u32) {
     push_call(Call::RemoveSemanticScope { token });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_is_portal(handle: u64, is_portal: bool) {
     push_call(Call::SetIsPortal { handle, is_portal });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_visibility(handle: u64, visibility_enum: u32) {
     push_call(Call::SetVisibility {
         handle,
@@ -1243,7 +1239,7 @@ pub unsafe fn ui_set_visibility(handle: u64, visibility_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_width(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetWidth {
         handle,
@@ -1252,7 +1248,7 @@ pub unsafe fn ui_set_width(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_height(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetHeight {
         handle,
@@ -1261,27 +1257,27 @@ pub unsafe fn ui_set_height(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_fill_width(handle: u64, fill: bool) {
     push_call(Call::SetFillWidth { handle, fill });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_fill_height(handle: u64, fill: bool) {
     push_call(Call::SetFillHeight { handle, fill });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_fill_width_percent(handle: u64, percent: f32) {
     push_call(Call::SetFillWidthPercent { handle, percent });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_fill_height_percent(handle: u64, percent: f32) {
     push_call(Call::SetFillHeightPercent { handle, percent });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_min_width(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetMinWidth {
         handle,
@@ -1290,7 +1286,7 @@ pub unsafe fn ui_set_min_width(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_max_width(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetMaxWidth {
         handle,
@@ -1299,7 +1295,7 @@ pub unsafe fn ui_set_max_width(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_min_height(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetMinHeight {
         handle,
@@ -1308,7 +1304,7 @@ pub unsafe fn ui_set_min_height(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_max_height(handle: u64, value: f32, unit_enum: u32) {
     push_call(Call::SetMaxHeight {
         handle,
@@ -1317,12 +1313,12 @@ pub unsafe fn ui_set_max_height(handle: u64, value: f32, unit_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_bg_color(handle: u64, color: u32) {
     push_call(Call::SetBgColor { handle, color });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_box_style(
     handle: u64,
     bg_color: u32,
@@ -1351,7 +1347,7 @@ pub unsafe fn ui_set_box_style(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_linear_gradient(
     handle: u64,
     sx: f32,
@@ -1384,7 +1380,7 @@ pub unsafe fn ui_set_linear_gradient(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_drop_shadow(
     handle: u64,
     color: u32,
@@ -1403,7 +1399,7 @@ pub unsafe fn ui_set_drop_shadow(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_layer_effect(
     handle: u64,
     opacity: f32,
@@ -1418,12 +1414,12 @@ pub unsafe fn ui_set_layer_effect(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_background_blur(handle: u64, blur_sigma: f32) {
     push_call(Call::SetBackgroundBlur { handle, blur_sigma });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text(handle: u64, utf8_str: *const u8, len: u32) {
     let text = if utf8_str.is_null() || len == 0 {
         String::new()
@@ -1433,7 +1429,7 @@ pub unsafe fn ui_set_text(handle: u64, utf8_str: *const u8, len: u32) {
     push_call(Call::SetText { handle, text });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_style_runs(handle: u64, run_count: u32, runs_words: *const u32) {
     let len = (run_count as usize).saturating_mul(7);
     let words = if runs_words.is_null() || len == 0 {
@@ -1448,13 +1444,13 @@ pub unsafe fn ui_set_text_style_runs(handle: u64, run_count: u32, runs_words: *c
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_prepare_node(handle: u64) -> u32 {
     push_call(Call::PrepareNode { handle });
     handle as u32
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_dynamic_text_charset(handle: u64, utf8_charset: *const u8, len: u32) {
     let charset = if utf8_charset.is_null() || len == 0 {
         String::new()
@@ -1464,7 +1460,7 @@ pub unsafe fn ui_set_dynamic_text_charset(handle: u64, utf8_charset: *const u8, 
     push_call(Call::SetDynamicTextCharset { handle, charset });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_get_text_metrics(
     handle: u64,
     out_width: *mut f32,
@@ -1494,7 +1490,7 @@ pub unsafe fn ui_get_text_metrics(
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_font(handle: u64, font_id: u32, size: f32) {
     push_call(Call::SetFont {
         handle,
@@ -1503,7 +1499,7 @@ pub unsafe fn ui_set_font(handle: u64, font_id: u32, size: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_register_font_fallback(font_id: u32, fallback_font_id: u32) {
     push_call(Call::RegisterFontFallback {
         font_id,
@@ -1511,7 +1507,7 @@ pub unsafe fn ui_register_font_fallback(font_id: u32, fallback_font_id: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_line_height(handle: u64, line_height: f32) {
     push_call(Call::SetLineHeight {
         handle,
@@ -1519,22 +1515,22 @@ pub unsafe fn ui_set_line_height(handle: u64, line_height: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_color(handle: u64, color: u32) {
     push_call(Call::SetTextColor { handle, color });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_align(handle: u64, align_enum: u32) {
     push_call(Call::SetTextAlign { handle, align_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_vertical_align(handle: u64, align_enum: u32) {
     push_call(Call::SetTextVerticalAlign { handle, align_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_limits(handle: u64, max_chars: i32, max_lines: i32) {
     push_call(Call::SetTextLimits {
         handle,
@@ -1543,17 +1539,17 @@ pub unsafe fn ui_set_text_limits(handle: u64, max_chars: i32, max_lines: i32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_wrapping(handle: u64, wrap: bool) {
     push_call(Call::SetTextWrapping { handle, wrap });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_obscured(handle: u64, obscured: bool) {
     push_call(Call::SetTextObscured { handle, obscured });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_overflow(handle: u64, overflow_enum: u32) {
     push_call(Call::SetTextOverflow {
         handle,
@@ -1561,7 +1557,7 @@ pub unsafe fn ui_set_text_overflow(handle: u64, overflow_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_overflow_fade(handle: u64, horizontal: bool, vertical: bool) {
     push_call(Call::SetTextOverflowFade {
         handle,
@@ -1570,7 +1566,7 @@ pub unsafe fn ui_set_text_overflow_fade(handle: u64, horizontal: bool, vertical:
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_selectable(handle: u64, selectable: bool, selection_color: u32) {
     push_call(Call::SetSelectable {
         handle,
@@ -1579,22 +1575,22 @@ pub unsafe fn ui_set_selectable(handle: u64, selectable: bool, selection_color: 
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_editable(handle: u64, editable: bool) {
     push_call(Call::SetEditable { handle, editable });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_editor_command_keys(handle: u64, enabled: bool) {
     push_call(Call::SetEditorCommandKeys { handle, enabled });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_editor_accepts_tab(handle: u64, enabled: bool) {
     push_call(Call::SetEditorAcceptsTab { handle, enabled });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_replace_text_range(
     handle: u64,
     start: u32,
@@ -1618,22 +1614,22 @@ pub unsafe fn ui_replace_text_range(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_caret_color(handle: u64, color: u32) {
     push_call(Call::SetCaretColor { handle, color });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_text_selection_range(handle: u64, start: u32, end: u32) {
     push_call(Call::SetTextSelectionRange { handle, start, end });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_preserve_selection_on_pointer_down(handle: u64, preserve: bool) {
     push_call(Call::SetPreserveSelectionOnPointerDown { handle, preserve });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_register_text_input_metadata(
     handle: u64,
     is_password: bool,
@@ -1653,7 +1649,7 @@ pub unsafe fn fui_register_text_input_metadata(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_interactive(handle: u64, interactive: bool) {
     push_call(Call::SetInteractive {
         handle,
@@ -1661,7 +1657,7 @@ pub unsafe fn ui_set_interactive(handle: u64, interactive: bool) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_focusable(handle: u64, focusable: bool, tab_index: i32) {
     push_call(Call::SetFocusable {
         handle,
@@ -1670,12 +1666,12 @@ pub unsafe fn ui_set_focusable(handle: u64, focusable: bool, tab_index: i32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_request_focus(handle: u64) {
     push_call(Call::RequestFocus { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_padding(handle: u64, left: f32, top: f32, right: f32, bottom: f32) {
     push_call(Call::SetPadding {
         handle,
@@ -1686,17 +1682,17 @@ pub unsafe fn ui_set_padding(handle: u64, left: f32, top: f32, right: f32, botto
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_flex_direction(handle: u64, dir_enum: u32) {
     push_call(Call::SetFlexDirection { handle, dir_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_flex_basis(handle: u64, basis: f32) {
     push_call(Call::SetFlexBasis { handle, basis });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_justify_content(handle: u64, justify_enum: u32) {
     push_call(Call::SetJustifyContent {
         handle,
@@ -1704,17 +1700,17 @@ pub unsafe fn ui_set_justify_content(handle: u64, justify_enum: u32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_align_items(handle: u64, align_enum: u32) {
     push_call(Call::SetAlignItems { handle, align_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_align_self(handle: u64, align_enum: u32) {
     push_call(Call::SetAlignSelf { handle, align_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_margin(handle: u64, left: f32, top: f32, right: f32, bottom: f32) {
     push_call(Call::SetMargin {
         handle,
@@ -1725,12 +1721,12 @@ pub unsafe fn ui_set_margin(handle: u64, left: f32, top: f32, right: f32, bottom
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_position_type(handle: u64, pos_enum: u32) {
     push_call(Call::SetPositionType { handle, pos_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_position(handle: u64, left: f32, top: f32, right: f32, bottom: f32) {
     push_call(Call::SetPosition {
         handle,
@@ -1741,12 +1737,12 @@ pub unsafe fn ui_set_position(handle: u64, left: f32, top: f32, right: f32, bott
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_is_shared_size_scope(handle: u64, is_scope: bool) {
     push_call(Call::SetIsSharedSizeScope { handle, is_scope });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_custom_drawable(handle: u64, is_custom_drawable: bool) {
     push_call(Call::SetCustomDrawable {
         handle,
@@ -1754,32 +1750,32 @@ pub unsafe fn ui_set_custom_drawable(handle: u64, is_custom_drawable: bool) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_flex_wrap(handle: u64, wrap_enum: u32) {
     push_call(Call::SetFlexWrap { handle, wrap_enum });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_clip_to_bounds(handle: u64, clip: bool) {
     push_call(Call::SetClipToBounds { handle, clip });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_selection_area(handle: u64, is_area: bool) {
     push_call(Call::SetSelectionArea { handle, is_area });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_selection_area_barrier(handle: u64, is_barrier: bool) {
     push_call(Call::SetSelectionAreaBarrier { handle, is_barrier });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_clear_selection(text_node_handle: u64) {
     push_call(Call::ClearSelection { text_node_handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_retarget_selection(from_text_node_handle: u64, to_text_node_handle: u64) {
     push_call(Call::RetargetSelection {
         from_text_node_handle,
@@ -1787,7 +1783,7 @@ pub unsafe fn ui_retarget_selection(from_text_node_handle: u64, to_text_node_han
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_grid_set_columns(handle: u64, count: u32, values: *const f32, types: *const u8) {
     let len = count as usize;
     let copied_values = if values.is_null() || len == 0 {
@@ -1807,7 +1803,7 @@ pub unsafe fn ui_grid_set_columns(handle: u64, count: u32, values: *const f32, t
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_grid_set_rows(handle: u64, count: u32, values: *const f32, types: *const u8) {
     let len = count as usize;
     let copied_values = if values.is_null() || len == 0 {
@@ -1827,7 +1823,7 @@ pub unsafe fn ui_grid_set_rows(handle: u64, count: u32, values: *const f32, type
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_grid_set_column_shared_size_group(
     handle: u64,
     index: u32,
@@ -1846,7 +1842,7 @@ pub unsafe fn ui_grid_set_column_shared_size_group(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_grid_set_row_shared_size_group(
     handle: u64,
     index: u32,
@@ -1865,7 +1861,7 @@ pub unsafe fn ui_grid_set_row_shared_size_group(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_node_set_grid_placement(
     child: u64,
     row: u32,
@@ -1882,7 +1878,7 @@ pub unsafe fn ui_node_set_grid_placement(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_image(
     handle: u64,
     texture_id: u32,
@@ -1899,7 +1895,7 @@ pub unsafe fn ui_set_image(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_image_nine(
     handle: u64,
     texture_id: u32,
@@ -1922,7 +1918,7 @@ pub unsafe fn ui_set_image_nine(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_svg(
     handle: u64,
     svg_id: u32,
@@ -1939,7 +1935,7 @@ pub unsafe fn ui_set_svg(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_scroll_proxy_target(handle: u64, scroll_handle: u64) {
     push_call(Call::SetScrollProxyTarget {
         handle,
@@ -1947,7 +1943,7 @@ pub unsafe fn ui_set_scroll_proxy_target(handle: u64, scroll_handle: u64) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_scroll_enabled(handle: u64, enabled_x: bool, enabled_y: bool) {
     push_call(Call::SetScrollEnabled {
         handle,
@@ -1956,20 +1952,13 @@ pub unsafe fn ui_set_scroll_enabled(handle: u64, enabled_x: bool, enabled_y: boo
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub unsafe fn ui_set_show_scrollbars(handle: u64, show_scrollbars: bool) {
-    push_call(Call::SetShowScrollbars {
-        handle,
-        show_scrollbars,
-    });
-}
-
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_scroll_friction(handle: u64, friction: f32) {
     push_call(Call::SetScrollFriction { handle, friction });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_smooth_scrolling(handle: u64, smooth_scrolling: bool) {
     push_call(Call::SetSmoothScrolling {
         handle,
@@ -1977,7 +1966,7 @@ pub unsafe fn ui_set_smooth_scrolling(handle: u64, smooth_scrolling: bool) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_scroll_offset(handle: u64, offset_x: f32, offset_y: f32) {
     push_call(Call::SetScrollOffset {
         handle,
@@ -1986,7 +1975,7 @@ pub unsafe fn ui_set_scroll_offset(handle: u64, offset_x: f32, offset_y: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_set_scroll_content_size(handle: u64, content_width: f32, content_height: f32) {
     push_call(Call::SetScrollContentSize {
         handle,
@@ -2000,17 +1989,17 @@ pub unsafe fn ui_clear_momentum_scroll() {
     crate::generated::ffi::ui_clear_momentum_scroll()
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_clear_momentum_scroll() {
     push_call(Call::ClearMomentumScroll);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_commit_frame() {
     push_call(Call::CommitFrame);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_resize_window(logical_w: f32, logical_h: f32) {
     VIEWPORT.with(|viewport| viewport.set((logical_w, logical_h)));
     push_call(Call::ResizeWindow {
@@ -2019,67 +2008,67 @@ pub unsafe fn ui_resize_window(logical_w: f32, logical_h: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn request_render() {
     push_call(Call::RequestRender);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn get_viewport_width() -> f32 {
     push_call(Call::GetViewportWidth);
     VIEWPORT.with(|viewport| viewport.get().0)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn get_viewport_height() -> f32 {
     push_call(Call::GetViewportHeight);
     VIEWPORT.with(|viewport| viewport.get().1)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn get_device_pixel_ratio() -> f32 {
     push_call(Call::GetDevicePixelRatio);
     DEVICE_PIXEL_RATIO.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_set_pointer_capture(handle: u64) {
     push_call(Call::SetPointerCapture { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_release_pointer_capture() {
     push_call(Call::ReleasePointerCapture);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_can_navigate_back() -> bool {
     push_call(Call::CanNavigateBack);
     CAN_NAVIGATE_BACK.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_can_navigate_forward() -> bool {
     push_call(Call::CanNavigateForward);
     CAN_NAVIGATE_FORWARD.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_navigate_back() {
     push_call(Call::NavigateBack);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_navigate_forward() {
     push_call(Call::NavigateForward);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_reload_page() {
     push_call(Call::ReloadPage);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_copy_text(ptr: usize, len: u32) {
     let text = if ptr == 0 || len == 0 {
         String::new()
@@ -2090,83 +2079,83 @@ pub unsafe fn fui_copy_text(ptr: usize, len: u32) {
     push_call(Call::CopyText { text });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_has_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::HasTextSelectionSnapshot { handle });
     HAS_TEXT_SELECTION_SNAPSHOT.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_copy_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::CopyTextSelectionSnapshot { handle });
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_cut_focused_text_selection() -> bool {
     push_call(Call::CutFocusedTextSelection);
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_cut_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::CutTextSelectionSnapshot { handle });
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_delete_focused_text_range(start: u32, end: u32) -> bool {
     push_call(Call::DeleteFocusedTextRange { start, end });
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_commit_text_action_focus(handle: u64) {
     push_call(Call::CommitTextActionFocus { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_copy_current_selection() {
     push_call(Call::CopyCurrentSelection);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_has_text_selection(handle: u64) -> bool {
     push_call(Call::HasTextSelection { handle });
     HAS_TEXT_SELECTION.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_undo_text_edit(handle: u64) {
     push_call(Call::UndoTextEdit { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_redo_text_edit(handle: u64) {
     push_call(Call::RedoTextEdit { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_copy_text_selection(handle: u64) {
     push_call(Call::CopyTextSelection { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_cut_text_selection(handle: u64) {
     push_call(Call::CutTextSelection { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_paste_text(handle: u64) {
     push_call(Call::PasteText { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_select_all_text(handle: u64) {
     push_call(Call::SelectAllText { handle });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_select_word_at(handle: u64, logical_x: f32, logical_y: f32) -> bool {
     push_call(Call::SelectWordAt {
         handle,
@@ -2176,12 +2165,12 @@ pub unsafe fn ui_select_word_at(handle: u64, logical_x: f32, logical_y: f32) -> 
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_clear_current_selection() {
     push_call(Call::ClearCurrentSelection);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_is_point_in_selection(logical_x: f32, logical_y: f32) -> bool {
     push_call(Call::IsPointInSelection {
         x: logical_x,
@@ -2190,13 +2179,13 @@ pub unsafe fn ui_is_point_in_selection(logical_x: f32, logical_y: f32) -> bool {
     IS_POINT_IN_SELECTION.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_get_text_range_rect_count(handle: u64, start: u32, end: u32) -> u32 {
     push_call(Call::GetTextRangeRectCount { handle, start, end });
     TEXT_RANGE_RECTS.with(|value| value.borrow().len() as u32)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_copy_text_range_rects(
     handle: u64,
     start: u32,
@@ -2224,7 +2213,7 @@ pub unsafe fn ui_copy_text_range_rects(
     copied as u32
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_copy_cross_selection_endpoint_rects(
     area_handle: u64,
     out_rect_words: *mut f32,
@@ -2249,28 +2238,28 @@ pub unsafe fn ui_copy_cross_selection_endpoint_rects(
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_begin_selection_endpoint_drag(handle: u64, endpoint: u32) -> bool {
     push_call(Call::BeginSelectionEndpointDrag { handle, endpoint });
     BEGIN_SELECTION_ENDPOINT_DRAG_RESULT.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_start_timer(timer_id: u32, delay_ms: i32) {
     push_call(Call::StartTimer { timer_id, delay_ms });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_cancel_timer(timer_id: u32) {
     push_call(Call::CancelTimer { timer_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_set_cursor(style: u32) {
     push_call(Call::SetCursor { style });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_navigate_to(ptr: usize, len: u32, open_in_new_tab: bool) {
     let target = if ptr == 0 || len == 0 {
         String::new()
@@ -2284,7 +2273,7 @@ pub unsafe fn fui_navigate_to(ptr: usize, len: u32, open_in_new_tab: bool) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_show_url_preview(ptr: usize, len: u32) {
     let url = if ptr == 0 || len == 0 {
         String::new()
@@ -2295,12 +2284,12 @@ pub unsafe fn fui_show_url_preview(ptr: usize, len: u32) {
     push_call(Call::ShowUrlPreview { url });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_hide_url_preview() {
     push_call(Call::HideUrlPreview);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_log(
     category_ptr: usize,
     category_len: u32,
@@ -2328,37 +2317,37 @@ pub unsafe fn fui_log(
     push_call(Call::Log { category, message });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_logs_enabled() -> bool {
     push_call(Call::LogsEnabled);
     LOGS_ENABLED.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_is_dark_mode() -> bool {
     push_call(Call::IsDarkMode);
     SYSTEM_DARK_MODE.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_get_accent_color() -> u32 {
     push_call(Call::GetAccentColor);
     SYSTEM_ACCENT_COLOR.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_get_platform_family() -> u32 {
     push_call(Call::GetPlatformFamily);
     PLATFORM_FAMILY.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_is_coarse_pointer() -> bool {
     push_call(Call::IsCoarsePointer);
     COARSE_POINTER.with(|value| value.get())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_load_svg(svg_id: u32, ptr: usize, len: u32) {
     let url = if ptr == 0 || len == 0 {
         String::new()
@@ -2369,12 +2358,12 @@ pub unsafe fn fui_load_svg(svg_id: u32, ptr: usize, len: u32) {
     push_call(Call::LoadSvg { svg_id, url });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_release_svg(svg_id: u32) {
     push_call(Call::ReleaseSvg { svg_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_load_texture(texture_id: u32, ptr: usize, len: u32) {
     let url = if ptr == 0 || len == 0 {
         String::new()
@@ -2385,12 +2374,12 @@ pub unsafe fn fui_load_texture(texture_id: u32, ptr: usize, len: u32) {
     push_call(Call::LoadTexture { texture_id, url });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_release_texture(texture_id: u32) {
     push_call(Call::ReleaseTexture { texture_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_load_font(font_id: u32, ptr: usize, len: u32) {
     let url = if ptr == 0 || len == 0 {
         String::new()
@@ -2401,7 +2390,7 @@ pub unsafe fn fui_load_font(font_id: u32, ptr: usize, len: u32) {
     push_call(Call::LoadFont { font_id, url });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_bitmap_commit(
     texture_id: u32,
     bytes_ptr: usize,
@@ -2422,7 +2411,7 @@ pub unsafe fn fui_bitmap_commit(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_bitmap_commit_dirty(
     texture_id: u32,
     bytes_ptr: usize,
@@ -2451,12 +2440,12 @@ pub unsafe fn fui_bitmap_commit_dirty(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_bitmap_release(texture_id: u32) {
     push_call(Call::BitmapRelease { texture_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_render_node_to_rgba(
     handle: u64,
     width: u32,
@@ -2479,7 +2468,7 @@ pub unsafe fn fui_render_node_to_rgba(
     out_capacity
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_fetch_start(
     request_id: u32,
     method_ptr: usize,
@@ -2548,12 +2537,12 @@ pub unsafe fn fui_fetch_start(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_fetch_cancel(request_id: u32) {
     push_call(Call::FetchCancel { request_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_set_persisted_scroll_offset(
     node_id_ptr: usize,
     node_id_len: u32,
@@ -2581,7 +2570,7 @@ pub unsafe fn fui_set_persisted_scroll_offset(
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_try_get_persisted_scroll_offset(
     node_id_ptr: usize,
     node_id_len: u32,
@@ -2613,7 +2602,7 @@ pub unsafe fn fui_try_get_persisted_scroll_offset(
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_set_persisted_state(
     node_id_ptr: usize,
     node_id_len: u32,
@@ -2663,7 +2652,7 @@ pub unsafe fn fui_set_persisted_state(
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_copy_persisted_state(
     node_id_ptr: usize,
     node_id_len: u32,
@@ -2713,7 +2702,7 @@ pub unsafe fn fui_copy_persisted_state(
     bytes.len() as i32
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_worker_start_string(
     worker_id: u32,
     wasm_path_ptr: usize,
@@ -2758,18 +2747,18 @@ pub unsafe fn fui_worker_start_string(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_worker_cancel(worker_id: u32) {
     push_call(Call::WorkerCancel { worker_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_capabilities() -> u32 {
     push_call(Call::FileCapabilities);
     (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_pick(request_id: u32, accept_ptr: usize, accept_len: u32, multiple: bool) {
     let accept = if accept_ptr == 0 || accept_len == 0 {
         String::new()
@@ -2787,7 +2776,7 @@ pub unsafe fn fui_file_pick(request_id: u32, accept_ptr: usize, accept_len: u32,
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_read_chunk(
     request_id: u32,
     file_id_ptr: usize,
@@ -2812,7 +2801,7 @@ pub unsafe fn fui_file_read_chunk(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_save_text(
     request_id: u32,
     suggested_name_ptr: usize,
@@ -2869,7 +2858,7 @@ pub unsafe fn fui_file_save_text(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_save_bytes(
     request_id: u32,
     suggested_name_ptr: usize,
@@ -2922,7 +2911,7 @@ pub unsafe fn fui_file_save_bytes(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_create_writer(
     request_id: u32,
     suggested_name_ptr: usize,
@@ -2967,7 +2956,7 @@ pub unsafe fn fui_file_create_writer(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_writer_write_text(
     request_id: u32,
     writer_id_ptr: usize,
@@ -3000,7 +2989,7 @@ pub unsafe fn fui_file_writer_write_text(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_writer_write_bytes(
     request_id: u32,
     writer_id_ptr: usize,
@@ -3029,7 +3018,7 @@ pub unsafe fn fui_file_writer_write_bytes(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_writer_finish(request_id: u32, writer_id_ptr: usize, writer_id_len: u32) {
     let writer_id = if writer_id_ptr == 0 || writer_id_len == 0 {
         String::new()
@@ -3046,7 +3035,7 @@ pub unsafe fn fui_file_writer_finish(request_id: u32, writer_id_ptr: usize, writ
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_process_worker_start(
     request_id: u32,
     worker_wasm_path_ptr: usize,
@@ -3107,12 +3096,12 @@ pub unsafe fn fui_file_process_worker_start(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_file_process_worker_cancel(request_id: u32) {
     push_call(Call::FileProcessWorkerCancel { request_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_create() -> u32 {
     let path_id = NEXT_PATH_ID.with(|next| {
         let current = next.get();
@@ -3123,22 +3112,22 @@ pub unsafe fn fui_path_create() -> u32 {
     path_id
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_destroy(path_id: u32) {
     push_call(Call::PathDestroy { path_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_move_to(path_id: u32, x: f32, y: f32) {
     push_call(Call::PathMoveTo { path_id, x, y });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_line_to(path_id: u32, x: f32, y: f32) {
     push_call(Call::PathLineTo { path_id, x, y });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_quad_to(path_id: u32, cx: f32, cy: f32, x: f32, y: f32) {
     push_call(Call::PathQuadTo {
         path_id,
@@ -3149,7 +3138,7 @@ pub unsafe fn fui_path_quad_to(path_id: u32, cx: f32, cy: f32, x: f32, y: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_cubic_to(
     path_id: u32,
     cx1: f32,
@@ -3170,12 +3159,12 @@ pub unsafe fn fui_path_cubic_to(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_close(path_id: u32) {
     push_call(Call::PathClose { path_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_add_rect(path_id: u32, x: f32, y: f32, w: f32, h: f32) {
     push_call(Call::PathAddRect {
         path_id,
@@ -3186,12 +3175,12 @@ pub unsafe fn fui_path_add_rect(path_id: u32, x: f32, y: f32, w: f32, h: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_path_add_circle(path_id: u32, cx: f32, cy: f32, r: f32) {
     push_call(Call::PathAddCircle { path_id, cx, cy, r });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_rect(
     canvas_ptr: usize,
     x: f32,
@@ -3214,7 +3203,7 @@ pub unsafe fn fui_canvas_draw_rect(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_circle(
     canvas_ptr: usize,
     cx: f32,
@@ -3235,7 +3224,7 @@ pub unsafe fn fui_canvas_draw_circle(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_line(
     canvas_ptr: usize,
     x1: f32,
@@ -3256,7 +3245,7 @@ pub unsafe fn fui_canvas_draw_line(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_round_rect(
     canvas_ptr: usize,
     x: f32,
@@ -3283,7 +3272,7 @@ pub unsafe fn fui_canvas_draw_round_rect(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_path(
     canvas_ptr: usize,
     path_id: u32,
@@ -3300,7 +3289,7 @@ pub unsafe fn fui_canvas_draw_path(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_text_node(
     canvas_ptr: usize,
     handle_lo: u32,
@@ -3317,7 +3306,7 @@ pub unsafe fn fui_canvas_draw_text_node(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_image(
     canvas_ptr: usize,
     texture_id: u32,
@@ -3340,7 +3329,7 @@ pub unsafe fn fui_canvas_draw_image(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_svg(canvas_ptr: usize, svg_id: u32, x: f32, y: f32, w: f32, h: f32) {
     push_call(Call::CanvasDrawSvg {
         canvas_ptr,
@@ -3352,7 +3341,7 @@ pub unsafe fn fui_canvas_draw_svg(canvas_ptr: usize, svg_id: u32, x: f32, y: f32
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_draw_batch(canvas_ptr: usize, words_ptr: usize, word_count: u32) {
     let words = if words_ptr == 0 || word_count == 0 {
         Vec::new()
@@ -3362,27 +3351,27 @@ pub unsafe fn fui_canvas_draw_batch(canvas_ptr: usize, words_ptr: usize, word_co
     push_call(Call::CanvasDrawBatch { canvas_ptr, words });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_save(canvas_ptr: usize) {
     push_call(Call::CanvasSave { canvas_ptr });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_restore(canvas_ptr: usize) {
     push_call(Call::CanvasRestore { canvas_ptr });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_translate(canvas_ptr: usize, x: f32, y: f32) {
     push_call(Call::CanvasTranslate { canvas_ptr, x, y });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_scale(canvas_ptr: usize, sx: f32, sy: f32) {
     push_call(Call::CanvasScale { canvas_ptr, sx, sy });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_rotate(canvas_ptr: usize, degrees: f32) {
     push_call(Call::CanvasRotate {
         canvas_ptr,
@@ -3390,7 +3379,7 @@ pub unsafe fn fui_canvas_rotate(canvas_ptr: usize, degrees: f32) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_clip_rect(canvas_ptr: usize, x: f32, y: f32, w: f32, h: f32) {
     push_call(Call::CanvasClipRect {
         canvas_ptr,
@@ -3401,7 +3390,7 @@ pub unsafe fn fui_canvas_clip_rect(canvas_ptr: usize, x: f32, y: f32, w: f32, h:
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_clip_round_rect(
     canvas_ptr: usize,
     x: f32,
@@ -3426,7 +3415,7 @@ pub unsafe fn fui_canvas_clip_round_rect(
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_create_offscreen(width: u32, height: u32) -> u32 {
     let offscreen_id = NEXT_OFFSCREEN_ID.with(|next| {
         let value = next.get();
@@ -3441,13 +3430,13 @@ pub unsafe fn fui_canvas_create_offscreen(width: u32, height: u32) -> u32 {
     offscreen_id
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_get_offscreen_ptr(offscreen_id: u32) -> usize {
     push_call(Call::CanvasGetOffscreenPtr { offscreen_id });
     (0x1000 + offscreen_id as usize) as usize
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_read_offscreen_pixels(
     offscreen_id: u32,
     out_ptr: usize,
@@ -3468,12 +3457,12 @@ pub unsafe fn fui_canvas_read_offscreen_pixels(
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_destroy_offscreen(offscreen_id: u32) {
     push_call(Call::CanvasDestroyOffscreen { offscreen_id });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_get_bounds(
     handle: u64,
     out_x: *mut f32,
@@ -3497,7 +3486,7 @@ pub unsafe fn ui_get_bounds(
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_get_visible_bounds(
     handle: u64,
     out_x: *mut f32,
@@ -3540,7 +3529,7 @@ pub unsafe fn ui_get_visible_bounds(
     true
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn ui_get_debug_tree_buffer(out_length: *mut u32) -> *mut u32 {
     let ptr = DEBUG_TREE_WORDS.with(|slot| {
         let words = slot.borrow();

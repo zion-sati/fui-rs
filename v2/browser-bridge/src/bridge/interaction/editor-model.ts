@@ -75,7 +75,11 @@ function ensureHiddenEditorStyle(): void {
   style.id = HIDDEN_EDITOR_STYLE_ID;
   style.textContent = `
 [data-effindom-hidden-editor="true"] {
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
   scrollbar-width: none;
+  scrollbar-color: transparent transparent;
   -ms-overflow-style: none;
 }
 [data-effindom-hidden-editor="true"]::-webkit-scrollbar {
@@ -385,7 +389,10 @@ export function createHiddenTextEditor(multiline: boolean): HiddenTextEditor {
   editor.style.pointerEvents = 'none';
   editor.style.font = '16px "Noto Sans Symbols 2", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace';
   editor.style.overflow = 'hidden';
+  editor.style.overflowX = 'hidden';
+  editor.style.overflowY = 'hidden';
   editor.style.scrollbarWidth = 'none';
+  editor.style.setProperty('scrollbar-color', 'transparent transparent');
 
   const scheduleHostAutofillWakeup = (): void => {
     const autocomplete = editor.getAttribute('autocomplete');

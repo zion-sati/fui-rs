@@ -40,3 +40,4 @@ fi
 
 rm -rf "${PACKAGE_DIST_DIR}/fonts"
 copy_runtime_package_font_assets "${PACKAGE_DIST_DIR}/fonts"
+node "${REPO_ROOT}/v2/browser-bridge/scripts/finalize_runtime_manifest.mjs" "${PACKAGE_DIST_DIR}"

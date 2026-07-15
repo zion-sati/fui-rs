@@ -15,7 +15,13 @@ type PendingPasteInput,
 type PendingTextMutationBatch,
 type ReplacementEdit,
 } from './editor-model';
-import { advanceCodeUnitIndex,codeUnitIndexToUtf8ByteOffset,retreatCodeUnitIndex,utf8ByteLength } from './text-encoding';
+import {
+advanceCodeUnitIndex,
+codeUnitIndexToUtf8ByteOffset,
+normalizeBrowserText,
+retreatCodeUnitIndex,
+utf8ByteLength,
+} from './text-encoding';
 
 const MAX_BUFFERED_TYPING_MUTATIONS = 5;
 
@@ -77,6 +83,7 @@ interface EditorMutationControllerOptions {
   readonly textByHandle: Record<string, string>;
   readonly selectionsByHandle: Record<string, { start: number; end: number }>;
   readonly textByteLengthsByHandle: Record<string, number>;
+  storeText(handle: string, text: string): boolean;
   getActiveEditor(): HiddenTextEditor;
   getActiveEditorWindow(): HiddenEditorWindow;
   getActiveTextEditable(): boolean;
@@ -237,7 +244,7 @@ export function createEditorMutationController(
       options.selectionsByHandle[handleKey] = { start: caretByte, end: caretByte };
       return true;
     }
-    options.textByHandle[handleKey] = nextText;
+    options.storeText(handleKey, nextText);
     options.textByteLengthsByHandle[handleKey] = utf8ByteLength(nextText);
     options.selectionsByHandle[handleKey] = { start: caretByte, end: caretByte };
     runtime.ui._ui_set_interaction_time(currentInteractionTimeMs());
@@ -279,10 +286,20 @@ export function createEditorMutationController(
       runtime.flushPendingCommit();
     }
 
-    const absoluteStart = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(previousText, clampedStart);
-    const absoluteEnd = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(previousText, clampedEnd);
-    const intendedAbsoluteCaret =
+    let absoluteStart = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(previousText, clampedStart);
+    let absoluteEnd = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(previousText, clampedEnd);
+    let intendedAbsoluteCaret =
       activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(nextText, Math.max(0, Math.min(caret, nextText.length)));
+    const authoritativeSelection = options.selectionsByHandle[activeHandleKey];
+    if (authoritativeSelection !== undefined && clampedStart === 0 && clampedEnd === previousText.length) {
+      const authoritativeStart = Math.min(authoritativeSelection.start, authoritativeSelection.end);
+      const authoritativeEnd = Math.max(authoritativeSelection.start, authoritativeSelection.end);
+      if (authoritativeStart < activeEditorWindow.docStart || authoritativeEnd > activeEditorWindow.docEnd) {
+        absoluteStart = authoritativeStart;
+        absoluteEnd = authoritativeEnd;
+        intendedAbsoluteCaret = authoritativeStart + utf8ByteLength(replacement.insertedText);
+      }
+    }
     let fullPreviousText = options.textByHandle[activeHandleKey] ?? '';
     if (
       replacePendingBatch &&
@@ -324,12 +341,12 @@ export function createEditorMutationController(
         runtime.flushPendingCommit();
       }
       clearPendingTextMutations();
-      options.textByHandle[activeHandleKey] = clampedEdit.fullNextText;
+      options.storeText(activeHandleKey, clampedEdit.fullNextText);
       options.textByteLengthsByHandle[activeHandleKey] = utf8ByteLength(clampedEdit.fullNextText);
       options.selectionsByHandle[activeHandleKey] = { start: clampedEdit.caretByte, end: clampedEdit.caretByte };
       options.syncFocusedInputState();
     } else {
-      options.textByHandle[activeHandleKey] = clampedEdit.fullNextText;
+      options.storeText(activeHandleKey, clampedEdit.fullNextText);
       options.textByteLengthsByHandle[activeHandleKey] = utf8ByteLength(clampedEdit.fullNextText);
       options.selectionsByHandle[activeHandleKey] = { start: clampedEdit.caretByte, end: clampedEdit.caretByte };
       options.updateActiveEditorWindowText(nextText);
@@ -552,9 +569,27 @@ export function createEditorMutationController(
     const handleKey = activeTextHandle.toString();
     const localStart = Math.max(0, Math.min(editor.selectionStart ?? 0, activeEditorWindow.text.length));
     const localEnd = Math.max(0, Math.min(editor.selectionEnd ?? localStart, activeEditorWindow.text.length));
-    const absoluteStart = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(activeEditorWindow.text, localStart);
-    const absoluteEnd = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(activeEditorWindow.text, localEnd);
+    const rangeStart = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(activeEditorWindow.text, localStart);
+    const rangeEnd = activeEditorWindow.docStart + codeUnitIndexToUtf8ByteOffset(activeEditorWindow.text, localEnd);
+    const selectionIsBackward = editor.selectionDirection === 'backward' && rangeStart !== rangeEnd;
+    const absoluteStart = selectionIsBackward ? rangeEnd : rangeStart;
+    const absoluteEnd = selectionIsBackward ? rangeStart : rangeEnd;
     const currentSelection = options.selectionsByHandle[handleKey];
+    const currentRangeStart = currentSelection === undefined
+      ? rangeStart
+      : Math.min(currentSelection.start, currentSelection.end);
+    const currentRangeEnd = currentSelection === undefined
+      ? rangeEnd
+      : Math.max(currentSelection.start, currentSelection.end);
+    if (
+      localStart === 0 &&
+      localEnd === activeEditorWindow.text.length &&
+      currentRangeStart <= activeEditorWindow.docStart &&
+      currentRangeEnd >= activeEditorWindow.docEnd &&
+      (currentRangeStart < activeEditorWindow.docStart || currentRangeEnd > activeEditorWindow.docEnd)
+    ) {
+      return;
+    }
     if (currentSelection?.start === absoluteStart && currentSelection.end === absoluteEnd) {
       return;
     }
@@ -607,7 +642,7 @@ export function createEditorMutationController(
     editor.addEventListener('dblclick', selectWholePasswordOnDoubleClick);
     editor.addEventListener('paste', (event) => {
       const clipboardEvent = event as ClipboardEvent;
-      pendingPasteText = clipboardEvent.clipboardData?.getData('text/plain') ?? '';
+      pendingPasteText = normalizeBrowserText(clipboardEvent.clipboardData?.getData('text/plain') ?? '');
     });
     editor.addEventListener('select', syncSelectionOnlyChange);
     editor.ownerDocument.addEventListener('selectionchange', syncSelectionOnlyChange);
@@ -650,7 +685,7 @@ export function createEditorMutationController(
         docStart: activeEditorWindow.docStart,
         selectionStart,
         selectionEnd,
-        text: typeof event.data === 'string' ? event.data : pendingPasteText,
+        text: normalizeBrowserText(typeof event.data === 'string' ? event.data : pendingPasteText),
       };
       pendingPasteText = '';
     });

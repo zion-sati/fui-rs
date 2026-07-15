@@ -161,6 +161,95 @@ test('browser bridge boots on non-secure origins without SubtleCrypto', async ({
   await expect.poll(async () => (await readScenePixel(page, 160, 110)).red).toBeGreaterThan(220);
 });
 
+test('browser bridge falls back atomically when CDN runtime assets are unavailable', async ({ page }) => {
+  const manifestPath = path.join(PUBLIC_DIR, 'v2', 'browser-bridge', 'effindom.v2.manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
+    readonly runtime_set_hash: string;
+    readonly architectures: Record<string, Record<string, {
+      readonly js: string;
+      readonly js_integrity: string;
+      readonly wasm: string;
+      readonly wasm_integrity: string;
+    }>>;
+  };
+  let missingAssetRequests = 0;
+  await page.route('**/cdn-runtime-manifest.json', async (route) => {
+    const brokenArchitectures = Object.fromEntries(
+      Object.entries(manifest.architectures).map(([architecture, bundles]) => [
+        architecture,
+        Object.fromEntries(Object.entries(bundles).map(([bundleName, bundle]) => [
+          bundleName,
+          {
+            ...bundle,
+            js: `./missing-${architecture}-${bundleName}.js`,
+            js_integrity: null,
+          },
+        ])),
+      ]),
+    );
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ...manifest, architectures: brokenArchitectures }),
+    });
+  });
+  await page.route('**/missing-*.js', async (route) => {
+    missingAssetRequests += 1;
+    await route.fulfill({ status: 404, body: 'missing' });
+  });
+  await page.addInitScript((runtimeSetHash) => {
+    window.__effindomRuntime = {
+      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
+      manifestUrls: [
+        '/cdn-runtime-manifest.json',
+        '/v2/browser-bridge/effindom.v2.manifest.json',
+      ],
+      expectedRuntimeSetHash: runtimeSetHash,
+    };
+  }, manifest.runtime_set_hash);
+
+  await page.goto(`${getBaseUrl()}/v2/browser-bridge/index.html`);
+  await page.waitForFunction(() => window.__bridgeReady === true || typeof window.__bridgeError === 'string');
+
+  expect(await page.evaluate(() => window.__bridgeError ?? null)).toBeNull();
+  expect(missingAssetRequests).toBeGreaterThan(0);
+  await expect.poll(async () => (await readScenePixel(page, 160, 110)).red).toBeGreaterThan(220);
+});
+
+test('browser bridge rejects a mismatched CDN runtime set before loading its assets', async ({ page }) => {
+  const manifestPath = path.join(PUBLIC_DIR, 'v2', 'browser-bridge', 'effindom.v2.manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { readonly runtime_set_hash: string };
+  let mismatchedAssetRequests = 0;
+  await page.route('**/cdn-runtime-manifest.json', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ...manifest, runtime_set_hash: 'wrong-runtime-set' }),
+    });
+  });
+  await page.route('**/cdn-assets/**', async (route) => {
+    mismatchedAssetRequests += 1;
+    await route.abort();
+  });
+  await page.addInitScript((runtimeSetHash) => {
+    window.__effindomRuntime = {
+      manifestUrl: '/v2/browser-bridge/effindom.v2.manifest.json',
+      manifestUrls: [
+        '/cdn-runtime-manifest.json',
+        '/v2/browser-bridge/effindom.v2.manifest.json',
+      ],
+      expectedRuntimeSetHash: runtimeSetHash,
+    };
+  }, manifest.runtime_set_hash);
+
+  await page.goto(`${getBaseUrl()}/v2/browser-bridge/index.html`);
+  await page.waitForFunction(() => window.__bridgeReady === true || typeof window.__bridgeError === 'string');
+
+  expect(await page.evaluate(() => window.__bridgeError ?? null)).toBeNull();
+  expect(mismatchedAssetRequests).toBe(0);
+  await expect.poll(async () => (await readScenePixel(page, 160, 110)).red).toBeGreaterThan(220);
+});
+
 test('ICU data fetch retries transient failures before the bridge becomes ready', async ({ page }) => {
   let icuFailures = 0;
   await page.route('**/icudt_minimal*.dat', async (route) => {

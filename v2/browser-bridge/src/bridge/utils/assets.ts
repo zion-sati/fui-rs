@@ -23,6 +23,8 @@ declare const HEAPU32: Uint32Array | undefined;
 declare global {
   interface EffinDomRuntimeConfig {
     manifestUrl?: string;
+    manifestUrls?: readonly string[];
+    expectedRuntimeSetHash?: string;
     buildMode?: 'debug' | 'release';
     devToolsDomMirror?: 'disabled' | 'enabled' | 'on-requested';
     pageZoom?: 'disabled' | 'enabled';
@@ -30,6 +32,10 @@ declare global {
 
   interface Window {
     __effindomRuntime?: EffinDomRuntimeConfig;
+    __effindomResolvedRuntimeAssets?: {
+      readonly manifestUrl: string;
+      readonly fontUrls: Readonly<Record<string, string>>;
+    };
   }
 }
 
@@ -238,28 +244,40 @@ function selectManifestArchitecture(manifest: RuntimeManifest, requestedArchitec
   };
 }
 
-function readManifestUrl(): string {
+function readManifestUrls(): readonly string[] {
   const runtimeConfig = window.__effindomRuntime;
   if (runtimeConfig === undefined) {
     throw new Error('Missing effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrl before bridge.js loads.');
   }
+  const configuredManifestUrls: unknown = runtimeConfig.manifestUrls;
+  if (Array.isArray(configuredManifestUrls)) {
+    const manifestUrls: string[] = [];
+    for (const value of configuredManifestUrls as unknown[]) {
+      if (typeof value === 'string' && value.length > 0) {
+        manifestUrls.push(value);
+      }
+    }
+    if (manifestUrls.length > 0) {
+      return manifestUrls;
+    }
+  }
   if (typeof runtimeConfig.manifestUrl !== 'string' || runtimeConfig.manifestUrl.length === 0) {
     throw new Error('Malformed effindom-runtime-config.js. Expected window.__effindomRuntime.manifestUrl to be a non-empty string.');
   }
-  return runtimeConfig.manifestUrl;
+  return [runtimeConfig.manifestUrl];
 }
 
 function resolveManifestAssetUrl(manifestUrl: string, assetUrl: string): string {
   return new URL(assetUrl, manifestUrl).toString();
 }
 
-async function loadRuntimeManifest(): Promise<LoadedRuntimeManifest> {
-  const manifestUrl = resolveAssetUrl(readManifestUrl());
+async function loadRuntimeManifest(manifestCandidate: string): Promise<LoadedRuntimeManifest> {
+  const manifestUrl = resolveAssetUrl(manifestCandidate);
   const manifest = await fetchWithRetry<RuntimeManifest>(
     manifestUrl,
     ASSET_FETCH_ATTEMPTS,
     async (response) => await response.json() as RuntimeManifest,
-    { cache: 'no-store' },
+    { cache: 'force-cache' },
   );
   return {
     manifest,
@@ -545,10 +563,18 @@ export function buildBackendLadder(requestedBackend: RequestedRendererBackend): 
   return DEFAULT_BACKEND_LADDER;
 }
 
-export async function prepareRuntimeAssets(): Promise<PreparedRuntimeAssets> {
-  const loadedManifest = await loadRuntimeManifest();
+async function prepareRuntimeCandidate(manifestCandidate: string): Promise<PreparedRuntimeAssets> {
+  const loadedManifest = await loadRuntimeManifest(manifestCandidate);
   const manifest = loadedManifest.manifest;
   const manifestUrl = loadedManifest.manifestUrl;
+  const expectedRuntimeSetHash = window.__effindomRuntime?.expectedRuntimeSetHash;
+  if (
+    typeof expectedRuntimeSetHash === 'string' &&
+    expectedRuntimeSetHash.length > 0 &&
+    manifest.runtime_set_hash !== expectedRuntimeSetHash
+  ) {
+    throw new Error(`Runtime manifest set hash mismatch for ${manifestUrl}.`);
+  }
   const selection = selectManifestArchitecture(manifest, readRequestedArchitecture());
   const requestedRendererBackend = readRequestedRendererBackend();
   const coreBundle = {
@@ -581,7 +607,7 @@ export async function prepareRuntimeAssets(): Promise<PreparedRuntimeAssets> {
     deviceRecoveryCount: 0,
   };
 
-  return {
+  const preparedAssets: PreparedRuntimeAssets = {
     manifest,
     selection,
     loaderInfo,
@@ -599,4 +625,41 @@ export async function prepareRuntimeAssets(): Promise<PreparedRuntimeAssets> {
       bytesPromise: fetchBinaryAsset(resolveManifestAssetUrl(manifestUrl, icuAsset.url), icuAsset.integrity ?? null),
     },
   };
+  await Promise.all([
+    preparedAssets.coreWasm.modulePromise,
+    preparedAssets.uiWasm.modulePromise,
+    fetchScriptSource(coreBundle.js, coreBundle.js_integrity ?? null),
+    fetchScriptSource(uiBundle.js, uiBundle.js_integrity ?? null),
+  ]);
+  try {
+    await preparedAssets.icu.bytesPromise;
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? ` ${error.message}` : '';
+    throw createErrorWithCause(`Failed to load ICU data from ${preparedAssets.icu.url}.${detail}`, error);
+  }
+  return preparedAssets;
+}
+
+export async function prepareRuntimeAssets(): Promise<PreparedRuntimeAssets> {
+  const failures: string[] = [];
+  for (const manifestCandidate of readManifestUrls()) {
+    try {
+      const preparedAssets = await prepareRuntimeCandidate(manifestCandidate);
+      const manifestUrl = resolveAssetUrl(manifestCandidate);
+      const fontUrls: Record<string, string> = {};
+      for (const [fileName, descriptor] of Object.entries(preparedAssets.manifest.assets?.fonts ?? {})) {
+        fontUrls[fileName] = resolveManifestAssetUrl(manifestUrl, descriptor.url);
+      }
+      window.__effindomResolvedRuntimeAssets = { manifestUrl, fontUrls };
+      return preparedAssets;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${manifestCandidate}: ${message}`);
+    }
+  }
+  const error = new Error(`No EffinDOM runtime candidate could be loaded.\n${failures.join('\n')}`);
+  if (failures.some((failure) => failure.includes('Failed to load ICU data'))) {
+    showIcuError(error.message);
+  }
+  throw error;
 }

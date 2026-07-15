@@ -353,6 +353,10 @@ copy_bridge_font_assets "${REPO_ROOT}/public/v2/fonts"
 rm -rf "${OUT_DIR}/runtime"
 rm -f "${MANIFEST_FILE}" "${OUT_DIR}/icu-asset.json"
 python3 "${MANIFEST_SCRIPT}" "${OUT_DIR}" "${STAGE_DIR}" "${ICU_SOURCE}"
+node "${REPO_ROOT}/v2/browser-bridge/scripts/finalize_runtime_manifest.mjs" \
+  "${OUT_DIR}" \
+  "${REPO_ROOT}/public/v2/fonts" \
+  "../fonts"
 
 # Leave the canonical v2/core and v2/ui browser outputs on the safest baseline lane.
 cp "${REPO_ROOT}/v2/core/browser/index.html" "${REPO_ROOT}/public/v2/core/index.html"

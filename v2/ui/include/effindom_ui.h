@@ -328,7 +328,6 @@ void ui_set_editor_command_keys(ui_handle_t handle, bool enabled);
 void ui_set_editor_accepts_tab(ui_handle_t handle, bool enabled);
 void ui_set_scroll_proxy_target(ui_handle_t handle, ui_handle_t scroll_handle);
 void ui_set_scroll_enabled(ui_handle_t handle, bool enabled_x, bool enabled_y);
-void ui_set_show_scrollbars(ui_handle_t handle, bool show_scrollbars);
 void ui_set_scroll_friction(ui_handle_t handle, float friction);
 void ui_set_smooth_scrolling(ui_handle_t handle, bool smooth_scrolling);
 void ui_set_focusable(ui_handle_t handle, bool focusable, int32_t tab_index);

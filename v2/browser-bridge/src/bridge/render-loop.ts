@@ -4,6 +4,7 @@ import type { SoftwarePresenter } from './local-types';
 import { delay } from './utils/assets';
 import { backendLabel,DEFAULT_BACKEND_LADDER,setActiveRenderer,tryReviveBackend } from './utils/backends';
 import { normalizeBackendType,normalizeDeviceState,normalizePointerForWasm,pointerToHeapOffset } from './utils/encoding';
+import { browserBridgePlatformHost, type BridgePlatformHost } from './host/platform-host';
 
 const DEVICE_LOST_RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000] as const;
 
@@ -78,6 +79,7 @@ export function installRenderLoop(
   runtime: BridgeRuntime,
   loaderInfo: BridgeLoaderInfo,
   fallbackLadder: readonly EdBackendTypeValue[] = DEFAULT_BACKEND_LADDER,
+  host: BridgePlatformHost = browserBridgePlatformHost,
 ): () => void {
   const { core, canvas } = runtime;
   let activeBackend = normalizeBackendType(core._ed_get_backend_type());
@@ -99,7 +101,7 @@ export function installRenderLoop(
   // Retry the same backend with exponential backoff, then permanently fall back.
   // Mutates recoveryAttempts, recoveryExhausted, activeBackend.
   async function runRecovery(): Promise<void> {
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = host.getDevicePixelRatio();
 
     while (recoveryAttempts < DEVICE_LOST_RETRY_DELAYS_MS.length) {
       const delayMs = DEVICE_LOST_RETRY_DELAYS_MS[recoveryAttempts] as number;
@@ -174,7 +176,7 @@ export function installRenderLoop(
       return;
     }
     frameScheduled = true;
-    requestAnimationFrame(frame);
+    host.requestFrame(frame);
   };
 
   runtime.setFrameRequester(scheduleFrame);

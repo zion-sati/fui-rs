@@ -1,6 +1,6 @@
 {
   "name": "@effindomv2/runtime",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "private": false,
   "license": "MIT",
   "description": "EffinDom browser runtime bridge, manifest assets, and runtime URL helpers",

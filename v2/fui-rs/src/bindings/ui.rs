@@ -1,6 +1,11 @@
 use crate::ffi;
 use crate::ffi::{GridUnit, ImageSamplingKind};
 
+#[cfg(feature = "native-runtime")]
+unsafe extern "C" {
+    fn fui_native_commit_ready();
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextRangeRect {
     pub x: f32,
@@ -629,10 +634,6 @@ pub fn set_scroll_enabled(handle: u64, enabled_x: bool, enabled_y: bool) {
     unsafe { ffi::ui_set_scroll_enabled(handle, enabled_x, enabled_y) }
 }
 
-pub fn set_show_scrollbars(handle: u64, show_scrollbars: bool) {
-    unsafe { ffi::ui_set_show_scrollbars(handle, show_scrollbars) }
-}
-
 pub fn set_scroll_friction(handle: u64, friction: f32) {
     unsafe { ffi::ui_set_scroll_friction(handle, friction) }
 }
@@ -654,7 +655,11 @@ pub fn clear_momentum_scroll() {
 }
 
 pub fn commit_frame() {
-    unsafe { ffi::ui_commit_frame() }
+    unsafe {
+        ffi::ui_commit_frame();
+        #[cfg(feature = "native-runtime")]
+        fui_native_commit_ready();
+    }
 }
 
 pub fn resize_window(width: f32, height: f32) {

@@ -48,6 +48,7 @@ ManagedHarnessOptions,
 } from './types';
 import { HarnessUiChrome,waitForFrame } from './ui-chrome';
 import { createUiImportModule } from './ui-imports';
+import { browserManagedPlatformHost } from './platform-host';
 
 type AutoHarnessExports = HarnessExports & {
   __runApp?: () => void;
@@ -907,6 +908,7 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
         }),
         fui_host: {
           ...createHostImportModule({
+            platformHost: browserManagedPlatformHost,
             getRuntime: () => runtime,
             getCurrentSession,
             getCurrentSessionOrNull: () => currentSession,

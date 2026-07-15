@@ -402,7 +402,6 @@ export interface UiModule {
   _ui_set_editor_accepts_tab(this: void, handle: WasmHandleLike, enabled: number): void;
   _ui_set_scroll_proxy_target(handle: WasmHandleLike, scrollHandle: WasmHandleLike): void;
   _ui_set_scroll_enabled(handle: WasmHandleLike, enabledX: number, enabledY: number): void;
-  _ui_set_show_scrollbars(handle: WasmHandleLike, showScrollbars: number): void;
   _ui_set_scroll_friction(handle: WasmHandleLike, friction: number): void;
   _ui_set_smooth_scrolling(handle: WasmHandleLike, smoothScrolling: number): void;
   _ui_set_scroll_content_size(handle: WasmHandleLike, contentWidth: number, contentHeight: number): void;
@@ -632,6 +631,7 @@ export interface BridgeRuntime {
   flushPendingCommit(): Uint32Array | null;
   hasPendingCommit(): boolean;
   commitFrame(timestampMs?: number): void;
+  deferSemanticProjectionUntilScrollIdle(): void;
   requestFrame(): void;
   setFrameRequester(requester: (() => void) | null): void;
   getSemanticTree(): readonly SemanticNode[];

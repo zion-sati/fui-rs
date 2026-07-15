@@ -34,7 +34,6 @@ impl ScrollView {
                 padding: None,
                 enable_scroll_x: true,
                 enable_scroll_y: true,
-                show_scrollbars: true,
                 friction: None,
                 smooth_scrolling: true,
                 scroll_offset: None,
@@ -161,11 +160,6 @@ impl ScrollView {
             .unwrap_or(true);
         self.retained_node_ref()
             .set_scroll_routing_enabled(enabled_x, enabled);
-        self
-    }
-
-    pub fn show_scrollbars(&self, show_scrollbars: bool) -> &Self {
-        self.props.borrow_mut().show_scrollbars = show_scrollbars;
         self
     }
 

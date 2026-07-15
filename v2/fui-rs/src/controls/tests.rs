@@ -3890,6 +3890,14 @@ fn text_input_focus_adorner_tracks_keyboard_focus_visibility() {
         .iter()
         .any(|call| matches!(call, Call::NodeAddChild { .. })));
 
+    key_event(KeyEventType::Down, "a", 0);
+    Application::flush_renders();
+    let calls = ffi::test::take_calls();
+    assert!(focus_visibility::keyboard_focus_visible());
+    assert!(calls
+        .iter()
+        .any(|call| matches!(call, Call::NodeAddChild { .. })));
+
     key_event(KeyEventType::Down, "Tab", 0);
     Application::flush_renders();
     assert!(focus_visibility::keyboard_focus_visible());

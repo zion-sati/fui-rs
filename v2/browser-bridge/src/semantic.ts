@@ -446,6 +446,11 @@ function ensureProjectedElement(
     textarea.readOnly = node.state.readonly ?? true;
     textarea.rows = 1;
     textarea.style.resize = 'none';
+    textarea.style.overflow = 'hidden';
+    textarea.style.overflowX = 'hidden';
+    textarea.style.overflowY = 'hidden';
+    textarea.style.scrollbarWidth = 'none';
+    textarea.style.setProperty('scrollbar-color', 'transparent transparent');
   }
 
   if (node.role === ROLE_TEXTBOX && node.state.multiline === true) {
@@ -687,6 +692,16 @@ export class HiddenDomProjector {
     layer.setAttribute('data-visibility', 'screen-reader-only');
     const shadowRoot = layer.attachShadow({ mode: 'open' });
 
+    const semanticStyle = document.createElement('style');
+    semanticStyle.textContent = `
+      textarea[data-effindom-semantic-node="true"]::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+      }
+    `;
+    shadowRoot.appendChild(semanticStyle);
+
     const content = document.createElement('div');
     content.id = 'semantic-content';
     content.style.position = 'absolute';
@@ -765,8 +780,10 @@ export class HiddenDomProjector {
   public update(
     nodes: readonly SemanticNode[],
     textByHandle: Readonly<Record<string, string>>,
+    textRevisionsByHandle: Readonly<Record<string, number>>,
     textLayoutsByHandle: Readonly<Record<string, SemanticTextLayout | undefined>>,
     omittedHandles: ReadonlySet<string> = new Set<string>(),
+    liveHandles: ReadonlySet<string> = new Set<string>(),
   ): void {
     const seenHandles = new Set<string>();
     const orderedElements: HTMLElement[] = [];
@@ -856,16 +873,24 @@ export class HiddenDomProjector {
         } else if (node.role === ROLE_RADIO) {
           element.checked = node.state.checked === 'true';
         } else {
-          const nextValue = textByHandle[node.handle] ?? '';
-          if (element.value !== nextValue) {
-            element.value = nextValue;
+          const textRevision = String(textRevisionsByHandle[node.handle] ?? 0);
+          if (element.dataset.effindomTextRevision !== textRevision) {
+            const nextValue = textByHandle[node.handle] ?? '';
+            if (element.value !== nextValue) {
+              element.value = nextValue;
+            }
+            element.dataset.effindomTextRevision = textRevision;
           }
           element.readOnly = node.state.readonly ?? true;
         }
       } else if (element instanceof HTMLTextAreaElement) {
-        const nextValue = textByHandle[node.handle] ?? '';
-        if (element.value !== nextValue) {
-          element.value = nextValue;
+        const textRevision = String(textRevisionsByHandle[node.handle] ?? 0);
+        if (element.dataset.effindomTextRevision !== textRevision) {
+          const nextValue = textByHandle[node.handle] ?? '';
+          if (element.value !== nextValue) {
+            element.value = nextValue;
+          }
+          element.dataset.effindomTextRevision = textRevision;
         }
         element.readOnly = node.state.readonly ?? true;
       } else if (roleUsesTextContent(node.role)) {
@@ -925,7 +950,9 @@ export class HiddenDomProjector {
         continue;
       }
       element.remove();
-      this.elementsByHandle.delete(handle);
+      if (!liveHandles.has(handle)) {
+        this.elementsByHandle.delete(handle);
+      }
     }
     syncOrderedChildren(this.content, orderedElements);
   }
@@ -943,8 +970,10 @@ export class HiddenDomProjector {
       readonly semanticLabel: string;
       readonly stableFieldName: string | null;
       readonly text: string;
+      readonly textRevision: number;
     }[],
     registerSemanticTextEditor: (handle: string, editor: HiddenTextEditor | null) => void,
+    liveHandles: ReadonlySet<string> = new Set<string>(),
   ): void {
     const seenHandles = new Set<string>();
     const seenFormHandles = new Set<string>();
@@ -1001,7 +1030,10 @@ export class HiddenDomProjector {
         editor.style.padding = '0';
         editor.style.margin = '0';
         editor.style.overflow = 'hidden';
+        editor.style.overflowX = 'hidden';
+        editor.style.overflowY = 'hidden';
         editor.style.scrollbarWidth = 'none';
+        editor.style.setProperty('scrollbar-color', 'transparent transparent');
         editor.style.font = '16px "Noto Sans Symbols 2", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace';
         if (editor instanceof HTMLInputElement) {
           editor.type = 'text';
@@ -1053,8 +1085,12 @@ export class HiddenDomProjector {
       }
       editor.readOnly = field.readOnly;
       editor.disabled = field.disabled;
-      if (document.activeElement !== editor && editor.value !== field.text) {
-        editor.value = field.text;
+      const textRevision = String(field.textRevision);
+      if (editor.dataset.effindomTextRevision !== textRevision) {
+        if (document.activeElement !== editor && editor.value !== field.text) {
+          editor.value = field.text;
+        }
+        editor.dataset.effindomTextRevision = textRevision;
       }
       const formEditors = editorsByFormHandle.get(field.formHandle);
       if (formEditors === undefined) {
@@ -1078,15 +1114,19 @@ export class HiddenDomProjector {
         continue;
       }
       editor.remove();
-      this.semanticLightDomEditorsByHandle.delete(handle);
-      registerSemanticTextEditor(handle, null);
+      if (!liveHandles.has(handle)) {
+        this.semanticLightDomEditorsByHandle.delete(handle);
+        registerSemanticTextEditor(handle, null);
+      }
     }
     for (const [formHandle, form] of this.semanticLightDomFormsByHandle.entries()) {
       if (seenFormHandles.has(formHandle)) {
         continue;
       }
       form.remove();
-      this.semanticLightDomFormsByHandle.delete(formHandle);
+      if (!liveHandles.has(formHandle)) {
+        this.semanticLightDomFormsByHandle.delete(formHandle);
+      }
     }
     syncOrderedChildren(this.semanticLightDomContent, orderedForms);
   }

@@ -30,7 +30,6 @@ const BEHAVIOR_SELECTION_AREA_BARRIER = 1 << 8;
 const BEHAVIOR_CUSTOM_DRAWABLE = 1 << 9;
 const BEHAVIOR_SCROLL_ENABLED_X = 1 << 10;
 const BEHAVIOR_SCROLL_ENABLED_Y = 1 << 11;
-const BEHAVIOR_SHOW_SCROLLBARS = 1 << 12;
 const BEHAVIOR_TEXT_NODE = 1 << 13;
 const BEHAVIOR_SVG_NODE = 1 << 14;
 const BEHAVIOR_EDITOR_COMMAND_KEYS = 1 << 15;
@@ -95,7 +94,6 @@ export interface DebugTreeBehaviorFlags {
   readonly customDrawable: boolean;
   readonly scrollEnabledX: boolean;
   readonly scrollEnabledY: boolean;
-  readonly showScrollbars: boolean;
   readonly textNode: boolean;
   readonly svgNode: boolean;
   readonly editorCommandKeys: boolean;
@@ -229,7 +227,6 @@ function decodeBehaviorFlags(flags: number): DebugTreeBehaviorFlags {
     customDrawable: (flags & BEHAVIOR_CUSTOM_DRAWABLE) !== 0,
     scrollEnabledX: (flags & BEHAVIOR_SCROLL_ENABLED_X) !== 0,
     scrollEnabledY: (flags & BEHAVIOR_SCROLL_ENABLED_Y) !== 0,
-    showScrollbars: (flags & BEHAVIOR_SHOW_SCROLLBARS) !== 0,
     textNode: (flags & BEHAVIOR_TEXT_NODE) !== 0,
     svgNode: (flags & BEHAVIOR_SVG_NODE) !== 0,
     editorCommandKeys: (flags & BEHAVIOR_EDITOR_COMMAND_KEYS) !== 0,

@@ -1,9 +1,24 @@
 {
   "name": "@effindomv2/fui-rs",
-  "version": "0.1.2",
-  "private": true,
+  "version": "0.1.3",
+  "private": false,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
+  "description": "EffinDom v2 Rust frontend framework SDK and host generators",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "src",
+    "scripts",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE.md",
+    "COMMERCIAL.md"
+  ],
   "scripts": {
     "generate:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi",
     "check:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi --check",
@@ -16,18 +31,24 @@
     "generate:framework-host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs scripts/framework-host-services.ts frameworkHostServices src/generated/framework_host_services.rs crate::host_services fui_host",
     "generate:host": "npm run generate:host-services && npm run generate:host-events:home && npm run generate:host-events:workbench && npm run generate:host-events:stage4 && npm run generate:host-events:stage5 && npm run generate:worker-host-services && npm run generate:framework-host-services",
     "guard:runtime-dependency": "bash scripts/check-runtime-dependency.sh",
+    "lint": "cd ../.. && npm run lint:v2",
     "build": "npm run guard:runtime-dependency && npm run check:abi && bash scripts/build.sh",
     "test:unit": "npm run guard:runtime-dependency && npm run check:abi && npm run generate:host && bash -lc 'source \"$HOME/.cargo/env\" && cargo test --manifest-path Cargo.toml'",
     "test:integration": "npm --prefix ../.. run build:v2:browser-bridge && npm run build && playwright test -c playwright.config.ts",
-    "typecheck": "npm run guard:runtime-dependency && npm run check:abi && tsc -p tsconfig.json --noEmit"
+    "typecheck": "npm run guard:runtime-dependency && npm run check:abi && tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run check:abi && npm run lint && npm run typecheck"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.1.23"
+    "@effindomv2/runtime": "0.1.24"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
     "@types/node": "^24.10.1",
     "esbuild": "^0.27.7",
     "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true,
+    "fsevents@2.3.2": true
   }
 }
