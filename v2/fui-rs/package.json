@@ -1,6 +1,6 @@
 {
   "name": "@effindomv2/fui-rs",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": false,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
   "description": "EffinDom v2 Rust frontend framework SDK and host generators",
@@ -39,7 +39,7 @@
     "prepublishOnly": "npm run check:abi && npm run lint && npm run typecheck"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.1.24"
+    "@effindomv2/runtime": "0.1.25"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
