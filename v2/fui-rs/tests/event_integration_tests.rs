@@ -104,6 +104,37 @@ fn layout_edge_signatures_match_fui_as_order() {
 }
 
 #[test]
+fn unspecified_dimensions_remain_unset_while_explicit_auto_is_preserved() {
+    ffi::test::reset();
+    let implicit = button("Implicit sizing");
+    let explicit = button("Explicit auto sizing");
+    explicit.width(0.0, Unit::Auto).height(0.0, Unit::Auto);
+    let root = column();
+    root.child(&implicit).child(&explicit);
+
+    Application::mount(root);
+    let implicit_handle = implicit.handle().raw();
+    let explicit_handle = explicit.handle().raw();
+    let calls = ffi::test::take_calls();
+
+    assert!(!calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, .. } | Call::SetHeight { handle, .. }
+            if *handle == implicit_handle
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, value, unit_enum }
+            if *handle == explicit_handle && *value == 0.0 && *unit_enum == Unit::Auto as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, unit_enum }
+            if *handle == explicit_handle && *value == 0.0 && *unit_enum == Unit::Auto as u32
+    )));
+}
+
+#[test]
 fn loaded_callbacks_fire_during_mount_before_initial_commit() {
     ffi::test::reset();
     let label = text("Before");

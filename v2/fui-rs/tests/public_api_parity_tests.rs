@@ -121,6 +121,16 @@ fn public_prelude_exports_compile() {
     let _ = use_control_templates as fn(Option<ControlTemplateSet>) -> Option<ControlTemplateSet>;
 }
 
+#[test]
+fn text_helper_accepts_owned_rust_strings() {
+    ffi::test::reset();
+    let value = text(format!("Dynamic value: {}", 42));
+    Application::mount(value);
+    assert!(ffi::test::take_calls()
+        .iter()
+        .any(|call| { matches!(call, Call::SetText { text, .. } if text == "Dynamic value: 42") }));
+}
+
 fn gradient_stop_api_compiles() {
     let card = flex_box();
     card.linear_gradient_stops(

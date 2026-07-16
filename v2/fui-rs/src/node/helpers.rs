@@ -7,7 +7,7 @@ pub fn flex_box() -> FlexBox {
     FlexBox::default()
 }
 
-pub fn text(content: &str) -> TextNode {
+pub fn text(content: impl Into<String>) -> TextNode {
     TextNode::new(content)
 }
 
@@ -86,8 +86,6 @@ pub(crate) fn apply_flex_box_props(
     props: &FlexBoxProps,
     behavior: NodeBehavior,
 ) {
-    ui::set_width(handle.raw(), 0.0, Unit::Auto as u32);
-    ui::set_height(handle.raw(), 0.0, Unit::Auto as u32);
     ui::set_fill_width(handle.raw(), behavior.fill_width);
     ui::set_fill_height(handle.raw(), behavior.fill_height);
     if let Some(percent) = behavior.fill_width_percent {
@@ -306,8 +304,6 @@ pub(crate) fn apply_scroll_view_props(
     props: &ScrollViewProps,
     behavior: NodeBehavior,
 ) {
-    ui::set_width(handle.raw(), 0.0, Unit::Auto as u32);
-    ui::set_height(handle.raw(), 0.0, Unit::Auto as u32);
     ui::set_fill_width(handle.raw(), behavior.fill_width);
     ui::set_fill_height(handle.raw(), behavior.fill_height);
     if let Some(percent) = behavior.fill_width_percent {
