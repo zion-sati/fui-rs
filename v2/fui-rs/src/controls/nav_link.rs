@@ -271,6 +271,19 @@ impl NavLink {
         self
     }
 
+    pub fn bind_theme(&self, handler: impl Fn(&NavLink, crate::theme::Theme) + 'static) -> &Self {
+        let target = self.event_target();
+        let guard = subscribe(move |theme| {
+            if let Some(link) = target.upgrade() {
+                handler(&link, theme);
+            }
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(guard));
+        self
+    }
+
     pub fn on_navigate(&self, handler: impl Fn(NavigateEventArgs) + 'static) -> &Self {
         *self.navigate.borrow_mut() = Some(Rc::new(handler));
         self
@@ -334,6 +347,24 @@ struct NavLinkEventTarget {
 }
 
 impl NavLinkEventTarget {
+    fn upgrade(&self) -> Option<NavLink> {
+        Some(NavLink {
+            root: self.weak_root.upgrade()?,
+            label: self.label.clone(),
+            href: self.href.clone(),
+            open_in_new_tab: self.open_in_new_tab.clone(),
+            navigate: self.navigate.clone(),
+            hovered: self.hovered.clone(),
+            focused: self.focused.clone(),
+            pointer_pressed: self.pointer_pressed.clone(),
+            pointer_pressed_open_in_new_tab: self.pointer_pressed_open_in_new_tab.clone(),
+            enter_pressed: self.enter_pressed.clone(),
+            enter_pressed_open_in_new_tab: self.enter_pressed_open_in_new_tab.clone(),
+            preview_pinned_for_context_menu: self.preview_pinned_for_context_menu.clone(),
+            text_color_override: self.text_color_override.clone(),
+        })
+    }
+
     fn is_enabled(&self) -> bool {
         self.weak_root
             .upgrade()

@@ -1152,6 +1152,40 @@ fn retained_button_and_nav_link_keep_theme_subscriptions_after_wrappers_drop() {
 }
 
 #[test]
+fn nav_link_bind_theme_preserves_concrete_control_dx_and_retained_lifetime() {
+    ffi::test::reset();
+    let previous_theme = current_theme();
+    let parent = column();
+    let link = NavLink::with_label("/docs", "Docs");
+    link.bind_theme(|link, theme| {
+        link.bg_color(theme.colors.surface)
+            .text_color(theme.colors.text_muted);
+    });
+    parent.child(&link);
+    Application::mount(parent);
+    let link_handle = link.handle().raw();
+    let label_handle = link.label_node().handle().raw();
+    drop(link);
+    ffi::test::take_calls();
+
+    let changed = generate_theme(false, 0x2468ACFF);
+    use_custom_theme(changed.clone());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == link_handle && *color == changed.colors.surface
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == label_handle && *color == changed.colors.text_muted
+    )));
+
+    use_custom_theme(previous_theme);
+}
+
+#[test]
 fn retained_pressable_and_slider_keep_theme_subscriptions_after_wrappers_drop() {
     ffi::test::reset();
     let root = column();
