@@ -177,6 +177,10 @@ impl TextNode {
         self
     }
 
+    pub(crate) fn configured_text_color(&self) -> Option<u32> {
+        self.props.borrow().text_color
+    }
+
     pub fn style_runs(&self, words: Vec<u32>) -> &Self {
         {
             let mut props = self.props.borrow_mut();
@@ -418,6 +422,9 @@ impl TextNode {
     }
 
     pub fn focusable(&self, enabled: bool, tab_index: i32) -> &Self {
+        if enabled {
+            self.retained_node_ref().require_interactive();
+        }
         let mut core = self.core.borrow_mut();
         core.behavior.focusable = Some((enabled, tab_index));
         let interactive = core.behavior.enabled && core.behavior.inherited_enabled;

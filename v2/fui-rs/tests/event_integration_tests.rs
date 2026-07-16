@@ -3306,6 +3306,7 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
     ffi::test::set_platform_family(1);
     let link = nav_link("https://example.com/docs");
     link.text("Example docs");
+    link.label_node().text_color(0x123456FF);
     Application::mount(link.clone());
     let mount_calls = ffi::test::take_calls();
     let label_handle = *created_handles_of_type(&mount_calls, NodeType::Text)
@@ -3319,12 +3320,22 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
         |call| matches!(call, Call::ShowUrlPreview { url } if url == "https://example.com/docs")
     ));
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Pointer as u32]);
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == label_handle && *color == current_theme().colors.accent_hovered
+    )));
 
     pointer_event(PointerEventType::Leave, handle, 24.0, 36.0, 0, 0, 0);
     let calls = ffi::test::take_calls();
     assert!(calls
         .iter()
         .any(|call| matches!(call, Call::HideUrlPreview)));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == label_handle && *color == 0x123456FF
+    )));
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Default as u32]);
 
     pointer_event(PointerEventType::Enter, label_handle, 24.0, 36.0, 0, 0, 0);
@@ -3379,6 +3390,32 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
             target,
             open_in_new_tab: true,
         } if target == "https://example.com/docs"
+    )));
+}
+
+#[test]
+fn focusable_flex_box_is_interactive_like_fui_as_node() {
+    ffi::test::reset();
+    let target = flex_box();
+    target.focusable(true, 4);
+    Application::mount(target.clone());
+    let handle = target.handle().raw();
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetInteractive {
+            handle: call_handle,
+            interactive: true,
+        } if *call_handle == handle
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetFocusable {
+            handle: call_handle,
+            focusable: true,
+            tab_index: 4,
+        } if *call_handle == handle
     )));
 }
 

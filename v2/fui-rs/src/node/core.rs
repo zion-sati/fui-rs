@@ -1791,6 +1791,9 @@ pub trait Node: Clone {
         Self: Sized,
     {
         let node_ref = self.node_ref();
+        if enabled {
+            node_ref.require_interactive();
+        }
         let mut core = node_ref.inner.borrow_mut();
         core.behavior.focusable = Some((enabled, tab_index));
         let interactive = core.behavior.enabled && core.behavior.inherited_enabled;

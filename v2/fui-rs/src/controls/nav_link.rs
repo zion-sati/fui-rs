@@ -59,7 +59,6 @@ impl NavLink {
         label_node
             .font_family(theme.fonts.body_family.clone())
             .font_size(15.0)
-            .text_color(theme.colors.accent)
             .cursor(CursorStyle::Pointer);
         root.justify_content(JustifyContent::Start)
             .align_items(AlignItems::Center)
@@ -293,6 +292,7 @@ impl Node for NavLink {
 
     fn build_self(&self) {
         self.root.build_self();
+        self.sync_visual_state();
     }
 }
 
@@ -407,13 +407,15 @@ impl NavLinkEventTarget {
     }
 
     fn sync_visual_state(&self) {
-        let color = self.text_color_override.get().unwrap_or_else(|| {
-            if self.hovered.get() {
-                current_theme().colors.accent_hovered
-            } else {
-                current_theme().colors.accent
-            }
-        });
+        let theme = current_theme();
+        let color = if self.hovered.get() {
+            theme.colors.accent_hovered
+        } else {
+            self.text_color_override
+                .get()
+                .or_else(|| self.label.configured_text_color())
+                .unwrap_or(theme.colors.accent)
+        };
         if self.label.handle() != NodeHandle::INVALID {
             ui::set_text_color(self.label.handle().raw(), color);
         }
