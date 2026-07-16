@@ -52,3 +52,18 @@ impl HasFlexBoxRoot for AntiSelectionArea {
         &self.root
     }
 }
+
+impl ThemeBindable for AntiSelectionArea {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_root = self.root.downgrade();
+        Box::new(move || {
+            Some(AntiSelectionArea {
+                root: weak_root.upgrade()?,
+            })
+        })
+    }
+}

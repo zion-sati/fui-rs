@@ -2,7 +2,9 @@ use super::internal::checkbox_indicator_presenter::{
     create_default_checkbox_indicator_presenter, CheckboxIndicatorPresenter,
     CheckboxIndicatorTemplate, CheckboxIndicatorVisualState,
 };
-use super::internal::pressable_labeled_control::PressableLabeledControlState;
+use super::internal::pressable_labeled_control::{
+    PressableLabeledControlState, WeakPressableLabeledControl,
+};
 use super::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -318,9 +320,23 @@ impl HasFlexBoxRoot for Checkbox {
     }
 }
 
+impl ThemeBindable for Checkbox {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = CheckboxEventTarget::from_checkbox(self);
+        Box::new(move || target.upgrade())
+    }
+}
+
 #[derive(Clone)]
 struct CheckboxEventTarget {
+    base: WeakPressableLabeledControl,
     presenter: Rc<RefCell<Rc<dyn CheckboxIndicatorPresenter>>>,
+    template_override: Rc<RefCell<Option<Rc<dyn CheckboxIndicatorTemplate>>>>,
+    sizing_value: Rc<Cell<Option<LabeledControlSizing>>>,
     state: Rc<Cell<CheckState>>,
     tri_state: Rc<Cell<bool>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
@@ -331,13 +347,32 @@ struct CheckboxEventTarget {
 impl CheckboxEventTarget {
     fn from_checkbox(checkbox: &Checkbox) -> Self {
         Self {
+            base: checkbox.base.downgrade(),
             presenter: checkbox.indicator_presenter.clone(),
+            template_override: checkbox.template_override.clone(),
+            sizing_value: checkbox.sizing_value.clone(),
             state: checkbox.state.clone(),
             tri_state: checkbox.tri_state.clone(),
             colors_value: checkbox.colors_value.clone(),
             changed: checkbox.changed.clone(),
             weak_root: checkbox.weak_root.clone(),
         }
+    }
+
+    fn upgrade(&self) -> Option<Checkbox> {
+        let base = self.base.upgrade()?;
+        Some(Checkbox {
+            root: base.root(),
+            base,
+            indicator_presenter: self.presenter.clone(),
+            template_override: self.template_override.clone(),
+            sizing_value: self.sizing_value.clone(),
+            state: self.state.clone(),
+            tri_state: self.tri_state.clone(),
+            colors_value: self.colors_value.clone(),
+            changed: self.changed.clone(),
+            weak_root: self.weak_root.clone(),
+        })
     }
 
     fn activate(&self, base_state: PressableLabeledControlState) {

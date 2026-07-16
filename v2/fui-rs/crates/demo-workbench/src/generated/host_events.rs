@@ -74,4 +74,3 @@ pub extern "C" fn __fui_host_event_demoShellDarkModeChanged(arg0: bool) {
         callback(arg0);
     });
 }
-

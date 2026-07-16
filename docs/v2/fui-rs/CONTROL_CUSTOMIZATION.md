@@ -39,6 +39,31 @@ Configuration setters take direct values. Clear an override explicitly with its
 `text_input.clear_template()`, or `dialog.clear_appearance()`. FUI-RS does not
 use public `Option<T>` setters for this surface.
 
+For theme-responsive Button overrides, use the typed control binding so the
+callback retains the Button surface:
+
+```rust
+button("Save").bind_theme(|button, theme| {
+    button.colors(
+        ButtonColors::new()
+            .background(theme.colors.accent)
+            .text_primary(theme.colors.text_on_accent),
+    );
+});
+```
+
+Typed `bind_theme(...)` is also available on every public FlexBox-backed
+control: `Button`, `NavLink`, `Checkbox`, `RadioButton`, `Switch`, `Slider`,
+`ProgressBar`, `Dropdown`, `ComboBox`, `TextInput`, `TextArea`, `SelectionArea`,
+and `AntiSelectionArea`. Each callback receives that concrete control type, so
+control-specific APIs remain available without calling `flex_box_root()`.
+The same typed contract applies to FlexBox-backed retained nodes such as
+`ScrollBox` and `VirtualList`; `FlexBox` and `TextNode` also implement the
+shared `ThemeBindable` trait directly.
+
+The retained control owns these subscriptions and callback targets are weak,
+avoiding `Rc` self-cycles.
+
 ## Host style precedence
 
 Controls resolve two host-style layers independently:

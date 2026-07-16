@@ -24,7 +24,7 @@ use crate::node::{
 };
 use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe, Theme};
-use crate::{app, frame_scheduler};
+use crate::{app, frame_scheduler, ThemeBindable};
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
@@ -873,6 +873,23 @@ impl ComboBox {
 impl HasFlexBoxRoot for ComboBox {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+}
+
+impl ThemeBindable for ComboBox {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_root = self.root.downgrade();
+        let weak_shared = Rc::downgrade(&self.shared);
+        Box::new(move || {
+            Some(ComboBox {
+                root: weak_root.upgrade()?,
+                shared: weak_shared.upgrade()?,
+            })
+        })
     }
 }
 

@@ -5,7 +5,8 @@ use crate::ffi::{
     SemanticCheckedState, SemanticRole, Unit,
 };
 use crate::node::{
-    flex_box, row, Child, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, WeakNodeRef,
+    flex_box, row, Child, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, ThemeBindable,
+    WeakNodeRef,
 };
 use crate::theme::{current_theme, subscribe};
 use std::cell::{Cell, RefCell};

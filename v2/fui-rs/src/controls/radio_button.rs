@@ -1,4 +1,6 @@
-use super::internal::pressable_labeled_control::PressableLabeledControlState;
+use super::internal::pressable_labeled_control::{
+    PressableLabeledControlState, WeakPressableLabeledControl,
+};
 use super::internal::radio_indicator_presenter::{
     create_default_radio_indicator_presenter, RadioIndicatorPresenter, RadioIndicatorTemplate,
     RadioIndicatorVisualState,
@@ -250,9 +252,24 @@ impl HasFlexBoxRoot for RadioButton {
     }
 }
 
+impl ThemeBindable for RadioButton {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = RadioEventTarget::from_radio(self);
+        Box::new(move || target.upgrade())
+    }
+}
+
 #[derive(Clone)]
 struct RadioEventTarget {
+    base: WeakPressableLabeledControl,
     presenter: Rc<RefCell<Rc<dyn RadioIndicatorPresenter>>>,
+    template_override: Rc<RefCell<Option<Rc<dyn RadioIndicatorTemplate>>>>,
+    sizing_value: Rc<Cell<Option<LabeledControlSizing>>>,
+    value_text: String,
     checked: Rc<Cell<bool>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     changed: Rc<RefCell<Option<RadioButtonChangedCallback>>>,
@@ -263,13 +280,34 @@ struct RadioEventTarget {
 impl RadioEventTarget {
     fn from_radio(radio: &RadioButton) -> Self {
         Self {
+            base: radio.base.downgrade(),
             presenter: radio.indicator_presenter.clone(),
+            template_override: radio.template_override.clone(),
+            sizing_value: radio.sizing_value.clone(),
+            value_text: radio.value_text.clone(),
             checked: radio.checked.clone(),
             colors_value: radio.colors_value.clone(),
             changed: radio.changed.clone(),
             owner_group: radio.owner_group.clone(),
             weak_root: radio.weak_root.clone(),
         }
+    }
+
+    fn upgrade(&self) -> Option<RadioButton> {
+        let base = self.base.upgrade()?;
+        Some(RadioButton {
+            root: base.root(),
+            base,
+            indicator_presenter: self.presenter.clone(),
+            template_override: self.template_override.clone(),
+            sizing_value: self.sizing_value.clone(),
+            colors_value: self.colors_value.clone(),
+            value_text: self.value_text.clone(),
+            checked: self.checked.clone(),
+            changed: self.changed.clone(),
+            owner_group: self.owner_group.clone(),
+            weak_root: self.weak_root.clone(),
+        })
     }
 
     fn activate(&self, base_state: PressableLabeledControlState) {

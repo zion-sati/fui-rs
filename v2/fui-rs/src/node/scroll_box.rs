@@ -512,3 +512,18 @@ impl HasFlexBoxRoot for ScrollBox {
         &self.inner.root
     }
 }
+
+impl ThemeBindable for ScrollBox {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.inner.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak = Rc::downgrade(&self.inner);
+        Box::new(move || {
+            Some(ScrollBox {
+                inner: weak.upgrade()?,
+            })
+        })
+    }
+}

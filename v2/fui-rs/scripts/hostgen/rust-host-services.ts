@@ -140,9 +140,9 @@ function emitWasmCallArgs(args: readonly HostServiceTypeName[]): string {
 function emitFrameworkNonWasmBody(importName: string, args: readonly HostServiceTypeName[]): string[] {
   const argNames = args.map((_type, index) => `arg${String(index)}`);
   if (importName === "fui_now_ms") {
-    return ["    crate::ffi::test::host_now_ms()"];
+    return ["        crate::ffi::test::host_now_ms()"];
   }
-  return [`    unsafe { crate::ffi::${importName}(${argNames.join(", ")}) }`];
+  return [`        unsafe { crate::ffi::${importName}(${argNames.join(", ")}) }`];
 }
 
 function emitDecodeReturn(
@@ -154,7 +154,7 @@ function emitDecodeReturn(
     return [];
   }
   if (!isBufferType(returns)) {
-    return ["    raw_result"];
+    return ["        raw_result"];
   }
   const decodeFn =
     returns === "string" ? "decode_host_service_string_result" :
@@ -165,7 +165,7 @@ function emitDecodeReturn(
     returns === "u64_array" ? "decode_host_service_u64_array_result" :
     "decode_host_service_f64_array_result";
   return [
-    `    ${runtimePath}::${decodeFn}(result_ptr, raw_result, "${importName}")`,
+    `        ${runtimePath}::${decodeFn}(result_ptr, raw_result, "${importName}")`,
   ];
 }
 
@@ -219,32 +219,32 @@ export async function generateRustHostServicesFile(
     const wrapperName = snakeCaseIdentifier(method.importName);
     const returnType = rustReturnType(method.returns);
     wrappers.push(`pub fn ${wrapperName}(${emitWrapperArgs(method.args)}) -> ${returnType} {`);
-    wrappers.push(`  #[cfg(${hostImportCfg})]`);
-    wrappers.push("  {");
+    wrappers.push(`    #[cfg(${hostImportCfg})]`);
+    wrappers.push("    {");
     if (isBufferType(method.returns)) {
-      wrappers.push(`    let result_ptr = ${runtimePath}::host_service_result_buffer_ptr();`);
-      wrappers.push(`    let result_cap = ${runtimePath}::host_service_result_buffer_size();`);
+      wrappers.push(`        let result_ptr = ${runtimePath}::host_service_result_buffer_ptr();`);
+      wrappers.push(`        let result_cap = ${runtimePath}::host_service_result_buffer_size();`);
       const wasmCallArgs = emitWasmCallArgs(method.args);
       const callArgs = wasmCallArgs.length > 0 ? `${wasmCallArgs}, result_ptr, result_cap` : "result_ptr, result_cap";
-      wrappers.push(`    let raw_result = unsafe { __host_${method.importName}(${callArgs}) };`);
+      wrappers.push(`        let raw_result = unsafe { __host_${method.importName}(${callArgs}) };`);
       wrappers.push(...emitDecodeReturn(method.returns, runtimePath, method.importName));
     } else if (method.returns === "void") {
       const wasmCallArgs = emitWasmCallArgs(method.args);
-      wrappers.push(`    unsafe { __host_${method.importName}(${wasmCallArgs}) };`);
+      wrappers.push(`        unsafe { __host_${method.importName}(${wasmCallArgs}) };`);
     } else {
-      wrappers.push(`    unsafe { __host_${method.importName}(${emitWasmCallArgs(method.args)}) }`);
+      wrappers.push(`        unsafe { __host_${method.importName}(${emitWasmCallArgs(method.args)}) }`);
     }
-    wrappers.push("  }");
-    wrappers.push(`  #[cfg(${fallbackCfg})]`);
-    wrappers.push("  {");
+    wrappers.push("    }");
+    wrappers.push(`    #[cfg(${fallbackCfg})]`);
+    wrappers.push("    {");
     if (mode === "framework") {
       wrappers.push(...emitFrameworkNonWasmBody(method.importName, method.args));
     } else {
       wrappers.push(
-        `    panic!("Host service ${method.importName} is only available in wasm/browser builds.");`,
+        `        panic!("Host service ${method.importName} is only available in wasm/browser builds.");`,
       );
     }
-    wrappers.push("  }");
+    wrappers.push("    }");
     wrappers.push("}");
     wrappers.push("");
   }

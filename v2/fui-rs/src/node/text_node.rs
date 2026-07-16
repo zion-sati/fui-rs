@@ -81,19 +81,6 @@ impl TextNode {
         self
     }
 
-    pub fn bind_theme(&self, handler: impl Fn(&TextNode, crate::theme::Theme) + 'static) -> &Self {
-        let weak_core = Rc::downgrade(&self.core);
-        let weak_props = Rc::downgrade(&self.props);
-        let guard = crate::theme::subscribe(move |theme| {
-            let (Some(core), Some(props)) = (weak_core.upgrade(), weak_props.upgrade()) else {
-                return;
-            };
-            handler(&TextNode { core, props }, theme);
-        });
-        self.retained_node_ref().retain_attachment(Rc::new(guard));
-        self
-    }
-
     pub fn width(&self, width: f32, unit: Unit) -> &Self {
         self.props.borrow_mut().width = Some((width, unit));
         {
@@ -667,6 +654,23 @@ impl Node for TextNode {
             &self.props.borrow(),
             self.core.borrow().behavior.clone(),
         );
+    }
+}
+
+impl super::ThemeBindable for TextNode {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_core = Rc::downgrade(&self.core);
+        let weak_props = Rc::downgrade(&self.props);
+        Box::new(move || {
+            Some(TextNode {
+                core: weak_core.upgrade()?,
+                props: weak_props.upgrade()?,
+            })
+        })
     }
 }
 

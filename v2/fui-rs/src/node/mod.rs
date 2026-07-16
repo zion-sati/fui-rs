@@ -64,25 +64,43 @@ pub trait HasFlexBoxRoot {
     fn flex_box_root(&self) -> &FlexBox;
 }
 
+pub trait ThemeBindable: Sized + 'static {
+    #[doc(hidden)]
+    fn theme_binding_node(&self) -> NodeRef;
+
+    #[doc(hidden)]
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>>;
+
+    fn bind_theme(&self, handler: impl Fn(&Self, crate::theme::Theme) + 'static) -> &Self {
+        let target = self.weak_theme_target();
+        let guard = crate::theme::subscribe(move |theme| {
+            if let Some(control) = target() {
+                handler(&control, theme);
+            }
+        });
+        self.theme_binding_node().retain_attachment(Rc::new(guard));
+        self
+    }
+}
+
 impl HasFlexBoxRoot for FlexBox {
     fn flex_box_root(&self) -> &FlexBox {
         self
     }
 }
 
-pub trait FlexBoxSurface: HasFlexBoxRoot {
-    fn bind_theme(&self, handler: impl Fn(&FlexBox, crate::theme::Theme) + 'static) -> &Self {
-        let root = self.flex_box_root();
-        let weak_root = root.downgrade();
-        let guard = crate::theme::subscribe(move |theme| {
-            if let Some(root) = weak_root.upgrade() {
-                handler(&root, theme);
-            }
-        });
-        root.retained_node_ref().retain_attachment(Rc::new(guard));
-        self
+impl ThemeBindable for FlexBox {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.retained_node_ref()
     }
 
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak = self.downgrade();
+        Box::new(move || weak.upgrade())
+    }
+}
+
+pub trait FlexBoxSurface: HasFlexBoxRoot {
     fn width(&self, width: f32, unit: Unit) -> &Self {
         self.flex_box_root().width(width, unit);
         self

@@ -271,19 +271,6 @@ impl NavLink {
         self
     }
 
-    pub fn bind_theme(&self, handler: impl Fn(&NavLink, crate::theme::Theme) + 'static) -> &Self {
-        let target = self.event_target();
-        let guard = subscribe(move |theme| {
-            if let Some(link) = target.upgrade() {
-                handler(&link, theme);
-            }
-        });
-        self.root
-            .retained_node_ref()
-            .retain_attachment(Rc::new(guard));
-        self
-    }
-
     pub fn on_navigate(&self, handler: impl Fn(NavigateEventArgs) + 'static) -> &Self {
         *self.navigate.borrow_mut() = Some(Rc::new(handler));
         self
@@ -312,6 +299,17 @@ impl Node for NavLink {
 impl HasFlexBoxRoot for NavLink {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+}
+
+impl ThemeBindable for NavLink {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = self.event_target();
+        Box::new(move || target.upgrade())
     }
 }
 

@@ -14,11 +14,11 @@ For the complete export list, see:
 
 | Control | Purpose | Key APIs |
 |---|---|---|
-| `Button` | Theme-aware action control | `button(label)`, `on_click(...)`, `on_double_click(...)`, `on_triple_click(...)`, `template(...)`, `colors(...)` |
+| `Button` | Theme-aware action control | `button(label)`, `on_click(...)`, `on_double_click(...)`, `on_triple_click(...)`, `template(...)`, `colors(...)`, typed `bind_theme(...)` |
 | `Checkbox` | Boolean or tri-state check control | `checkbox(label)`, `check(...)`, `tri_state(...)`, `mixed(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Switch` | On/off toggle control | `switch(label)`, `check(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `RadioButton` / `RadioGroup` | Single-choice grouped options | `radio_button(label)`, `radio_group()`, `add_option(...)`, `add_options(...)`, `select_index(...)`, `on_changed(...)` |
-| `ProgressBar` | Determinate horizontal progress visualization | `value(...)`, `min(...)`, `max(...)`, `sizing(...)`, `clear_sizing()`, `colors(...)`, `clear_colors()` |
+| `ProgressBar` | Determinate horizontal or vertical progress visualization | `value(...)`, `min(...)`, `max(...)`, `length(...)`, `thickness(...)`, `orientation(...)`, `sizing(...)`, `clear_sizing()`, `colors(...)`, `clear_colors()` |
 | `Slider` | Single-value range control | `min(...)`, `max(...)`, `step(...)`, `orientation(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Dropdown` | Non-editable selection popup control | `items(...)`, `select_index(...)`, `on_changed(...)`, `max_visible_items(...)`, templates and colors |
 | `ComboBox` | Editable filter/selection control | `items(...)`, `filter_mode(...)`, `commit_mode(...)`, `auto_complete(...)`, `on_changed(...)` |

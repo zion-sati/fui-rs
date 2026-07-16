@@ -1,4 +1,6 @@
-use super::internal::pressable_labeled_control::PressableLabeledControlState;
+use super::internal::pressable_labeled_control::{
+    PressableLabeledControlState, WeakPressableLabeledControl,
+};
 use super::internal::switch_indicator_presenter::{
     create_default_switch_indicator_presenter, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
     SwitchIndicatorVisualState,
@@ -241,9 +243,23 @@ impl HasFlexBoxRoot for Switch {
     }
 }
 
+impl ThemeBindable for Switch {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = SwitchEventTarget::from_switch(self);
+        Box::new(move || target.upgrade())
+    }
+}
+
 #[derive(Clone)]
 struct SwitchEventTarget {
+    base: WeakPressableLabeledControl,
     presenter: Rc<RefCell<Rc<dyn SwitchIndicatorPresenter>>>,
+    template_override: Rc<RefCell<Option<Rc<dyn SwitchIndicatorTemplate>>>>,
+    sizing_value: Rc<Cell<Option<LabeledControlSizing>>>,
     checked: Rc<Cell<bool>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     changed: Rc<RefCell<Option<SwitchChangedCallback>>>,
@@ -253,12 +269,30 @@ struct SwitchEventTarget {
 impl SwitchEventTarget {
     fn from_switch(switch: &Switch) -> Self {
         Self {
+            base: switch.base.downgrade(),
             presenter: switch.indicator_presenter.clone(),
+            template_override: switch.template_override.clone(),
+            sizing_value: switch.sizing_value.clone(),
             checked: switch.checked.clone(),
             colors_value: switch.colors_value.clone(),
             changed: switch.changed.clone(),
             weak_root: switch.weak_root.clone(),
         }
+    }
+
+    fn upgrade(&self) -> Option<Switch> {
+        let base = self.base.upgrade()?;
+        Some(Switch {
+            root: base.root(),
+            base,
+            indicator_presenter: self.presenter.clone(),
+            template_override: self.template_override.clone(),
+            sizing_value: self.sizing_value.clone(),
+            colors_value: self.colors_value.clone(),
+            checked: self.checked.clone(),
+            changed: self.changed.clone(),
+            weak_root: self.weak_root.clone(),
+        })
     }
 
     fn activate(&self, base_state: PressableLabeledControlState) {

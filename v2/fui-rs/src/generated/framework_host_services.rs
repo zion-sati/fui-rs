@@ -19,56 +19,56 @@ unsafe extern "C" {
 }
 
 pub fn fui_get_accent_color() -> u32 {
-  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
-  {
-    unsafe { __host_fui_get_accent_color() }
-  }
-  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
-  {
-    unsafe { crate::ffi::fui_get_accent_color() }
-  }
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_get_accent_color() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_get_accent_color() }
+    }
 }
 
 pub fn fui_get_platform_family() -> u32 {
-  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
-  {
-    unsafe { __host_fui_get_platform_family() }
-  }
-  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
-  {
-    unsafe { crate::ffi::fui_get_platform_family() }
-  }
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_get_platform_family() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_get_platform_family() }
+    }
 }
 
 pub fn fui_is_coarse_pointer() -> bool {
-  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
-  {
-    unsafe { __host_fui_is_coarse_pointer() }
-  }
-  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
-  {
-    unsafe { crate::ffi::fui_is_coarse_pointer() }
-  }
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_is_coarse_pointer() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_is_coarse_pointer() }
+    }
 }
 
 pub fn fui_is_dark_mode() -> bool {
-  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
-  {
-    unsafe { __host_fui_is_dark_mode() }
-  }
-  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
-  {
-    unsafe { crate::ffi::fui_is_dark_mode() }
-  }
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_is_dark_mode() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_is_dark_mode() }
+    }
 }
 
 pub fn fui_now_ms() -> f64 {
-  #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
-  {
-    unsafe { __host_fui_now_ms() }
-  }
-  #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
-  {
-    crate::ffi::test::host_now_ms()
-  }
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_now_ms() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        crate::ffi::test::host_now_ms()
+    }
 }

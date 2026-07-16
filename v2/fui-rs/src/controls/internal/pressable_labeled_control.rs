@@ -96,6 +96,29 @@ impl PressableLabeledControl {
         self.root.clone()
     }
 
+    pub(crate) fn downgrade(&self) -> WeakPressableLabeledControl {
+        WeakPressableLabeledControl {
+            root: self.root.downgrade(),
+            indicator_root: self.indicator_root.clone(),
+            label_node: self.label_node.clone(),
+            gap_node: self.gap_node.clone(),
+            label_host: self.label_host.clone(),
+            hovered_state: self.hovered_state.clone(),
+            pressed_state: self.pressed_state.clone(),
+            focused_state: self.focused_state.clone(),
+            key_pressed_state: self.key_pressed_state.clone(),
+            pointer_pressed_state: self.pointer_pressed_state.clone(),
+            enabled_state: self.enabled_state.clone(),
+            label_font_family_override: self.label_font_family_override.clone(),
+            label_font_size_override: self.label_font_size_override.clone(),
+            label_text_color_override: self.label_text_color_override.clone(),
+            colors_value: self.colors_value.clone(),
+            activation: self.activation.clone(),
+            state_changed: self.state_changed.clone(),
+            key_handler: self.key_handler.clone(),
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn test_parts(&self) -> (FlexBox, FlexBox, FlexBox, FlexBox) {
         (
@@ -299,6 +322,53 @@ impl PressableLabeledControl {
             self.focused_state.get(),
             self.enabled_state.get(),
         );
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct WeakPressableLabeledControl {
+    root: WeakFlexBox,
+    indicator_root: Rc<RefCell<FlexBox>>,
+    label_node: TextCore,
+    gap_node: FlexBox,
+    label_host: FlexBox,
+    hovered_state: Rc<Cell<bool>>,
+    pressed_state: Rc<Cell<bool>>,
+    focused_state: Rc<Cell<bool>>,
+    key_pressed_state: Rc<Cell<bool>>,
+    pointer_pressed_state: Rc<Cell<bool>>,
+    enabled_state: Rc<Cell<bool>>,
+    label_font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
+    label_font_size_override: Rc<Cell<f32>>,
+    label_text_color_override: Rc<Cell<Option<u32>>>,
+    colors_value: Rc<Cell<Option<LabeledControlColors>>>,
+    activation: Rc<RefCell<Option<ActivationCallback>>>,
+    state_changed: Rc<RefCell<Option<StateCallback>>>,
+    key_handler: Rc<RefCell<Option<KeyCallback>>>,
+}
+
+impl WeakPressableLabeledControl {
+    pub(crate) fn upgrade(&self) -> Option<PressableLabeledControl> {
+        Some(PressableLabeledControl {
+            root: self.root.upgrade()?,
+            indicator_root: self.indicator_root.clone(),
+            label_node: self.label_node.clone(),
+            gap_node: self.gap_node.clone(),
+            label_host: self.label_host.clone(),
+            hovered_state: self.hovered_state.clone(),
+            pressed_state: self.pressed_state.clone(),
+            focused_state: self.focused_state.clone(),
+            key_pressed_state: self.key_pressed_state.clone(),
+            pointer_pressed_state: self.pointer_pressed_state.clone(),
+            enabled_state: self.enabled_state.clone(),
+            label_font_family_override: self.label_font_family_override.clone(),
+            label_font_size_override: self.label_font_size_override.clone(),
+            label_text_color_override: self.label_text_color_override.clone(),
+            colors_value: self.colors_value.clone(),
+            activation: self.activation.clone(),
+            state_changed: self.state_changed.clone(),
+            key_handler: self.key_handler.clone(),
+        })
     }
 }
 

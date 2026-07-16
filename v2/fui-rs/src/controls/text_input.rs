@@ -189,6 +189,21 @@ impl HasFlexBoxRoot for TextInput {
     }
 }
 
+impl crate::ThemeBindable for TextInput {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.core.flex_box_root().retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_core = Rc::downgrade(&self.core);
+        Box::new(move || {
+            Some(TextInput {
+                core: weak_core.upgrade()?,
+            })
+        })
+    }
+}
+
 impl Node for TextInput {
     fn retained_node_ref(&self) -> NodeRef {
         let core = self.core.clone();

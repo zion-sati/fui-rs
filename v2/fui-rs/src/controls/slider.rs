@@ -415,11 +415,24 @@ impl HasFlexBoxRoot for Slider {
     }
 }
 
+impl ThemeBindable for Slider {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = SliderEventTarget::from_slider(self);
+        Box::new(move || target.upgrade())
+    }
+}
+
 #[derive(Clone)]
 struct SliderEventTarget {
     weak_root: Rc<WeakNodeRef>,
     weak_flex_root: WeakFlexBox,
     slider_presenter: Rc<RefCell<Rc<dyn SliderPresenter>>>,
+    template_override: Rc<RefCell<Option<Rc<dyn SliderTemplate>>>>,
+    sizing_value: Rc<Cell<Option<SliderSizing>>>,
     min: Rc<Cell<f32>>,
     max: Rc<Cell<f32>>,
     step: Rc<Cell<f32>>,
@@ -439,6 +452,8 @@ impl SliderEventTarget {
             weak_root: slider.weak_root.clone(),
             weak_flex_root: slider.weak_flex_root.clone(),
             slider_presenter: slider.slider_presenter.clone(),
+            template_override: slider.template_override.clone(),
+            sizing_value: slider.sizing_value.clone(),
             min: slider.min.clone(),
             max: slider.max.clone(),
             step: slider.step.clone(),
@@ -451,6 +466,28 @@ impl SliderEventTarget {
             dragging_state: slider.dragging_state.clone(),
             colors_value: slider.colors_value.clone(),
         }
+    }
+
+    fn upgrade(&self) -> Option<Slider> {
+        Some(Slider {
+            root: self.weak_flex_root.upgrade()?,
+            slider_presenter: self.slider_presenter.clone(),
+            template_override: self.template_override.clone(),
+            sizing_value: self.sizing_value.clone(),
+            colors_value: self.colors_value.clone(),
+            min: self.min.clone(),
+            max: self.max.clone(),
+            step: self.step.clone(),
+            value: self.value.clone(),
+            length: self.length.clone(),
+            orientation: self.orientation.clone(),
+            changed: self.changed.clone(),
+            hovered_state: self.hovered_state.clone(),
+            dragging_state: self.dragging_state.clone(),
+            focused_state: self.focused_state.clone(),
+            weak_root: self.weak_root.clone(),
+            weak_flex_root: self.weak_flex_root.clone(),
+        })
     }
 
     fn is_enabled(&self) -> bool {

@@ -167,5 +167,5 @@ export async function generateRustHostEventsFile(
     lines.push("");
   });
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, `${lines.join("\n")}\n`, "utf8");
+  await fs.writeFile(outputPath, `${lines.join("\n").replace(/\n+$/, "")}\n`, "utf8");
 }

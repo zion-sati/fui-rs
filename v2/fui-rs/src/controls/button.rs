@@ -4,6 +4,7 @@ use super::internal::button_presenter::{
 use super::*;
 use crate::ffi::CursorStyle;
 use crate::node::{TextCore, WeakFlexBox};
+use crate::theme::subscribe;
 use crate::{focus_adorner, focus_visibility};
 use std::rc::Rc;
 
@@ -250,6 +251,9 @@ impl Button {
         ButtonEventTarget {
             weak_root: self.root.downgrade(),
             presenter: self.presenter.clone(),
+            label: self.label.clone(),
+            template: self.template.clone(),
+            label_value: self.label_value.clone(),
             click: self.click.clone(),
             double_click: self.double_click.clone(),
             triple_click: self.triple_click.clone(),
@@ -345,6 +349,17 @@ impl HasFlexBoxRoot for Button {
     }
 }
 
+impl ThemeBindable for Button {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = self.event_target();
+        Box::new(move || target.upgrade())
+    }
+}
+
 impl LabeledControlTextStyle for Button {
     fn set_label_font_family(&self, family: crate::FontFamily) {
         self.set_explicit_font_family(family);
@@ -434,6 +449,9 @@ fn create_button_presenter(template: Option<Rc<dyn ButtonTemplate>>) -> Rc<dyn B
 struct ButtonEventTarget {
     weak_root: WeakFlexBox,
     presenter: Rc<RefCell<Rc<dyn ButtonPresenter>>>,
+    label: Rc<RefCell<TextCore>>,
+    template: Rc<RefCell<Option<Rc<dyn ButtonTemplate>>>>,
+    label_value: Rc<RefCell<String>>,
     click: Rc<RefCell<Option<ClickCallback>>>,
     double_click: Rc<RefCell<Option<ClickCallback>>>,
     triple_click: Rc<RefCell<Option<ClickCallback>>>,
@@ -448,6 +466,27 @@ struct ButtonEventTarget {
 }
 
 impl ButtonEventTarget {
+    fn upgrade(&self) -> Option<Button> {
+        Some(Button {
+            root: self.weak_root.upgrade()?,
+            presenter: self.presenter.clone(),
+            label: self.label.clone(),
+            template: self.template.clone(),
+            label_value: self.label_value.clone(),
+            click: self.click.clone(),
+            double_click: self.double_click.clone(),
+            triple_click: self.triple_click.clone(),
+            hovered_state: self.hovered_state.clone(),
+            pressed_state: self.pressed_state.clone(),
+            focused_state: self.focused_state.clone(),
+            keyboard_armed_key: self.keyboard_armed_key.clone(),
+            font_family_override: self.font_family_override.clone(),
+            font_size_override: self.font_size_override.clone(),
+            text_color_override: self.text_color_override.clone(),
+            colors_value: self.colors_value.clone(),
+        })
+    }
+
     fn is_enabled(&self) -> bool {
         self.weak_root
             .upgrade()

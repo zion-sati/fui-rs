@@ -31,6 +31,7 @@ pub struct ProgressBar {
     min: Rc<Cell<f32>>,
     max: Rc<Cell<f32>>,
     value: Rc<Cell<f32>>,
+    orientation: Rc<Cell<Orientation>>,
     sizing_value: Rc<Cell<Option<ProgressBarSizing>>>,
     colors_value: Rc<Cell<Option<ProgressBarColors>>>,
     weak_root: WeakFlexBox,
@@ -47,7 +48,9 @@ impl ProgressBar {
     pub fn new() -> Self {
         let root = flex_box();
         let fill = flex_box();
-        root.semantic_value_range(0.0, 0.0, 100.0).child(&fill);
+        root.semantic_orientation(Orientation::Horizontal)
+            .semantic_value_range(0.0, 0.0, 100.0)
+            .child(&fill);
         let control = Self {
             weak_root: root.downgrade(),
             weak_fill: fill.downgrade(),
@@ -56,6 +59,7 @@ impl ProgressBar {
             min: Rc::new(Cell::new(0.0)),
             max: Rc::new(Cell::new(100.0)),
             value: Rc::new(Cell::new(0.0)),
+            orientation: Rc::new(Cell::new(Orientation::Horizontal)),
             sizing_value: Rc::new(Cell::new(None)),
             colors_value: Rc::new(Cell::new(None)),
         };
@@ -85,6 +89,43 @@ impl ProgressBar {
 
     pub fn value(&self, value: f32) -> &Self {
         self.set_value(value);
+        self
+    }
+
+    pub fn length(&self, value: f32) -> &Self {
+        let value = clamp_direct_dimension("length", value);
+        let current = self.sizing_value.get().unwrap_or_default();
+        let mut sizing = ProgressBarSizing::new().length(value);
+        if current.has_thickness() {
+            sizing = sizing.thickness(current.thickness_px());
+        }
+        self.sizing_value.set(Some(sizing));
+        self.sync_geometry();
+        self
+    }
+
+    pub fn thickness(&self, value: f32) -> &Self {
+        let value = clamp_direct_dimension("thickness", value);
+        let current = self.sizing_value.get().unwrap_or_default();
+        let mut sizing = ProgressBarSizing::new().thickness(value);
+        if current.has_length() {
+            sizing = sizing.length(current.length_px());
+        }
+        self.sizing_value.set(Some(sizing));
+        self.sync_geometry();
+        self.sync_visual_state();
+        self
+    }
+
+    pub fn orientation(&self, orientation: Orientation) -> &Self {
+        let orientation = if orientation == Orientation::Vertical {
+            Orientation::Vertical
+        } else {
+            Orientation::Horizontal
+        };
+        self.orientation.set(orientation);
+        self.root.semantic_orientation(orientation);
+        self.sync_geometry();
         self
     }
 
@@ -165,6 +206,7 @@ impl ProgressBar {
             self.min.get(),
             self.max.get(),
             self.value.get(),
+            self.orientation.get(),
             resolve_sizing(self.sizing_value.get()),
         );
     }
@@ -177,6 +219,46 @@ impl ProgressBar {
             self.colors_value.get(),
         );
     }
+}
+
+#[derive(Clone)]
+struct ProgressBarThemeTarget {
+    root: WeakFlexBox,
+    fill: WeakFlexBox,
+    min: Rc<Cell<f32>>,
+    max: Rc<Cell<f32>>,
+    value: Rc<Cell<f32>>,
+    orientation: Rc<Cell<Orientation>>,
+    sizing_value: Rc<Cell<Option<ProgressBarSizing>>>,
+    colors_value: Rc<Cell<Option<ProgressBarColors>>>,
+}
+
+impl ProgressBarThemeTarget {
+    fn upgrade(&self) -> Option<ProgressBar> {
+        Some(ProgressBar {
+            root: self.root.upgrade()?,
+            fill: self.fill.upgrade()?,
+            min: self.min.clone(),
+            max: self.max.clone(),
+            value: self.value.clone(),
+            orientation: self.orientation.clone(),
+            sizing_value: self.sizing_value.clone(),
+            colors_value: self.colors_value.clone(),
+            weak_root: self.root.clone(),
+            weak_fill: self.fill.clone(),
+        })
+    }
+}
+
+fn clamp_direct_dimension(method: &str, value: f32) -> f32 {
+    if value > 0.0 {
+        return value;
+    }
+    crate::logger::warn(
+        "Layout",
+        &format!("ProgressBar.{method}() received {value}; clamping to 1.0."),
+    );
+    1.0
 }
 
 impl Node for ProgressBar {
@@ -197,12 +279,33 @@ impl HasFlexBoxRoot for ProgressBar {
     }
 }
 
+impl ThemeBindable for ProgressBar {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let target = ProgressBarThemeTarget {
+            root: self.weak_root.clone(),
+            fill: self.weak_fill.clone(),
+            min: self.min.clone(),
+            max: self.max.clone(),
+            value: self.value.clone(),
+            orientation: self.orientation.clone(),
+            sizing_value: self.sizing_value.clone(),
+            colors_value: self.colors_value.clone(),
+        };
+        Box::new(move || target.upgrade())
+    }
+}
+
 fn sync_progress_geometry(
     root: &FlexBox,
     fill: &FlexBox,
     min: f32,
     max: f32,
     current_value: f32,
+    orientation: Orientation,
     sizing: ResolvedProgressBarSizing,
 ) {
     let range = max - min;
@@ -212,15 +315,26 @@ fn sync_progress_geometry(
         0.0
     };
     let fill_length = sizing.length * fraction;
-    root.width(sizing.length, Unit::Pixel)
-        .height(sizing.thickness, Unit::Pixel)
-        .semantic_value_range(current_value, min, max)
+    if orientation == Orientation::Vertical {
+        root.flex_direction(FlexDirection::Column)
+            .justify_content(JustifyContent::End)
+            .width(sizing.thickness, Unit::Pixel)
+            .height(sizing.length, Unit::Pixel);
+        fill.width(sizing.thickness, Unit::Pixel)
+            .height(fill_length, Unit::Pixel);
+    } else {
+        root.flex_direction(FlexDirection::Row)
+            .justify_content(JustifyContent::Start)
+            .width(sizing.length, Unit::Pixel)
+            .height(sizing.thickness, Unit::Pixel);
+        fill.width(fill_length, Unit::Pixel)
+            .height(sizing.thickness, Unit::Pixel);
+    }
+    root.semantic_value_range(current_value, min, max)
         .default_semantic_label(format!(
             "Progress bar, value {}, range {} to {}",
             current_value, min, max
         ));
-    fill.width(fill_length, Unit::Pixel)
-        .height(sizing.thickness, Unit::Pixel);
 }
 
 fn sync_progress_visual_state(

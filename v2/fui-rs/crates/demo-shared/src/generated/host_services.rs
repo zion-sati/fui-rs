@@ -17,48 +17,48 @@ unsafe extern "C" {
 }
 
 pub fn demo_shell_accent_color_hex() -> String {
-  #[cfg(target_family = "wasm")]
-  {
-    let result_ptr = fui::host_services::host_service_result_buffer_ptr();
-    let result_cap = fui::host_services::host_service_result_buffer_size();
-    let raw_result = unsafe { __host_demoShellAccentColorHex(result_ptr, result_cap) };
-    fui::host_services::decode_host_service_string_result(result_ptr, raw_result, "demoShellAccentColorHex")
-  }
-  #[cfg(not(target_family = "wasm"))]
-  {
-    panic!("Host service demoShellAccentColorHex is only available in wasm/browser builds.");
-  }
+    #[cfg(target_family = "wasm")]
+    {
+        let result_ptr = fui::host_services::host_service_result_buffer_ptr();
+        let result_cap = fui::host_services::host_service_result_buffer_size();
+        let raw_result = unsafe { __host_demoShellAccentColorHex(result_ptr, result_cap) };
+        fui::host_services::decode_host_service_string_result(result_ptr, raw_result, "demoShellAccentColorHex")
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        panic!("Host service demoShellAccentColorHex is only available in wasm/browser builds.");
+    }
 }
 
 pub fn demo_shell_clock_tick_seconds() -> i32 {
-  #[cfg(target_family = "wasm")]
-  {
-    unsafe { __host_demoShellClockTickSeconds() }
-  }
-  #[cfg(not(target_family = "wasm"))]
-  {
-    panic!("Host service demoShellClockTickSeconds is only available in wasm/browser builds.");
-  }
+    #[cfg(target_family = "wasm")]
+    {
+        unsafe { __host_demoShellClockTickSeconds() }
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        panic!("Host service demoShellClockTickSeconds is only available in wasm/browser builds.");
+    }
 }
 
 pub fn demo_shell_is_dark_mode() -> bool {
-  #[cfg(target_family = "wasm")]
-  {
-    unsafe { __host_demoShellIsDarkMode() }
-  }
-  #[cfg(not(target_family = "wasm"))]
-  {
-    panic!("Host service demoShellIsDarkMode is only available in wasm/browser builds.");
-  }
+    #[cfg(target_family = "wasm")]
+    {
+        unsafe { __host_demoShellIsDarkMode() }
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        panic!("Host service demoShellIsDarkMode is only available in wasm/browser builds.");
+    }
 }
 
 pub fn demo_shell_wall_clock_since_epoch_ms() -> f64 {
-  #[cfg(target_family = "wasm")]
-  {
-    unsafe { __host_demoShellWallClockSinceEpochMs() }
-  }
-  #[cfg(not(target_family = "wasm"))]
-  {
-    panic!("Host service demoShellWallClockSinceEpochMs is only available in wasm/browser builds.");
-  }
+    #[cfg(target_family = "wasm")]
+    {
+        unsafe { __host_demoShellWallClockSinceEpochMs() }
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        panic!("Host service demoShellWallClockSinceEpochMs is only available in wasm/browser builds.");
+    }
 }

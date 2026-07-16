@@ -1186,6 +1186,149 @@ fn nav_link_bind_theme_preserves_concrete_control_dx_and_retained_lifetime() {
 }
 
 #[test]
+fn button_bind_theme_preserves_concrete_control_dx_and_retained_lifetime() {
+    ffi::test::reset();
+    let previous_theme = current_theme();
+    let parent = column();
+    let control = button("Themed action");
+    control.bind_theme(|button, theme| {
+        button.colors(
+            ButtonColors::new()
+                .background(theme.colors.accent)
+                .text_primary(theme.colors.text_on_accent),
+        );
+    });
+    parent.child(&control);
+    Application::mount(parent);
+    let handle = control.handle().raw();
+    drop(control);
+    ffi::test::take_calls();
+
+    let changed = generate_theme(false, 0x2468ACFF);
+    use_custom_theme(changed.clone());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle: actual, color }
+            if *actual == handle && *color == changed.colors.accent
+    )));
+
+    use_custom_theme(previous_theme);
+}
+
+#[test]
+fn flex_box_backed_controls_preserve_concrete_bind_theme_dx() {
+    ffi::test::reset();
+    let invocations = Rc::new(Cell::new(0));
+    let count = |invocations: &Rc<Cell<i32>>| {
+        let invocations = invocations.clone();
+        move || invocations.set(invocations.get() + 1)
+    };
+
+    let checkbox = checkbox("Checkbox");
+    checkbox.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(LabeledControlColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let switch = switch("Switch");
+    switch.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(LabeledControlColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let radio = radio_button("Radio");
+    radio.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(LabeledControlColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let slider = slider();
+    slider.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(SliderColors::new().fill(theme.colors.accent));
+        }
+    });
+    let progress = progress_bar();
+    progress.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(ProgressBarColors::new().fill(theme.colors.accent));
+        }
+    });
+    let dropdown = dropdown();
+    dropdown.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(DropdownColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let combo = combo_box();
+    combo.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(DropdownColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let input = text_input();
+    input.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(TextInputColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let area = text_area();
+    area.bind_theme({
+        let count = count(&invocations);
+        move |control, theme| {
+            count();
+            control.colors(TextInputColors::new().text_primary(theme.colors.text_primary));
+        }
+    });
+    let selection = selection_area();
+    selection.bind_theme({
+        let count = count(&invocations);
+        move |control, _theme| {
+            count();
+            let _ = control.selected_text();
+        }
+    });
+    let barrier = anti_selection_area();
+    barrier.bind_theme({
+        let count = count(&invocations);
+        move |control, _theme| {
+            count();
+            control.children(Vec::<Child>::new());
+        }
+    });
+
+    let scroll = crate::scroll_box();
+    scroll.bind_theme({
+        let count = count(&invocations);
+        move |_control: &crate::ScrollBox, _theme| count()
+    });
+    let list = crate::virtual_list(10, 32.0);
+    list.bind_theme({
+        let count = count(&invocations);
+        move |_control: &crate::VirtualList, _theme| count()
+    });
+
+    assert_eq!(invocations.get(), 13);
+}
+
+#[test]
 fn retained_pressable_and_slider_keep_theme_subscriptions_after_wrappers_drop() {
     ffi::test::reset();
     let root = column();
@@ -3211,6 +3354,100 @@ fn progress_bar_invalid_sizing_warns_and_falls_back_to_defaults() {
         call,
         Call::SetHeight { value, unit_enum, .. }
             if *value == PROGRESS_THICKNESS && *unit_enum == Unit::Pixel as u32
+    )));
+}
+
+#[test]
+fn progress_bar_direct_length_and_thickness_match_fui_as() {
+    ffi::test::reset();
+    let progress = progress_bar();
+    progress.length(320.0).thickness(18.0);
+    Application::mount(progress);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { value, unit_enum, .. }
+            if *value == 320.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { value, unit_enum, .. }
+            if *value == 18.0 && *unit_enum == Unit::Pixel as u32
+    )));
+
+    ffi::test::reset();
+    let progress = progress_bar();
+    progress.length(0.0).thickness(-2.0);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::Log { category, message }
+            if category == "Warning/Layout"
+                && message == "ProgressBar.length() received 0; clamping to 1.0."
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::Log { category, message }
+            if category == "Warning/Layout"
+                && message == "ProgressBar.thickness() received -2; clamping to 1.0."
+    )));
+}
+
+#[test]
+fn progress_bar_maps_length_and_thickness_to_orientation() {
+    ffi::test::reset();
+    let progress = progress_bar();
+    progress
+        .value(25.0)
+        .length(300.0)
+        .thickness(18.0)
+        .orientation(Orientation::Vertical);
+    Application::mount(progress.clone());
+    let calls = ffi::test::take_calls();
+    let root_handle = progress.retained_node_ref().handle().raw();
+    let fill_handle = child_handles_for_parent(&calls, root_handle)
+        .into_iter()
+        .next()
+        .expect("fill handle");
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, value, unit_enum }
+            if *handle == root_handle && *value == 18.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, unit_enum }
+            if *handle == root_handle && *value == 300.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, value, unit_enum }
+            if *handle == fill_handle && *value == 18.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, unit_enum }
+            if *handle == fill_handle && *value == 75.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetSemanticOrientation { handle, orientation_enum }
+            if *handle == root_handle && *orientation_enum == Orientation::Vertical as u32
+    )));
+
+    ffi::test::reset();
+    progress.orientation(Orientation::Horizontal);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, value, unit_enum }
+            if *handle == root_handle && *value == 300.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, unit_enum }
+            if *handle == root_handle && *value == 18.0 && *unit_enum == Unit::Pixel as u32
     )));
 }
 

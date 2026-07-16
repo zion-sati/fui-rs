@@ -11,12 +11,12 @@ unsafe extern "C" {
 }
 
 pub fn demo_worker_clock_wall_clock_since_epoch_ms() -> f64 {
-  #[cfg(target_family = "wasm")]
-  {
-    unsafe { __host_demoWorkerClockWallClockSinceEpochMs() }
-  }
-  #[cfg(not(target_family = "wasm"))]
-  {
-    panic!("Host service demoWorkerClockWallClockSinceEpochMs is only available in wasm/browser builds.");
-  }
+    #[cfg(target_family = "wasm")]
+    {
+        unsafe { __host_demoWorkerClockWallClockSinceEpochMs() }
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        panic!("Host service demoWorkerClockWallClockSinceEpochMs is only available in wasm/browser builds.");
+    }
 }

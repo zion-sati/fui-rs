@@ -125,12 +125,12 @@ Common public style/layout types:
 
 Constructors and types:
 
-- `button(label)`, `Button`, `ClickEventArgs`
+- `button(label)`, `Button`, `ClickEventArgs`: click callbacks, templates/colors, and typed `bind_theme`
 - `checkbox(label)`, `Checkbox`, `CheckState`, `CheckboxChangedEventArgs`
 - `switch(label)`, `Switch`, `SwitchChangedEventArgs`
 - `radio_button(label)`, `RadioButton`, `RadioButtonChangedEventArgs`
 - `radio_group()`, `RadioGroup`, `RadioGroupChangedEventArgs`
-- `progress_bar()`, `ProgressBar`
+- `progress_bar()`, `ProgressBar`: `min`, `max`, `value`, `length`, `thickness`, `orientation`, `sizing`, `colors`
 - `slider()`, `Slider`, `SliderChangedEventArgs`
 - `dropdown()`, `Dropdown`, `DropdownItem`, `DropdownChangedEventArgs<T>`
 - `combo_box()`, `ComboBox`, `ComboBoxItem`, `ComboBoxChangedEventArgs<T>`, `ComboBoxFilterMode`, `ComboBoxCommitMode`
@@ -197,6 +197,7 @@ Theme APIs:
 - `set_accent_color(color)`
 - `current_theme()`
 - `node.bind_theme(handler)` for node-owned, cycle-safe styling
+- FlexBox-backed controls expose typed `bind_theme(handler)` callbacks that preserve their concrete APIs; this includes Button, NavLink, selection controls, range controls, dropdown/editable controls, and text editors
 - `subscribe(handler)` for advanced non-node lifetimes where the caller retains the RAII guard
 - `is_dark_mode()`
 - `is_using_system_theme()`

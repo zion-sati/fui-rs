@@ -80,3 +80,20 @@ impl HasFlexBoxRoot for SelectionArea {
         &self.root
     }
 }
+
+impl ThemeBindable for SelectionArea {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_root = self.root.downgrade();
+        let signal = self.selected_text_signal.clone();
+        Box::new(move || {
+            Some(SelectionArea {
+                root: weak_root.upgrade()?,
+                selected_text_signal: signal.clone(),
+            })
+        })
+    }
+}

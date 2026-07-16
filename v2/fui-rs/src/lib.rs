@@ -424,7 +424,7 @@ pub mod prelude {
         Child, ContextMenuEventArgs, Corners, CustomDrawable, EdgeInsets, FlexBox, FlexBoxSurface,
         GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
         PresenterHostStyle, ScrollBar, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView,
-        Shadow, Svg, SvgNode, Text, TextCore, TextNode, VirtualList,
+        Shadow, Svg, SvgNode, Text, TextCore, TextNode, ThemeBindable, VirtualList,
     };
     pub use crate::persisted;
     pub use crate::platform;
@@ -542,7 +542,7 @@ pub use node::{
     ContextMenuEventArgs, Corners, CustomDrawable, EdgeInsets, FlexBox, FlexBoxSurface,
     GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
     PresenterHostStyle, ScrollBar, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow,
-    Svg, SvgNode, Text, TextCore, TextNode, VirtualList,
+    Svg, SvgNode, Text, TextCore, TextNode, ThemeBindable, VirtualList,
 };
 pub use persisted::*;
 pub use platform::*;

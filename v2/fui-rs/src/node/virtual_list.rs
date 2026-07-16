@@ -513,6 +513,21 @@ impl HasFlexBoxRoot for VirtualList {
     }
 }
 
+impl ThemeBindable for VirtualList {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.inner.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak = Rc::downgrade(&self.inner);
+        Box::new(move || {
+            Some(VirtualList {
+                inner: weak.upgrade()?,
+            })
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

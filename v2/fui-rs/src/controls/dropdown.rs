@@ -22,6 +22,7 @@ use crate::node::{row, FlexBox, FlexBoxSurface, HasFlexBoxRoot, Node, NodeRef, W
 use crate::persisted::{persisted_value_adapter, PersistedInt32Codec};
 use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe};
+use crate::ThemeBindable;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
@@ -639,6 +640,23 @@ impl Node for Dropdown {
 impl HasFlexBoxRoot for Dropdown {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+}
+
+impl ThemeBindable for Dropdown {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_root = self.root.downgrade();
+        let weak_shared = Rc::downgrade(&self.shared);
+        Box::new(move || {
+            Some(Dropdown {
+                root: weak_root.upgrade()?,
+                shared: weak_shared.upgrade()?,
+            })
+        })
     }
 }
 
