@@ -179,6 +179,7 @@ pub extern "C" fn __fui_on_font_loaded(font_id: u32) {
     assets::on_font_loaded(font_id);
     crate::typography::notify_font_loaded(font_id);
     crate::text::notify_font_loaded(font_id);
+    crate::frame_scheduler::mark_needs_commit();
 }
 
 #[no_mangle]

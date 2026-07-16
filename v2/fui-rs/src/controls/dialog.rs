@@ -1,3 +1,4 @@
+use super::DialogAppearance;
 use super::{Button, Form};
 use crate::app;
 use crate::bindings::ui;
@@ -5,7 +6,6 @@ use crate::ffi::{
     AlignItems, BorderStyle, FlexDirection, JustifyContent, PositionType, SemanticRole, Unit,
 };
 use crate::node::{flex_box, portal, Border, FlexBox, Node, NodeRef, TextNode, WeakFlexBox};
-use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe, Theme};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -40,7 +40,6 @@ pub struct Dialog {
     card: FlexBox,
     overlay: FlexBox,
     state: Rc<RefCell<DialogState>>,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 #[derive(Clone)]
@@ -69,7 +68,12 @@ struct DialogState {
     card_border_width_value: f32,
     card_border_color_value: u32,
     card_border_style_value: BorderStyle,
-    card_corner_radius_value: f32,
+    card_border_dash_on_value: f32,
+    card_border_dash_off_value: f32,
+    card_corner_top_left_value: f32,
+    card_corner_top_right_value: f32,
+    card_corner_bottom_right_value: f32,
+    card_corner_bottom_left_value: f32,
     backdrop_color_overridden: bool,
     shadow_overridden: bool,
     card_background_overridden: bool,
@@ -96,7 +100,12 @@ impl DialogState {
             card_border_width_value: 1.0,
             card_border_color_value: theme.colors.border,
             card_border_style_value: BorderStyle::Solid,
-            card_corner_radius_value: theme.spacing.md,
+            card_border_dash_on_value: 0.0,
+            card_border_dash_off_value: 0.0,
+            card_corner_top_left_value: theme.spacing.md,
+            card_corner_top_right_value: theme.spacing.md,
+            card_corner_bottom_right_value: theme.spacing.md,
+            card_corner_bottom_left_value: theme.spacing.md,
             backdrop_color_overridden: false,
             shadow_overridden: false,
             card_background_overridden: false,
@@ -184,7 +193,6 @@ impl Dialog {
             .align_items(AlignItems::Center)
             .child(&card);
         let state = Rc::new(RefCell::new(DialogState::from_theme(theme)));
-        let theme_guard = Rc::new(RefCell::new(None));
 
         root.position_type(PositionType::Absolute)
             .position(0.0, 0.0)
@@ -203,7 +211,6 @@ impl Dialog {
             card,
             overlay,
             state,
-            theme_guard,
         };
         dialog.content(title, body);
         dialog.bind_events();
@@ -265,79 +272,51 @@ impl Dialog {
         self.cancel_button.clone()
     }
 
-    pub fn backdrop_color(&self, color: u32) -> &Self {
+    pub fn appearance(&self, appearance: DialogAppearance) -> &Self {
         let mut state = self.state.borrow_mut();
-        state.backdrop_color_overridden = true;
-        state.backdrop_color_value = color;
+        let backdrop = appearance.backdrop.unwrap_or_default();
+        state.backdrop_color_overridden = backdrop.color.is_some();
+        if let Some(color) = backdrop.color {
+            state.backdrop_color_value = color;
+        }
+        state.dialog_background_blur_sigma_value = backdrop.blur.unwrap_or(DIALOG_BACKGROUND_BLUR);
+
+        let card = appearance.card.unwrap_or_default();
+        state.card_background_overridden = card.background.is_some();
+        if let Some(color) = card.background {
+            state.card_background_color_value = color;
+        }
+        state.card_border_overridden = card.border.is_some();
+        if let Some(border) = card.border {
+            state.card_border_width_value = border.width;
+            state.card_border_color_value = border.color;
+            state.card_border_style_value = border.style;
+            state.card_border_dash_on_value = border.dash_on;
+            state.card_border_dash_off_value = border.dash_off;
+        }
+        state.card_corner_radius_overridden = card.corners.is_some();
+        if let Some(corners) = card.corners {
+            state.card_corner_top_left_value = corners.top_left;
+            state.card_corner_top_right_value = corners.top_right;
+            state.card_corner_bottom_right_value = corners.bottom_right;
+            state.card_corner_bottom_left_value = corners.bottom_left;
+        }
+        state.shadow_overridden = card.shadow.is_some();
+        if let Some(shadow) = card.shadow {
+            state.shadow_color_value = shadow.color;
+            state.shadow_offset_x_value = shadow.offset_x;
+            state.shadow_offset_y_value = shadow.offset_y;
+            state.shadow_blur_sigma_value = shadow.blur_sigma;
+            state.shadow_spread_value = shadow.spread;
+        }
         drop(state);
+        self.event_target().handle_theme_changed(current_theme());
         self.apply_theme();
         self
     }
 
-    pub fn background_blur(&self, sigma: f32) -> &Self {
-        self.state.borrow_mut().dialog_background_blur_sigma_value = sigma.max(0.0);
-        self.apply_theme();
-        self
-    }
-
-    pub fn card_shadow(
-        &self,
-        color: u32,
-        offset_x: f32,
-        offset_y: f32,
-        blur_sigma: f32,
-        spread: f32,
-    ) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.shadow_overridden = true;
-        state.shadow_color_value = color;
-        state.shadow_offset_x_value = offset_x;
-        state.shadow_offset_y_value = offset_y;
-        state.shadow_blur_sigma_value = blur_sigma;
-        state.shadow_spread_value = spread;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn card_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.card_background_overridden = true;
-        state.card_background_color_value = color;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn card_border(&self, width: f32, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.card_border_overridden = true;
-        state.card_border_width_value = width;
-        state.card_border_color_value = color;
-        state.card_border_style_value = BorderStyle::Solid;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn card_border_config(&self, border: Border) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.card_border_overridden = true;
-        state.card_border_width_value = border.width;
-        state.card_border_color_value = border.color;
-        state.card_border_style_value = border.style;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn card_corner_radius(&self, radius: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.card_corner_radius_overridden = true;
-        state.card_corner_radius_value = radius;
-        drop(state);
-        self.apply_theme();
-        self
+    pub fn clear_appearance(&self) -> &Self {
+        self.appearance(DialogAppearance::new())
     }
 
     pub fn content(&self, title: impl Into<String>, body: impl Into<String>) -> &Self {
@@ -401,10 +380,13 @@ impl Dialog {
         let event_target = self.event_target();
         let title = self.title_node.clone();
         let body = self.body_node.clone();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |theme| {
+        let guard = subscribe(move |theme| {
             event_target.handle_theme_changed(theme);
             event_target.apply_theme(&title, &body);
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(guard));
     }
 
     fn apply_theme(&self) {
@@ -428,6 +410,10 @@ impl Node for Dialog {
         self.root.retained_node_ref()
     }
 
+    fn retained_owner_attachment(&self) -> Option<Rc<dyn std::any::Any>> {
+        Some(Rc::new(self.clone()))
+    }
+
     fn build_self(&self) {
         self.apply_theme();
         self.root.build_self();
@@ -439,6 +425,12 @@ impl Node for Dialog {
             self.overlay.dispose();
         }
         self.root.dispose();
+    }
+}
+
+impl crate::node::HasFlexBoxRoot for Dialog {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.root
     }
 }
 
@@ -524,9 +516,14 @@ impl DialogEventTarget {
             state.card_border_width_value = 1.0;
             state.card_border_color_value = theme.colors.border;
             state.card_border_style_value = BorderStyle::Solid;
+            state.card_border_dash_on_value = 0.0;
+            state.card_border_dash_off_value = 0.0;
         }
         if !state.card_corner_radius_overridden {
-            state.card_corner_radius_value = theme.spacing.md;
+            state.card_corner_top_left_value = theme.spacing.md;
+            state.card_corner_top_right_value = theme.spacing.md;
+            state.card_corner_bottom_right_value = theme.spacing.md;
+            state.card_corner_bottom_left_value = theme.spacing.md;
         }
     }
 
@@ -540,13 +537,18 @@ impl DialogEventTarget {
         }
         if let Some(card) = self.card.upgrade() {
             card.bg_color(state.card_background_color_value)
-                .corner_radius(state.card_corner_radius_value)
+                .corners(
+                    state.card_corner_top_left_value,
+                    state.card_corner_top_right_value,
+                    state.card_corner_bottom_right_value,
+                    state.card_corner_bottom_left_value,
+                )
                 .border_config(Border {
                     width: state.card_border_width_value,
                     color: state.card_border_color_value,
                     style: state.card_border_style_value,
-                    dash_on: 0.0,
-                    dash_off: 0.0,
+                    dash_on: state.card_border_dash_on_value,
+                    dash_off: state.card_border_dash_off_value,
                 })
                 .drop_shadow(
                     state.shadow_color_value,

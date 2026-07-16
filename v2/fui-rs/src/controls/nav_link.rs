@@ -5,7 +5,6 @@ use crate::ffi::{CursorStyle, HandleValue, SemanticRole};
 use crate::navigation;
 use crate::node::{text, NodeHandle, NodeRef, WeakFlexBox};
 use crate::platform;
-use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe};
 use crate::{focus_adorner, focus_visibility};
 use std::cell::{Cell, RefCell};
@@ -43,8 +42,6 @@ pub struct NavLink {
     enter_pressed_open_in_new_tab: Rc<Cell<bool>>,
     preview_pinned_for_context_menu: Rc<Cell<bool>>,
     text_color_override: Rc<Cell<Option<u32>>>,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
-    focus_visibility_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl NavLink {
@@ -90,8 +87,6 @@ impl NavLink {
             enter_pressed_open_in_new_tab: Rc::new(Cell::new(false)),
             preview_pinned_for_context_menu: Rc::new(Cell::new(false)),
             text_color_override: Rc::new(Cell::new(None)),
-            theme_guard: Rc::new(RefCell::new(None)),
-            focus_visibility_guard: Rc::new(RefCell::new(None)),
         };
         let node_ref = link.root.retained_node_ref();
         let pin_target = link.event_target();
@@ -197,15 +192,20 @@ impl NavLink {
 
     fn install_subscriptions(&self) {
         let target = self.event_target();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let theme_guard = subscribe(move |_theme| {
             target.sync_visual_state();
             target.sync_focus_chrome();
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(theme_guard));
         let target = self.event_target();
-        *self.focus_visibility_guard.borrow_mut() =
-            Some(focus_visibility::subscribe(move |_visible| {
-                target.sync_focus_chrome();
-            }));
+        let focus_guard = focus_visibility::subscribe(move |_visible| {
+            target.sync_focus_chrome();
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(focus_guard));
     }
 
     fn event_target(&self) -> NavLinkEventTarget {
@@ -261,6 +261,10 @@ impl NavLink {
         self.label.text(value.clone());
         self.root.semantic_label(value);
         self
+    }
+
+    pub fn label_node(&self) -> TextNode {
+        self.label.clone()
     }
 
     pub fn open_in_new_tab(&self, open: bool) -> &Self {

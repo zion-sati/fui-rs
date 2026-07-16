@@ -18,15 +18,15 @@ For the complete export list, see:
 | `Checkbox` | Boolean or tri-state check control | `checkbox(label)`, `check(...)`, `tri_state(...)`, `mixed(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Switch` | On/off toggle control | `switch(label)`, `check(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `RadioButton` / `RadioGroup` | Single-choice grouped options | `radio_button(label)`, `radio_group()`, `add_option(...)`, `add_options(...)`, `select_index(...)`, `on_changed(...)` |
-| `ProgressBar` | Determinate horizontal progress visualization | `value(...)`, `min(...)`, `max(...)`, `length(...)`, `thickness(...)`, `track_color(...)`, `fill_color(...)` |
+| `ProgressBar` | Determinate horizontal progress visualization | `value(...)`, `min(...)`, `max(...)`, `sizing(...)`, `clear_sizing()`, `colors(...)`, `clear_colors()` |
 | `Slider` | Single-value range control | `min(...)`, `max(...)`, `step(...)`, `orientation(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Dropdown` | Non-editable selection popup control | `items(...)`, `select_index(...)`, `on_changed(...)`, `max_visible_items(...)`, templates and colors |
 | `ComboBox` | Editable filter/selection control | `items(...)`, `filter_mode(...)`, `commit_mode(...)`, `auto_complete(...)`, `on_changed(...)` |
 | `TextInput` | Single-line editable text | `text(...)`, `placeholder(...)`, `read_only(...)`, `password(...)`, `host_autofill(...)`, `on_changed(...)` |
 | `TextArea` | Multiline editable text | `text(...)`, `wrapping(...)`, scrollbar visibility, `accepts_tab(...)`, `on_changed(...)` |
 | `Form` | Default/cancel action and autofill grouping host | `form()`, `default_action(...)`, `cancel_action(...)`, child fields |
-| `Dialog` | Modal overlay with actions | `dialog(title, body)`, `show()`, `hide()`, `on_accept(...)`, `on_cancel(...)`, modal styling |
-| `ContextMenu` / `MenuItem` | Retained context menu surface | `context_menu(items)`, `ContextMenu::new()`, `show(...)`, `hide()`, styling and visibility callbacks |
+| `Dialog` | Modal overlay with actions | `dialog(title, body)`, `show()`, `hide()`, `on_accept(...)`, `on_cancel(...)`, `appearance(...)`, `clear_appearance()` |
+| `ContextMenu` / `MenuItem` | Retained context menu surface | `context_menu(items)`, `ContextMenu::new()`, `show(...)`, `hide()`, `appearance(...)`, `clear_appearance()` |
 
 `Button`, `NavLink`, `Checkbox`, `RadioButton`, and `Switch` share
 `LabeledControlTextStyle`, providing `font_family(...)`, `font_size(...)`, and
@@ -34,7 +34,7 @@ For the complete export list, see:
 
 `Grid` uses typed `GridTrack` values: `GridTrack::px(...)`,
 `GridTrack::star(...)`, and `GridTrack::auto()`.
-| `Popup` | Generic popup overlay | `popup()`, child overlay content, show/hide behavior |
+| `Popup` | Generic popup overlay | `popup()`, child overlay content, show/hide behavior, `appearance(...)`, `clear_appearance()` |
 | `NavLink` | Route/link control | `nav_link(href)`, `href_to(...)`, `on_navigate(...)` |
 | `SelectionArea` | Cross-node text selection host | `selection_area()`, selected text callbacks and mobile selection affordances |
 | `AntiSelectionArea` | Selection barrier island | `anti_selection_area()` prevents ancestor selection collection |

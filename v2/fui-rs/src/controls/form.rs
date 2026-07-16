@@ -227,3 +227,9 @@ impl Node for Form {
         self.shared.root.dispose();
     }
 }
+
+impl crate::node::HasFlexBoxRoot for Form {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.shared.root
+    }
+}

@@ -160,7 +160,15 @@ impl Checkbox {
         self
     }
 
-    pub fn sizing(&self, sizing: Option<LabeledControlSizing>) -> &Self {
+    pub fn sizing(&self, sizing: LabeledControlSizing) -> &Self {
+        self.set_sizing(Some(sizing))
+    }
+
+    pub fn clear_sizing(&self) -> &Self {
+        self.set_sizing(None)
+    }
+
+    fn set_sizing(&self, sizing: Option<LabeledControlSizing>) -> &Self {
         self.sizing_value.set(sizing);
         self.base.set_label_font_size_override(
             sizing
@@ -176,7 +184,15 @@ impl Checkbox {
         self
     }
 
-    pub fn template(&self, template: Option<Rc<dyn CheckboxIndicatorTemplate>>) -> &Self {
+    pub fn template(&self, template: Rc<dyn CheckboxIndicatorTemplate>) -> &Self {
+        self.set_template(Some(template))
+    }
+
+    pub fn clear_template(&self) -> &Self {
+        self.set_template(None)
+    }
+
+    fn set_template(&self, template: Option<Rc<dyn CheckboxIndicatorTemplate>>) -> &Self {
         self.template_override.replace(template.clone());
         self.replace_indicator_presenter(create_indicator_presenter(
             template,
@@ -186,7 +202,15 @@ impl Checkbox {
         self
     }
 
-    pub fn colors(&self, colors: Option<LabeledControlColors>) -> &Self {
+    pub fn colors(&self, colors: LabeledControlColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<LabeledControlColors>) -> &Self {
         self.colors_value.set(colors);
         self.base.colors(colors);
         self.sync_visual(self.base.snapshot_state(), false, false);

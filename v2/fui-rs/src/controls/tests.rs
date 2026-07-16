@@ -11,6 +11,7 @@ use crate::node::Node;
 use crate::node::{column, text, Child, FlexBoxSurface};
 use crate::theme::{current_theme, generate_theme, use_custom_theme, use_system_theme};
 use crate::Application;
+use crate::Border;
 use crate::PointerType;
 use crate::ScrollBarVisibility;
 use crate::TextCore;
@@ -46,15 +47,14 @@ impl ButtonPresenter for TestButtonPresenter {
         self.label.clone()
     }
 
-    fn apply(
+    fn present(
         &self,
-        host: &FlexBox,
         _theme: crate::theme::Theme,
         _state: ButtonVisualState,
         _colors: Option<ButtonColors>,
-    ) {
-        host.border(3.0, self.border_color);
+    ) -> crate::PresenterHostStyle {
         self.label.text_color(0x112233FF);
+        crate::PresenterHostStyle::new().border(Border::solid(3.0, self.border_color))
     }
 }
 
@@ -76,15 +76,16 @@ struct TestTextInputPresenter {
 }
 
 impl TextInputPresenter for TestTextInputPresenter {
-    fn bind(&self, _host: FlexBox, _editor_host: TextCore, _placeholder_host: FlexBox) {}
+    fn bind(&self, _editor_host: TextCore, _placeholder_host: FlexBox) {}
 
-    fn apply(
+    fn present(
         &self,
         _theme: crate::theme::Theme,
         state: &TextInputVisualState,
         _colors: Option<TextInputColors>,
-    ) {
+    ) -> crate::PresenterHostStyle {
         *self.last_state.borrow_mut() = Some(*state);
+        crate::PresenterHostStyle::new()
     }
 }
 
@@ -335,7 +336,7 @@ fn dropdown_presenter_templates_create_once_and_are_stored_in_template_set() {
         })),
         ..ControlTemplateSet::default()
     };
-    use_control_templates(Some(templates));
+    use_control_templates(templates);
     let active = get_control_templates().expect("templates should be installed");
     assert!(active.dropdown_field.is_some());
     assert!(active.dropdown_chevron.is_some());
@@ -685,17 +686,756 @@ fn button_hover_and_pressed_visual_states_follow_fui_as_lifecycle() {
 }
 
 #[test]
+fn button_host_geometry_overrides_survive_hover_and_pressed_presenter_updates() {
+    ffi::test::reset();
+    let button = button("Stable geometry");
+    button
+        .padding(18.0, 10.0, 20.0, 12.0)
+        .corners(11.0, 12.0, 13.0, 14.0)
+        .border_config(Border::dashed(2.0, 0x123456FF, 5.0, 3.0))
+        .drop_shadow(0x10203040, 1.0, 2.0, 6.0, 3.0);
+    Application::mount(button.clone());
+    let _ = ffi::test::take_calls();
+    let node_ref = button.retained_node_ref();
+    let button_handle = node_ref.handle().raw();
+
+    for update in [
+        |node: &NodeRef| press_enter(node),
+        |node: &NodeRef| press_down(node, 1),
+        |node: &NodeRef| press_up(node),
+        |node: &NodeRef| press_leave(node),
+    ] {
+        update(&node_ref);
+        let calls = ffi::test::take_calls();
+        assert!(!calls.iter().any(|call| matches!(
+            call,
+            Call::SetPadding { handle, .. }
+                | Call::SetBoxStyle { handle, .. }
+                | Call::SetDropShadow { handle, .. }
+                if *handle == button_handle
+        )));
+        assert_button_host_override_style(&button, Border::dashed(2.0, 0x123456FF, 5.0, 3.0));
+    }
+}
+
+#[test]
+fn button_host_geometry_overrides_survive_theme_and_template_replacement() {
+    ffi::test::reset();
+    clear_control_templates();
+    let created = Rc::new(Cell::new(0));
+    let button = button("Stable host style");
+    button
+        .padding(18.0, 10.0, 20.0, 12.0)
+        .corners(11.0, 12.0, 13.0, 14.0)
+        .border_config(Border::solid(2.0, 0x123456FF))
+        .drop_shadow(0x10203040, 1.0, 2.0, 6.0, 3.0);
+    Application::mount(button.clone());
+    let handle = button.handle().raw();
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.border = 0xFFEEDDFF;
+    use_custom_theme(theme);
+    assert_button_host_override_style(&button, Border::solid(2.0, 0x123456FF));
+    assert_no_button_host_geometry_calls(handle, &ffi::test::take_calls());
+
+    button.template(Rc::new(TestButtonTemplate {
+        created: created.clone(),
+        border_color: 0xAABBCCFF,
+    }));
+    assert_eq!(created.get(), 1);
+    assert_button_host_override_style(&button, Border::solid(2.0, 0x123456FF));
+    assert_no_button_host_geometry_calls(handle, &ffi::test::take_calls());
+
+    use_system_theme();
+    clear_control_templates();
+}
+
+fn assert_button_host_override_style(button: &Button, expected_border: Border) {
+    let style = button.flex_box_root().resolved_host_style();
+    assert_eq!(
+        style.padding,
+        Some(crate::EdgeInsets::new(18.0, 10.0, 20.0, 12.0))
+    );
+    assert_eq!(
+        style.corners,
+        Some(crate::Corners::new(11.0, 12.0, 13.0, 14.0))
+    );
+    assert_eq!(style.border, Some(expected_border));
+    assert_eq!(
+        style.shadow,
+        Some(crate::Shadow::new(0x10203040, 1.0, 2.0, 6.0, 3.0))
+    );
+}
+
+fn assert_no_button_host_geometry_calls(handle: u64, calls: &[Call]) {
+    assert!(!calls.iter().any(|call| matches!(
+        call,
+        Call::SetPadding { handle: call_handle, .. }
+            | Call::SetBoxStyle { handle: call_handle, .. }
+            | Call::SetDropShadow { handle: call_handle, .. }
+            if *call_handle == handle
+    )));
+}
+
+#[test]
+fn text_input_local_host_style_survives_state_theme_and_template_changes() {
+    ffi::test::reset();
+    let input = text_input();
+    input
+        .bg_color(0x010203FF)
+        .padding(17.0, 9.0, 19.0, 11.0)
+        .corners(10.0, 11.0, 12.0, 13.0)
+        .border(3.0, 0xAABBCCFF);
+    Application::mount(input.clone());
+    let handle = input.handle().raw();
+    let _ = ffi::test::take_calls();
+
+    input.enabled(false);
+    assert_text_input_local_host_style(&input);
+    assert_no_text_input_local_host_style_calls("disabled", handle, &ffi::test::take_calls());
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0xFFEEDDFF;
+    theme.colors.border = 0x112233FF;
+    use_custom_theme(theme);
+    assert_text_input_local_host_style(&input);
+    assert_no_text_input_local_host_style_calls("theme", handle, &ffi::test::take_calls());
+
+    input.template(Rc::new(TestTextInputTemplate {
+        created: Rc::new(Cell::new(0)),
+        last_state: Rc::new(RefCell::new(None)),
+    }));
+    assert_text_input_local_host_style(&input);
+    assert_no_text_input_local_host_style_calls("template", handle, &ffi::test::take_calls());
+    use_system_theme();
+}
+
+fn assert_text_input_local_host_style(input: &TextInput) {
+    let style = input.flex_box_root().resolved_host_style();
+    assert_eq!(style.background, Some(0x010203FF));
+    assert_eq!(
+        style.padding,
+        Some(crate::EdgeInsets::new(17.0, 9.0, 19.0, 11.0))
+    );
+    assert_eq!(
+        style.corners,
+        Some(crate::Corners::new(10.0, 11.0, 12.0, 13.0))
+    );
+    assert_eq!(style.border, Some(Border::solid(3.0, 0xAABBCCFF)));
+}
+
+fn assert_no_text_input_local_host_style_calls(stage: &str, handle: u64, calls: &[Call]) {
+    assert!(
+        !calls.iter().any(|call| matches!(
+            call,
+            Call::SetBgColor { handle: call_handle, .. }
+                | Call::SetPadding { handle: call_handle, .. }
+                | Call::SetBoxStyle { handle: call_handle, .. }
+                if *call_handle == handle
+        )),
+        "{stage}: {calls:?}"
+    );
+}
+
+#[test]
+fn clearing_local_host_style_reveals_live_presenter_style() {
+    ffi::test::reset();
+    let host = flex_box();
+    host.apply_presenter_style(
+        crate::PresenterHostStyle::new()
+            .background(0x102030FF)
+            .padding(crate::EdgeInsets::new(1.0, 2.0, 3.0, 4.0))
+            .corners(crate::Corners::new(5.0, 6.0, 7.0, 8.0))
+            .border(Border::solid(2.0, 0x405060FF))
+            .shadow(crate::Shadow::new(0x11223344, 9.0, 10.0, 11.0, 12.0))
+            .opacity(0.7)
+            .flex_direction(crate::FlexDirection::Row)
+            .justify_content(crate::JustifyContent::Center)
+            .align_items(crate::AlignItems::End)
+            .cursor(crate::CursorStyle::Pointer),
+    );
+    host.bg_color(0xAABBCCFF)
+        .padding(20.0, 21.0, 22.0, 23.0)
+        .corners(24.0, 25.0, 26.0, 27.0)
+        .border_config(Border::dashed(3.0, 0xDDEEFF00, 4.0, 5.0))
+        .drop_shadow(0x55667788, 28.0, 29.0, 30.0, 31.0)
+        .opacity(0.4)
+        .flex_direction(crate::FlexDirection::Column)
+        .justify_content(crate::JustifyContent::End)
+        .align_items(crate::AlignItems::Center)
+        .cursor(crate::CursorStyle::Text);
+    Application::mount(host.clone());
+    let handle = host.handle().raw();
+    let _ = ffi::test::take_calls();
+
+    host.clear_bg_color()
+        .clear_padding()
+        .clear_corners()
+        .clear_border()
+        .clear_drop_shadow()
+        .clear_opacity()
+        .clear_flex_direction()
+        .clear_justify_content()
+        .clear_align_items()
+        .clear_cursor();
+
+    assert_eq!(
+        host.resolved_host_style(),
+        crate::PresenterHostStyle::new()
+            .background(0x102030FF)
+            .padding(crate::EdgeInsets::new(1.0, 2.0, 3.0, 4.0))
+            .corners(crate::Corners::new(5.0, 6.0, 7.0, 8.0))
+            .border(Border::solid(2.0, 0x405060FF))
+            .shadow(crate::Shadow::new(0x11223344, 9.0, 10.0, 11.0, 12.0))
+            .opacity(0.7)
+            .flex_direction(crate::FlexDirection::Row)
+            .justify_content(crate::JustifyContent::Center)
+            .align_items(crate::AlignItems::End)
+            .cursor(crate::CursorStyle::Pointer)
+    );
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle {
+            handle: call_handle,
+            bg_color,
+            radius_tl,
+            border_width,
+            border_color,
+            ..
+        } if *call_handle == handle && *bg_color == 0x102030FF
+            && *radius_tl == 5.0 && *border_width == 2.0 && *border_color == 0x405060FF
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetPadding { handle: call_handle, left, top, right, bottom }
+            if *call_handle == handle && *left == 1.0 && *top == 2.0
+                && *right == 3.0 && *bottom == 4.0
+    )));
+}
+
+#[test]
+fn local_host_style_precedence_is_independent_of_setter_order() {
+    fn configured(presenter_first: bool) -> FlexBox {
+        let host = column();
+        let presenter = crate::PresenterHostStyle::new()
+            .background(0x102030FF)
+            .padding(crate::EdgeInsets::all(4.0))
+            .opacity(0.8);
+        if presenter_first {
+            host.apply_presenter_style(presenter);
+        }
+        host.bg_color(0xAABBCCFF)
+            .padding(5.0, 6.0, 7.0, 8.0)
+            .opacity(0.5);
+        if !presenter_first {
+            host.apply_presenter_style(presenter);
+        }
+        host
+    }
+
+    let presenter_first = configured(true);
+    let local_first = configured(false);
+    assert_eq!(
+        presenter_first.resolved_host_style(),
+        local_first.resolved_host_style()
+    );
+    assert_eq!(
+        presenter_first.resolved_host_style().background,
+        Some(0xAABBCCFF)
+    );
+    assert_eq!(
+        presenter_first.resolved_host_style().padding,
+        Some(crate::EdgeInsets::new(5.0, 6.0, 7.0, 8.0))
+    );
+    assert_eq!(presenter_first.resolved_host_style().opacity, Some(0.5));
+}
+
+#[test]
+fn clearing_presenter_host_style_restores_defaults_and_identical_updates_are_silent() {
+    ffi::test::reset();
+    let host = flex_box();
+    Application::mount(host.clone());
+    let handle = host.handle().raw();
+    let _ = ffi::test::take_calls();
+    let presenter = crate::PresenterHostStyle::new()
+        .background(0x123456FF)
+        .padding(crate::EdgeInsets::all(7.0));
+
+    host.apply_presenter_style(presenter);
+    assert!(!ffi::test::take_calls().is_empty());
+    host.apply_presenter_style(presenter);
+    assert!(ffi::test::take_calls().is_empty());
+
+    host.clear_presenter_style();
+    assert_eq!(host.resolved_host_style(), crate::PresenterHostStyle::new());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle: call_handle, color }
+            if *call_handle == handle && *color == 0x00000000
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetPadding { handle: call_handle, left, top, right, bottom }
+            if *call_handle == handle && *left == 0.0 && *top == 0.0
+                && *right == 0.0 && *bottom == 0.0
+    )));
+}
+
+#[test]
+fn configuration_clear_methods_restore_live_theme_and_builtin_presenters() {
+    ffi::test::reset();
+    clear_control_templates();
+    let theme = current_theme();
+
+    let button_created = Rc::new(Cell::new(0));
+    let button = button("Reset button");
+    button
+        .template(Rc::new(TestButtonTemplate {
+            created: button_created.clone(),
+            border_color: 0x010203FF,
+        }))
+        .colors(ButtonColors::new().background(0xAABBCCFF));
+    Application::mount(button.clone());
+    let button_handle = button.handle().raw();
+    let _ = ffi::test::take_calls();
+    button.clear_colors().clear_template();
+    assert_eq!(button_created.get(), 1);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == button_handle && *color == theme.colors.accent
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { handle, border_color, .. }
+            if *handle == button_handle && *border_color == theme.colors.border
+    )));
+
+    let input = text_input();
+    input.colors(TextInputColors::new().background(0x112233FF));
+    Application::mount(input.clone());
+    let input_handle = input.handle().raw();
+    let _ = ffi::test::take_calls();
+    input.clear_colors();
+    assert!(ffi::test::take_calls().iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == input_handle && *color == theme.colors.surface
+    )));
+
+    let slider = slider();
+    let default_thumb_size = create_default_slider_presenter(None).metrics().thumb_size;
+    slider.sizing(SliderSizing::new().thumb_size(40.0));
+    Application::mount(slider.clone());
+    let _ = ffi::test::take_calls();
+    slider.clear_sizing();
+    assert!(ffi::test::take_calls().iter().any(|call| matches!(
+        call,
+        Call::SetWidth { value, unit_enum, .. }
+            if (*value - default_thumb_size).abs() < f32::EPSILON
+                && *unit_enum == Unit::Pixel as u32
+    )));
+}
+
+#[test]
+fn overlay_partial_appearances_follow_live_theme_and_clear_atomically() {
+    ffi::test::reset();
+    let dialog = dialog("Appearance", "Dialog appearance");
+    dialog
+        .appearance(DialogAppearance::new().card(SurfaceAppearance::new().background(0x102030FF)));
+    Application::mount(dialog.clone());
+    dialog.show();
+    let _ = ffi::test::take_calls();
+
+    let next_theme = generate_theme(true, 0x445566FF);
+    use_custom_theme(next_theme.clone());
+    let calls = ffi::test::take_calls();
+    assert!(
+        calls.iter().any(|call| matches!(
+            call,
+            Call::SetBoxStyle { bg_color, border_color, .. }
+                if *bg_color == 0x102030FF && *border_color == next_theme.colors.border
+        )),
+        "dialog theme calls: {calls:?}"
+    );
+
+    dialog.clear_appearance();
+    assert!(ffi::test::take_calls().iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { color, .. } if *color == next_theme.colors.surface
+    )));
+
+    let menu = ContextMenu::new();
+    menu.items(vec![MenuItem::new(
+        "Appearance item",
+        ContextMenuAction::ReloadPage,
+    )]);
+    menu.appearance(
+        ContextMenuAppearance::new()
+            .panel(SurfaceAppearance::new().background(0xAABBCCFF))
+            .item(ContextMenuItemAppearance::new().text_color(0x112233FF)),
+    );
+    Application::mount(menu.clone());
+    menu.show(20.0, 20.0);
+    let _ = ffi::test::take_calls();
+    let light_theme = generate_theme(false, 0x778899FF);
+    use_custom_theme(light_theme.clone());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { bg_color, border_color, .. }
+            if *bg_color == 0xAABBCCFF
+                && *border_color == light_theme.context_menu.panel_border_color
+    )));
+    menu.clear_appearance();
+    assert!(ffi::test::take_calls().iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { color, .. }
+            if *color == light_theme.context_menu.panel_background
+    )));
+
+    let popup = popup();
+    Application::mount(popup.clone());
+    popup.show_at_point(20.0, 20.0, 120.0, 80.0);
+    let surface_handle = popup.surface().handle().raw();
+    popup.appearance(PopupAppearance::new().panel(SurfaceAppearance::new().background(0xDEADBEEF)));
+    let _ = ffi::test::take_calls();
+    popup.clear_appearance();
+    assert!(ffi::test::take_calls().iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == surface_handle && *color == 0x00000000
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_button_and_nav_link_keep_theme_subscriptions_after_wrappers_drop() {
+    ffi::test::reset();
+    let root = column();
+    let button = button("Themed button");
+    let link = NavLink::with_label("/next", "Themed link");
+    root.child(&button).child(&link);
+    Application::mount(root);
+    let button_handle = button.handle().raw();
+    let link_label_handle = link.label_node().handle().raw();
+    drop(button);
+    drop(link);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.accent = 0x102030FF;
+    theme.colors.border = 0x405060FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == button_handle && *color == theme.colors.accent
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { handle, border_color, .. }
+            if *handle == button_handle && *border_color == theme.colors.border
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == link_label_handle && *color == theme.colors.accent
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_pressable_and_slider_keep_theme_subscriptions_after_wrappers_drop() {
+    ffi::test::reset();
+    let root = column();
+    let checkbox = checkbox("Themed checkbox");
+    let slider = slider();
+    root.child(&checkbox).child(&slider);
+    Application::mount(root);
+    drop(checkbox);
+    drop(slider);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.text_primary = 0x112233FF;
+    theme.colors.accent = 0x445566FF;
+    theme.colors.border = 0x778899FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { color, .. } if *color == theme.colors.accent
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_scroll_box_keeps_scrollbar_theme_subscriptions_after_wrapper_drop() {
+    ffi::test::reset();
+    let root = column();
+    let scroll = crate::scroll_box();
+    let vertical_track = scroll.vertical_scrollbar().render();
+    scroll
+        .vertical_scrollbar_visibility(ScrollBarVisibility::Always)
+        .height(120.0, Unit::Pixel)
+        .child(&column().height(400.0, Unit::Pixel).clone());
+    root.child(&scroll);
+    Application::mount(root);
+    let track_handle = vertical_track.handle().raw();
+    drop(scroll);
+    drop(vertical_track);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.scrollbar_track = 0x314159FF;
+    theme.colors.scrollbar_thumb = 0x271828FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, color }
+            if *handle == track_handle && *color == theme.colors.scrollbar_track
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_dropdown_keeps_theme_subscription_after_wrapper_drop() {
+    ffi::test::reset();
+    let root = column();
+    let dropdown = dropdown();
+    dropdown.items(vec![DropdownItem::from_value("Alpha")]);
+    root.child(&dropdown);
+    Application::mount(root);
+    drop(dropdown);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0x135724FF;
+    theme.colors.border = 0x246813FF;
+    theme.colors.text_primary = 0xABCDEFff;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { border_color, .. } if *border_color == theme.colors.border
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_progress_bar_keeps_theme_subscription_after_wrapper_drop() {
+    ffi::test::reset();
+    let root = column();
+    let progress = progress_bar();
+    root.child(&progress);
+    Application::mount(root);
+    let handle = progress.handle().raw();
+    drop(progress);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.scrollbar_track = 0x123456FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle: call_handle, color }
+            if *call_handle == handle && *color == theme.colors.scrollbar_track
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_text_editors_keep_visual_subscriptions_after_wrappers_drop() {
+    ffi::test::reset();
+    let root = column();
+    let input = text_input();
+    let area = text_area();
+    root.child(&input).child(&area);
+    Application::mount(root);
+    drop(input);
+    drop(area);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0x102938FF;
+    theme.colors.border = 0x203948FF;
+    theme.colors.text_primary = 0x304958FF;
+    theme.colors.accent = 0x405968FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { border_color, .. } if *border_color == theme.colors.border
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_combo_box_keeps_theme_subscription_after_wrapper_drop() {
+    ffi::test::reset();
+    let root = column();
+    let combo = combo_box();
+    combo.items(["Alpha"]);
+    root.child(&combo);
+    Application::mount(root);
+    drop(combo);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0x516171FF;
+    theme.colors.border = 0x617181FF;
+    theme.colors.text_primary = 0x718191FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { color, .. } if *color == theme.colors.surface
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { border_color, .. } if *border_color == theme.colors.border
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_overlays_keep_theme_subscriptions_without_wrapper_cycles() {
+    ffi::test::reset();
+    let root = column();
+    let dialog = dialog("Retained dialog", "Body");
+    let menu = context_menu(Vec::<MenuItem>::new());
+    root.child(&dialog).child(&menu);
+    Application::mount(root);
+    dialog.show();
+    menu.show(24.0, 24.0);
+    drop(dialog);
+    drop(menu);
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0x8292A2FF;
+    theme.colors.border = 0x92A2B2FF;
+    theme.colors.text_primary = 0xA2B2C2FF;
+    use_custom_theme(theme.clone());
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { color, .. } if *color == theme.colors.text_primary
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_visual_subscriptions_stop_after_unmount() {
+    ffi::test::reset();
+    let input = text_input();
+    Application::mount(input.clone());
+    let input_handle = input.handle().raw();
+    drop(input);
+    Application::unmount();
+    let _ = ffi::test::take_calls();
+
+    let mut theme = current_theme();
+    theme.colors.surface = 0xB3C3D3FF;
+    use_custom_theme(theme);
+    let calls = ffi::test::take_calls();
+    assert!(!calls.iter().any(|call| matches!(
+        call,
+        Call::SetBgColor { handle, .. } if *handle == input_handle
+    )));
+    use_system_theme();
+}
+
+#[test]
+fn retained_visual_subscription_fires_once_per_theme_change() {
+    ffi::test::reset();
+    let progress = progress_bar();
+    Application::mount(progress.clone());
+    let handle = progress.handle().raw();
+    drop(progress);
+    let _ = ffi::test::take_calls();
+
+    let mut first = current_theme();
+    first.colors.scrollbar_track = 0xC4D4E4FF;
+    use_custom_theme(first);
+    let first_calls = ffi::test::take_calls();
+    assert_eq!(
+        first_calls
+            .iter()
+            .filter(|call| matches!(
+                call,
+                Call::SetBgColor { handle: call_handle, color: 0xC4D4E4FF }
+                    if *call_handle == handle
+            ))
+            .count(),
+        1
+    );
+
+    let mut second = current_theme();
+    second.colors.scrollbar_track = 0xD5E5F5FF;
+    use_custom_theme(second);
+    let second_calls = ffi::test::take_calls();
+    assert_eq!(
+        second_calls
+            .iter()
+            .filter(|call| matches!(
+                call,
+                Call::SetBgColor { handle: call_handle, color: 0xD5E5F5FF }
+                    if *call_handle == handle
+            ))
+            .count(),
+        1
+    );
+    use_system_theme();
+}
+
+#[test]
 fn button_uses_app_level_template_when_no_local_template_is_set() {
     ffi::test::reset();
     clear_control_templates();
     let created = Rc::new(Cell::new(0));
-    use_control_templates(Some(ControlTemplateSet {
+    use_control_templates(ControlTemplateSet {
         button: Some(Rc::new(TestButtonTemplate {
             created: created.clone(),
             border_color: 0xAABBCCFF,
         })),
         ..Default::default()
-    }));
+    });
 
     let button = button("Template action");
     Application::mount(button.clone());
@@ -722,10 +1462,10 @@ fn button_local_template_replaces_presenter_tree_and_retains_label_updates() {
     let _ = ffi::test::take_calls();
 
     let created = Rc::new(Cell::new(0));
-    button.template(Some(Rc::new(TestButtonTemplate {
+    button.template(Rc::new(TestButtonTemplate {
         created: created.clone(),
         border_color: 0x445566FF,
-    })));
+    }));
     let calls = ffi::test::take_calls();
     let button_handle = button.retained_node_ref().handle().raw();
     assert_eq!(created.get(), 1);
@@ -1549,10 +2289,10 @@ fn checkbox_template_and_sizing_follow_fui_as_surface() {
         })),
         ..Default::default()
     };
-    use_control_templates(Some(templates));
+    use_control_templates(templates);
     let checkbox = checkbox("Agree");
 
-    checkbox.sizing(Some(LabeledControlSizing::new().label_font_size(21.0)));
+    checkbox.sizing(LabeledControlSizing::new().label_font_size(21.0));
     checkbox.check(true);
 
     assert_eq!(created.get(), 2);
@@ -1570,12 +2310,12 @@ fn checkbox_local_template_replaces_indicator_before_mount() {
     let applied_colors = Rc::new(Cell::new(None));
     let checkbox = checkbox("Local template");
     checkbox
-        .template(Some(Rc::new(TestCheckboxIndicatorTemplate {
+        .template(Rc::new(TestCheckboxIndicatorTemplate {
             created: created.clone(),
             applied_checked_state: applied_checked_state.clone(),
             applied_state: applied_state.clone(),
             applied_colors: applied_colors.clone(),
-        })))
+        }))
         .check(true);
 
     Application::mount(checkbox.clone());
@@ -1593,7 +2333,7 @@ fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
     let applied_checked_state = Rc::new(Cell::new(SemanticCheckedState::False));
     let applied_state = Rc::new(RefCell::new(None));
     let applied_colors = Rc::new(Cell::new(None));
-    use_control_templates(Some(ControlTemplateSet {
+    use_control_templates(ControlTemplateSet {
         checkbox_indicator: Some(Rc::new(TestCheckboxIndicatorTemplate {
             created,
             applied_checked_state,
@@ -1601,7 +2341,7 @@ fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
             applied_colors: applied_colors.clone(),
         })),
         ..Default::default()
-    }));
+    });
     let colors = LabeledControlColors::new()
         .accent(0xAA00AAFF)
         .background(0x111111FF)
@@ -1609,7 +2349,7 @@ fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
         .text_primary(0x333333FF)
         .text_muted(0x444444FF);
     let checkbox = checkbox("Agree");
-    checkbox.tri_state(true).colors(Some(colors));
+    checkbox.tri_state(true).colors(colors);
     Application::mount(checkbox.clone());
     let node_ref = checkbox.retained_node_ref();
 
@@ -1669,12 +2409,12 @@ fn labeled_control_sizing_and_label_colors_reach_host_calls() {
     ffi::test::reset();
     let checkbox = checkbox("Agree");
     checkbox
-        .sizing(Some(LabeledControlSizing::new().label_font_size(23.0)))
-        .colors(Some(
+        .sizing(LabeledControlSizing::new().label_font_size(23.0))
+        .colors(
             LabeledControlColors::new()
                 .text_primary(0x123456FF)
                 .text_muted(0xABCDEF88),
-        ));
+        );
     Application::mount(checkbox.clone());
 
     let calls = ffi::test::take_calls();
@@ -1710,11 +2450,11 @@ fn radio_button_template_and_sizing_follow_fui_as_surface() {
         })),
         ..Default::default()
     };
-    use_control_templates(Some(templates));
+    use_control_templates(templates);
     let radio = radio_button("alpha");
 
     radio
-        .sizing(Some(LabeledControlSizing::new().label_font_size(19.0)))
+        .sizing(LabeledControlSizing::new().label_font_size(19.0))
         .check(true);
 
     assert_eq!(created.get(), 2);
@@ -1735,7 +2475,7 @@ fn switch_template_surface_follows_fui_as() {
         })),
         ..Default::default()
     };
-    use_control_templates(Some(templates));
+    use_control_templates(templates);
     let toggle = switch("Toggle");
 
     toggle.check(true);
@@ -1750,11 +2490,11 @@ fn switch_sizing_updates_default_indicator_and_recreates_custom_template() {
     ffi::test::reset();
     clear_control_templates();
     let toggle = switch("Sized switch");
-    toggle.sizing(Some(
+    toggle.sizing(
         LabeledControlSizing::new()
             .indicator_size(32.0)
             .label_font_size(18.0),
-    ));
+    );
     Application::mount(toggle.clone());
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(|call| matches!(
@@ -1767,11 +2507,11 @@ fn switch_sizing_updates_default_indicator_and_recreates_custom_template() {
     let checked = Rc::new(Cell::new(false));
     let toggle = switch("Template switch");
     toggle
-        .template(Some(Rc::new(TestSwitchIndicatorTemplate {
+        .template(Rc::new(TestSwitchIndicatorTemplate {
             created: created.clone(),
             checked: checked.clone(),
-        })))
-        .sizing(Some(LabeledControlSizing::new().indicator_size(30.0)));
+        }))
+        .sizing(LabeledControlSizing::new().indicator_size(30.0));
     assert_eq!(created.get(), 2);
 }
 
@@ -1780,9 +2520,7 @@ fn slider_default_presenter_uses_sizing_for_geometry() {
     ffi::test::reset();
     let slider = slider();
     slider
-        .sizing(Some(
-            SliderSizing::new().thumb_size(24.0).track_thickness(8.0),
-        ))
+        .sizing(SliderSizing::new().thumb_size(24.0).track_thickness(8.0))
         .length(120.0);
     Application::mount(slider.clone());
     let calls = ffi::test::take_calls();
@@ -1840,8 +2578,8 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
         .thumb(0x778899FF);
 
     slider
-        .template(Some(template))
-        .colors(Some(colors))
+        .template(template)
+        .colors(colors)
         .orientation(Orientation::Vertical)
         .length(140.0)
         .value(50.0);
@@ -1872,7 +2610,7 @@ fn slider_control_template_set_and_local_template_precedence_follow_fui_as() {
     let app_layout_length = Rc::new(Cell::new(0.0));
     let app_apply_state = Rc::new(RefCell::new(None));
     let app_apply_colors = Rc::new(Cell::new(None));
-    use_control_templates(Some(ControlTemplateSet {
+    use_control_templates(ControlTemplateSet {
         slider: Some(Rc::new(TestSliderTemplate {
             created: app_created.clone(),
             metrics: SliderPresenterMetrics::new(22.0, 7.0),
@@ -1882,26 +2620,26 @@ fn slider_control_template_set_and_local_template_precedence_follow_fui_as() {
             last_apply_colors: app_apply_colors,
         })),
         ..Default::default()
-    }));
+    });
 
     let slider = slider();
-    slider.sizing(Some(SliderSizing::new().thumb_size(30.0)));
+    slider.sizing(SliderSizing::new().thumb_size(30.0));
     assert_eq!(app_created.get(), 2);
 
     let local_layout_state = Rc::new(RefCell::new(None));
     let local_layout_length = Rc::new(Cell::new(0.0));
     let local_apply_state = Rc::new(RefCell::new(None));
     let local_apply_colors = Rc::new(Cell::new(None));
-    slider.template(Some(Rc::new(TestSliderTemplate {
+    slider.template(Rc::new(TestSliderTemplate {
         created: local_created.clone(),
         metrics: SliderPresenterMetrics::new(28.0, 9.0),
         last_layout_state: local_layout_state.clone(),
         last_layout_length: local_layout_length,
         last_apply_state: local_apply_state,
         last_apply_colors: local_apply_colors,
-    })));
+    }));
     slider
-        .sizing(Some(SliderSizing::new().thumb_size(36.0)))
+        .sizing(SliderSizing::new().thumb_size(36.0))
         .length(160.0)
         .value(40.0);
 
@@ -1923,14 +2661,14 @@ fn slider_presenter_receives_hover_drag_and_disabled_state() {
     let last_apply_state = Rc::new(RefCell::new(None));
     let last_apply_colors = Rc::new(Cell::new(None));
     let slider = slider();
-    slider.template(Some(Rc::new(TestSliderTemplate {
+    slider.template(Rc::new(TestSliderTemplate {
         created: Rc::new(Cell::new(0)),
         metrics: SliderPresenterMetrics::new(18.0, 6.0),
         last_layout_state: last_layout_state.clone(),
         last_layout_length,
         last_apply_state: last_apply_state.clone(),
         last_apply_colors,
-    })));
+    }));
     Application::mount(slider.clone());
     let _ = ffi::test::take_calls();
     let node_ref = slider.retained_node_ref();
@@ -2410,10 +3148,10 @@ fn progress_bar_default_semantic_label_does_not_overwrite_explicit_label() {
 }
 
 #[test]
-fn progress_bar_invalid_length_and_thickness_warn_and_clamp() {
+fn progress_bar_invalid_sizing_warns_and_falls_back_to_defaults() {
     ffi::test::reset();
     let progress = progress_bar();
-    progress.length(0.0).thickness(-2.0);
+    progress.sizing(ProgressBarSizing::new().length(0.0).thickness(-2.0));
 
     Application::mount(progress);
     let calls = ffi::test::take_calls();
@@ -2422,23 +3160,23 @@ fn progress_bar_invalid_length_and_thickness_warn_and_clamp() {
         call,
         Call::Log { category, message }
             if category == "Warning/Layout"
-                && message == "ProgressBar.length() received 0; clamping to 1.0."
+                && message == "ProgressBarSizing.length() received 0; ignoring."
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::Log { category, message }
             if category == "Warning/Layout"
-                && message == "ProgressBar.thickness() received -2; clamping to 1.0."
+                && message == "ProgressBarSizing.thickness() received -2; ignoring."
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetWidth { value, unit_enum, .. }
-            if *value == 1.0 && *unit_enum == Unit::Pixel as u32
+            if *value == PROGRESS_LENGTH && *unit_enum == Unit::Pixel as u32
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetHeight { value, unit_enum, .. }
-            if *value == 1.0 && *unit_enum == Unit::Pixel as u32
+            if *value == PROGRESS_THICKNESS && *unit_enum == Unit::Pixel as u32
     )));
 }
 
@@ -2475,8 +3213,7 @@ fn progress_bar_overrides_survive_theme_changes() {
     ffi::test::reset();
     let progress = progress_bar();
     progress
-        .track_color(0x123456FF)
-        .fill_color(0xABCDEF88)
+        .colors(ProgressBarColors::new().track(0x123456FF).fill(0xABCDEF88))
         .corner_radius(9.0);
     Application::mount(progress.clone());
     let calls = ffi::test::take_calls();
@@ -2489,10 +3226,13 @@ fn progress_bar_overrides_survive_theme_changes() {
     use_custom_theme(generate_theme(true, 0x445566FF));
     let calls = ffi::test::take_calls();
 
-    assert!(calls.iter().any(|call| matches!(
+    assert_eq!(
+        progress.flex_box_root().resolved_host_style().background,
+        Some(0x123456FF)
+    );
+    assert!(!calls.iter().any(|call| matches!(
         call,
-        Call::SetBgColor { handle, color }
-            if *handle == root_handle && *color == 0x123456FF
+        Call::SetBgColor { handle, .. } if *handle == root_handle
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
@@ -3671,7 +4411,7 @@ fn text_area_reports_internal_scroll_offsets_and_uses_text_area_template_slot() 
     let text_area_created = Rc::new(Cell::new(0));
     let text_input_state = Rc::new(RefCell::new(None));
     let text_area_state = Rc::new(RefCell::new(None));
-    use_control_templates(Some(ControlTemplateSet {
+    use_control_templates(ControlTemplateSet {
         text_input: Some(Rc::new(TestTextInputTemplate {
             created: text_input_created.clone(),
             last_state: text_input_state,
@@ -3681,7 +4421,7 @@ fn text_area_reports_internal_scroll_offsets_and_uses_text_area_template_slot() 
             last_state: text_area_state.clone(),
         })),
         ..Default::default()
-    }));
+    });
 
     let input = text_area();
     input

@@ -85,13 +85,23 @@ impl TextArea {
         self
     }
 
-    pub fn colors(&self, colors: Option<TextInputColors>) -> &Self {
+    pub fn colors(&self, colors: TextInputColors) -> &Self {
         self.core.colors(colors);
         self
     }
 
-    pub fn template(&self, template: Option<Rc<dyn TextInputTemplate>>) -> &Self {
+    pub fn clear_colors(&self) -> &Self {
+        self.core.clear_colors();
+        self
+    }
+
+    pub fn template(&self, template: Rc<dyn TextInputTemplate>) -> &Self {
         self.core.template(template);
+        self
+    }
+
+    pub fn clear_template(&self) -> &Self {
+        self.core.clear_template();
         self
     }
 

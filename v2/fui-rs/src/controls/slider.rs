@@ -4,7 +4,6 @@ use super::internal::slider_presenter::{
 use super::*;
 use crate::logger;
 use crate::node::WeakFlexBox;
-use crate::signal::SubscriptionGuard;
 use crate::{focus_adorner, focus_visibility};
 
 const DEFAULT_SLIDER_LENGTH: f32 = 180.0;
@@ -53,8 +52,6 @@ pub struct Slider {
     focused_state: Rc<Cell<bool>>,
     weak_root: Rc<WeakNodeRef>,
     weak_flex_root: WeakFlexBox,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
-    focus_visibility_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl Default for Slider {
@@ -98,8 +95,6 @@ impl Slider {
             hovered_state: Rc::new(Cell::new(false)),
             dragging_state: Rc::new(Cell::new(false)),
             focused_state: Rc::new(Cell::new(false)),
-            theme_guard: Rc::new(RefCell::new(None)),
-            focus_visibility_guard: Rc::new(RefCell::new(None)),
         };
         control.install_visual_subscriptions();
         control.bind_events();
@@ -229,7 +224,15 @@ impl Slider {
         self
     }
 
-    pub fn sizing(&self, sizing: Option<SliderSizing>) -> &Self {
+    pub fn sizing(&self, sizing: SliderSizing) -> &Self {
+        self.set_sizing(Some(sizing))
+    }
+
+    pub fn clear_sizing(&self) -> &Self {
+        self.set_sizing(None)
+    }
+
+    fn set_sizing(&self, sizing: Option<SliderSizing>) -> &Self {
         self.sizing_value.set(sizing);
         self.replace_presenter(create_slider_presenter(
             self.template_override.borrow().clone(),
@@ -243,13 +246,29 @@ impl Slider {
         self
     }
 
-    pub fn colors(&self, colors: Option<SliderColors>) -> &Self {
+    pub fn colors(&self, colors: SliderColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<SliderColors>) -> &Self {
         self.colors_value.set(colors);
         self.sync_presentation();
         self
     }
 
-    pub fn template(&self, template: Option<Rc<dyn SliderTemplate>>) -> &Self {
+    pub fn template(&self, template: Rc<dyn SliderTemplate>) -> &Self {
+        self.set_template(Some(template))
+    }
+
+    pub fn clear_template(&self) -> &Self {
+        self.set_template(None)
+    }
+
+    fn set_template(&self, template: Option<Rc<dyn SliderTemplate>>) -> &Self {
         self.template_override.replace(template.clone());
         self.replace_presenter(create_slider_presenter(template, self.sizing_value.get()));
         let thumb_size = self.slider_presenter.borrow().metrics().thumb_size;
@@ -287,15 +306,20 @@ impl Slider {
 
     fn install_visual_subscriptions(&self) {
         let target = SliderEventTarget::from_slider(self);
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let theme_guard = subscribe(move |_theme| {
             target.handle_theme_changed();
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(theme_guard));
 
         let target = SliderEventTarget::from_slider(self);
-        *self.focus_visibility_guard.borrow_mut() =
-            Some(focus_visibility::subscribe(move |_visible| {
-                target.sync_focus_chrome();
-            }));
+        let focus_guard = focus_visibility::subscribe(move |_visible| {
+            target.sync_focus_chrome();
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(focus_guard));
     }
 
     fn set_value_inner(&self, value: f32, emit: bool, announce: bool) {

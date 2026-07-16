@@ -1,3 +1,4 @@
+use super::ContextMenuAppearance;
 use crate::bindings::ui;
 use crate::event::{self, PointerEventArgs, PointerType};
 use crate::ffi::{
@@ -11,9 +12,8 @@ use crate::node::{
     WeakFlexBox,
 };
 use crate::popup_presenter::{PopupPresenter, PopupPresenterEventTarget};
-use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe, Theme};
-use crate::FontFamily;
+use crate::{FontFamily, FontStyle, FontWeight};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -302,11 +302,16 @@ struct ContextMenuEntryStyle {
     padding_top: f32,
     padding_right: f32,
     padding_bottom: f32,
-    corner_radius: f32,
+    corner_top_left: f32,
+    corner_top_right: f32,
+    corner_bottom_right: f32,
+    corner_bottom_left: f32,
     text_color: u32,
     background_color: u32,
     hover_background_color: u32,
     font_family: FontFamily,
+    font_weight: FontWeight,
+    font_style: FontStyle,
     font_size: f32,
 }
 
@@ -318,11 +323,16 @@ impl ContextMenuEntryStyle {
             padding_top: theme.context_menu.item.padding_top,
             padding_right: theme.context_menu.item.padding_right,
             padding_bottom: theme.context_menu.item.padding_bottom,
-            corner_radius: theme.context_menu.item.corner_radius,
+            corner_top_left: theme.context_menu.item.corner_radius,
+            corner_top_right: theme.context_menu.item.corner_radius,
+            corner_bottom_right: theme.context_menu.item.corner_radius,
+            corner_bottom_left: theme.context_menu.item.corner_radius,
             text_color: theme.context_menu.item.text_color,
             background_color: theme.context_menu.item.background,
             hover_background_color: theme.context_menu.item.hover_background,
             font_family: theme.context_menu.item.font_family.clone(),
+            font_weight: FontWeight::Regular,
+            font_style: FontStyle::Normal,
             font_size: theme.context_menu.item.font_size,
         }
     }
@@ -484,7 +494,12 @@ impl ContextMenuEntry {
                 style.padding_right,
                 style.padding_bottom,
             )
-            .corner_radius(style.corner_radius)
+            .corners(
+                style.corner_top_left,
+                style.corner_top_right,
+                style.corner_bottom_right,
+                style.corner_bottom_left,
+            )
             .bg_color(if self.hovered.get() && !self.disabled.get() {
                 style.hover_background_color
             } else {
@@ -492,6 +507,8 @@ impl ContextMenuEntry {
             });
         self.label_node
             .font_family(style.font_family.clone())
+            .font_weight(style.font_weight)
+            .font_style(style.font_style)
             .font_size(style.font_size)
             .line_height(context_menu_entry_line_height(&style))
             .text_color(if self.disabled.get() {
@@ -501,6 +518,8 @@ impl ContextMenuEntry {
             });
         self.shortcut_node
             .font_family(style.font_family.clone())
+            .font_weight(style.font_weight)
+            .font_style(style.font_style)
             .font_size(style.font_size)
             .line_height(context_menu_entry_line_height(&style))
             .text_color(theme.colors.text_muted);
@@ -597,6 +616,7 @@ impl ContextMenuSeparator {
 }
 
 struct ContextMenuState {
+    appearance: Option<ContextMenuAppearance>,
     visible: bool,
     suppress_next_pointer_up_activation: bool,
     key_filter_token: u32,
@@ -606,31 +626,26 @@ struct ContextMenuState {
     panel_border_width: f32,
     panel_border_color: u32,
     panel_border_style: BorderStyle,
-    panel_corner_radius: f32,
+    panel_corner_top_left: f32,
+    panel_corner_top_right: f32,
+    panel_corner_bottom_right: f32,
+    panel_corner_bottom_left: f32,
     separator_color: u32,
     panel_shadow_color: u32,
+    panel_shadow_offset_x: f32,
     panel_shadow_offset_y: f32,
     panel_shadow_blur: f32,
     panel_shadow_spread: f32,
     panel_background_blur_sigma: f32,
-    panel_background_overridden: bool,
-    panel_border_overridden: bool,
-    panel_corner_radius_overridden: bool,
-    separator_color_overridden: bool,
-    panel_shadow_overridden: bool,
-    panel_background_blur_overridden: bool,
-    item_metrics_overridden: bool,
-    item_text_color_overridden: bool,
-    item_background_overridden: bool,
-    item_hover_color_overridden: bool,
-    item_corner_radius_overridden: bool,
-    item_font_overridden: bool,
+    panel_border_dash_on: f32,
+    panel_border_dash_off: f32,
     visibility_changed_callback: Option<VisibilityChangedCallback>,
 }
 
 impl ContextMenuState {
     fn from_theme(theme: Theme) -> Self {
         Self {
+            appearance: None,
             visible: false,
             suppress_next_pointer_up_activation: false,
             key_filter_token: 0,
@@ -640,25 +655,19 @@ impl ContextMenuState {
             panel_border_width: 1.0,
             panel_border_color: theme.context_menu.panel_border_color,
             panel_border_style: BorderStyle::Solid,
-            panel_corner_radius: theme.context_menu.panel_corner_radius,
+            panel_corner_top_left: theme.context_menu.panel_corner_radius,
+            panel_corner_top_right: theme.context_menu.panel_corner_radius,
+            panel_corner_bottom_right: theme.context_menu.panel_corner_radius,
+            panel_corner_bottom_left: theme.context_menu.panel_corner_radius,
             separator_color: theme.context_menu.separator_color,
             panel_shadow_color: theme.context_menu.panel_shadow_color,
+            panel_shadow_offset_x: 0.0,
             panel_shadow_offset_y: theme.context_menu.shadow_offset_y,
             panel_shadow_blur: theme.context_menu.shadow_blur,
             panel_shadow_spread: theme.context_menu.shadow_spread,
             panel_background_blur_sigma: DEFAULT_PANEL_BACKGROUND_BLUR_SIGMA,
-            panel_background_overridden: false,
-            panel_border_overridden: false,
-            panel_corner_radius_overridden: false,
-            separator_color_overridden: false,
-            panel_shadow_overridden: false,
-            panel_background_blur_overridden: false,
-            item_metrics_overridden: false,
-            item_text_color_overridden: false,
-            item_background_overridden: false,
-            item_hover_color_overridden: false,
-            item_corner_radius_overridden: false,
-            item_font_overridden: false,
+            panel_border_dash_on: 0.0,
+            panel_border_dash_off: 0.0,
             visibility_changed_callback: None,
         }
     }
@@ -668,7 +677,6 @@ impl ContextMenuState {
 struct ContextMenuEventTarget {
     panel: WeakFlexBox,
     presenter: PopupPresenterEventTarget,
-    presenter_owner: PopupPresenter,
     entries: Vec<ContextMenuEntry>,
     separators: Vec<ContextMenuSeparator>,
     current_items: Rc<RefCell<Vec<MenuItem>>>,
@@ -691,7 +699,7 @@ impl ContextMenuEventTarget {
     }
 
     fn hide(&self) {
-        let was_visible = self.state.borrow().visible || self.presenter_owner.is_open();
+        let was_visible = self.state.borrow().visible || self.presenter.is_open();
         if !was_visible {
             return;
         }
@@ -765,8 +773,8 @@ impl ContextMenuEventTarget {
                 return;
             }
         }
-        let local_x = event.scene_x - self.presenter_owner.surface_x();
-        let local_y = event.scene_y - self.presenter_owner.surface_y();
+        let local_x = event.scene_x - self.presenter.surface_x();
+        let local_y = event.scene_y - self.presenter.surface_y();
         if local_x < 0.0 || local_x > self.state.borrow().menu_width || local_y < 0.0 {
             event.handled = true;
             self.hide();
@@ -813,17 +821,22 @@ impl ContextMenuEventTarget {
             .width(state.menu_width, Unit::Pixel)
             .bg_color(state.panel_background_color)
             .background_blur(state.panel_background_blur_sigma)
-            .corner_radius(state.panel_corner_radius)
+            .corners(
+                state.panel_corner_top_left,
+                state.panel_corner_top_right,
+                state.panel_corner_bottom_right,
+                state.panel_corner_bottom_left,
+            )
             .border_config(Border {
                 width: state.panel_border_width,
                 color: state.panel_border_color,
                 style: state.panel_border_style,
-                dash_on: 0.0,
-                dash_off: 0.0,
+                dash_on: state.panel_border_dash_on,
+                dash_off: state.panel_border_dash_off,
             })
             .drop_shadow(
                 state.panel_shadow_color,
-                0.0,
+                state.panel_shadow_offset_x,
                 state.panel_shadow_offset_y,
                 state.panel_shadow_blur,
                 state.panel_shadow_spread,
@@ -842,53 +855,90 @@ impl ContextMenuEventTarget {
     fn handle_theme_changed(&self) {
         let theme = current_theme();
         let mut state = self.state.borrow_mut();
-        if !state.panel_background_overridden {
-            state.panel_background_color = theme.context_menu.panel_background;
-        }
-        if !state.panel_border_overridden {
-            state.panel_border_width = 1.0;
-            state.panel_border_color = theme.context_menu.panel_border_color;
-            state.panel_border_style = BorderStyle::Solid;
-        }
-        if !state.panel_corner_radius_overridden {
-            state.panel_corner_radius = theme.context_menu.panel_corner_radius;
-        }
-        if !state.separator_color_overridden {
-            state.separator_color = theme.context_menu.separator_color;
-        }
-        if !state.panel_shadow_overridden {
-            state.panel_shadow_color = theme.context_menu.panel_shadow_color;
-            state.panel_shadow_offset_y = theme.context_menu.shadow_offset_y;
-            state.panel_shadow_blur = theme.context_menu.shadow_blur;
-            state.panel_shadow_spread = theme.context_menu.shadow_spread;
-        }
-        if !state.panel_background_blur_overridden {
-            state.panel_background_blur_sigma = DEFAULT_PANEL_BACKGROUND_BLUR_SIGMA;
-        }
-        if !state.item_metrics_overridden {
-            state.item_style.item_height = theme.context_menu.item.height;
-            state.item_style.padding_left = theme.context_menu.item.padding_left;
-            state.item_style.padding_top = theme.context_menu.item.padding_top;
-            state.item_style.padding_right = theme.context_menu.item.padding_right;
-            state.item_style.padding_bottom = theme.context_menu.item.padding_bottom;
-        }
-        if !state.item_text_color_overridden {
-            state.item_style.text_color = theme.context_menu.item.text_color;
-        }
-        if !state.item_background_overridden {
-            state.item_style.background_color = theme.context_menu.item.background;
-        }
-        if !state.item_hover_color_overridden {
-            state.item_style.hover_background_color = theme.context_menu.item.hover_background;
-        }
-        if !state.item_corner_radius_overridden {
-            state.item_style.corner_radius = theme.context_menu.item.corner_radius;
-        }
-        if !state.item_font_overridden {
-            state.item_style.font_family = theme.context_menu.item.font_family.clone();
-            state.item_style.font_size = theme.context_menu.item.font_size;
-        }
+        let appearance = state.appearance.clone().unwrap_or_default();
+        let panel = appearance.panel.unwrap_or_default();
+        let backdrop = appearance.backdrop.unwrap_or_default();
+        let item = appearance.item.unwrap_or_default();
+
+        state.menu_width = appearance.width.unwrap_or(MENU_WIDTH);
+        state.panel_background_color = panel
+            .background
+            .unwrap_or(theme.context_menu.panel_background);
+        let border = panel
+            .border
+            .unwrap_or_else(|| Border::solid(1.0, theme.context_menu.panel_border_color));
+        state.panel_border_width = border.width;
+        state.panel_border_color = border.color;
+        state.panel_border_style = border.style;
+        state.panel_border_dash_on = border.dash_on;
+        state.panel_border_dash_off = border.dash_off;
+        let corners = panel
+            .corners
+            .unwrap_or_else(|| crate::Corners::all(theme.context_menu.panel_corner_radius));
+        state.panel_corner_top_left = corners.top_left;
+        state.panel_corner_top_right = corners.top_right;
+        state.panel_corner_bottom_right = corners.bottom_right;
+        state.panel_corner_bottom_left = corners.bottom_left;
+        let shadow = panel.shadow.unwrap_or_else(|| {
+            crate::Shadow::new(
+                theme.context_menu.panel_shadow_color,
+                0.0,
+                theme.context_menu.shadow_offset_y,
+                theme.context_menu.shadow_blur,
+                theme.context_menu.shadow_spread,
+            )
+        });
+        state.panel_shadow_color = shadow.color;
+        state.panel_shadow_offset_x = shadow.offset_x;
+        state.panel_shadow_offset_y = shadow.offset_y;
+        state.panel_shadow_blur = shadow.blur_sigma;
+        state.panel_shadow_spread = shadow.spread;
+        state.panel_background_blur_sigma = panel
+            .background_blur
+            .unwrap_or(DEFAULT_PANEL_BACKGROUND_BLUR_SIGMA);
+        state.separator_color = appearance
+            .separator_color
+            .unwrap_or(theme.context_menu.separator_color);
+
+        state.item_style.item_height = item.height.unwrap_or(theme.context_menu.item.height);
+        let padding = item.padding.unwrap_or_else(|| {
+            crate::EdgeInsets::new(
+                theme.context_menu.item.padding_left,
+                theme.context_menu.item.padding_top,
+                theme.context_menu.item.padding_right,
+                theme.context_menu.item.padding_bottom,
+            )
+        });
+        state.item_style.padding_left = padding.left;
+        state.item_style.padding_top = padding.top;
+        state.item_style.padding_right = padding.right;
+        state.item_style.padding_bottom = padding.bottom;
+        state.item_style.text_color = item
+            .text_color
+            .unwrap_or(theme.context_menu.item.text_color);
+        state.item_style.background_color = item
+            .background
+            .unwrap_or(theme.context_menu.item.background);
+        state.item_style.hover_background_color = item
+            .hover_background
+            .unwrap_or(theme.context_menu.item.hover_background);
+        let item_corners = item
+            .corners
+            .unwrap_or_else(|| crate::Corners::all(theme.context_menu.item.corner_radius));
+        state.item_style.corner_top_left = item_corners.top_left;
+        state.item_style.corner_top_right = item_corners.top_right;
+        state.item_style.corner_bottom_right = item_corners.bottom_right;
+        state.item_style.corner_bottom_left = item_corners.bottom_left;
+        state.item_style.font_family = item
+            .font_family
+            .unwrap_or_else(|| theme.context_menu.item.font_family.clone());
+        state.item_style.font_weight = item.font_weight.unwrap_or(FontWeight::Regular);
+        state.item_style.font_style = item.font_style.unwrap_or(FontStyle::Normal);
+        state.item_style.font_size = item.font_size.unwrap_or(theme.context_menu.item.font_size);
         drop(state);
+        self.presenter
+            .backdrop_color(backdrop.color.unwrap_or(0x00000000));
+        self.presenter.background_blur(backdrop.blur.unwrap_or(0.0));
         self.apply_theme();
     }
 }
@@ -905,7 +955,6 @@ pub struct ContextMenu {
     current_item_tops: Rc<RefCell<Vec<f32>>>,
     current_item_heights: Rc<RefCell<Vec<f32>>>,
     state: Rc<RefCell<ContextMenuState>>,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl Default for ContextMenu {
@@ -944,7 +993,6 @@ impl ContextMenu {
             current_item_tops: Rc::new(RefCell::new(Vec::new())),
             current_item_heights: Rc::new(RefCell::new(Vec::new())),
             state: Rc::new(RefCell::new(ContextMenuState::from_theme(theme))),
-            theme_guard: Rc::new(RefCell::new(None)),
         };
         menu.bind_events();
         menu.install_theme_subscription();
@@ -1014,174 +1062,15 @@ impl ContextMenu {
         self
     }
 
-    pub fn menu_width(&self, value: f32) -> &Self {
-        if value <= 0.0 {
-            warn(
-                "Layout",
-                &format!("ContextMenu.menu_width() received {value}; clamping to 1.0."),
-            );
-        }
-        self.state.borrow_mut().menu_width = value.max(1.0);
-        self.apply_theme();
+    pub fn appearance(&self, appearance: ContextMenuAppearance) -> &Self {
+        self.state.borrow_mut().appearance = Some(appearance);
+        self.event_target().handle_theme_changed();
         self
     }
 
-    pub fn item_height(&self, value: f32) -> &Self {
-        if value <= 0.0 {
-            warn(
-                "Layout",
-                &format!("ContextMenu.item_height() received {value}; clamping to 1.0."),
-            );
-        }
-        let mut state = self.state.borrow_mut();
-        state.item_metrics_overridden = true;
-        state.item_style.item_height = value.max(1.0);
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn item_padding(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_metrics_overridden = true;
-        state.item_style.padding_left = left;
-        state.item_style.padding_top = top;
-        state.item_style.padding_right = right;
-        state.item_style.padding_bottom = bottom;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.panel_background_overridden = true;
-        state.panel_background_color = color;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_border(&self, width: f32, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.panel_border_overridden = true;
-        state.panel_border_width = width;
-        state.panel_border_color = color;
-        state.panel_border_style = BorderStyle::Solid;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_border_config(&self, border: Border) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.panel_border_overridden = true;
-        state.panel_border_width = border.width;
-        state.panel_border_color = border.color;
-        state.panel_border_style = border.style;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_corner_radius(&self, radius: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.panel_corner_radius_overridden = true;
-        state.panel_corner_radius = radius.max(0.0);
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_shadow(&self, color: u32, offset_y: f32, blur_sigma: f32, spread: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.panel_shadow_overridden = true;
-        state.panel_shadow_color = color;
-        state.panel_shadow_offset_y = offset_y;
-        state.panel_shadow_blur = blur_sigma;
-        state.panel_shadow_spread = spread;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn panel_background_blur(&self, sigma: f32) -> &Self {
-        if sigma < 0.0 {
-            warn(
-                "Layout",
-                &format!("ContextMenu.panel_background_blur() received {sigma}; clamping to 0.0."),
-            );
-        }
-        let mut state = self.state.borrow_mut();
-        state.panel_background_blur_overridden = true;
-        state.panel_background_blur_sigma = sigma.max(0.0);
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn backdrop_color(&self, color: u32) -> &Self {
-        self.popup_presenter.backdrop_color(color);
-        self
-    }
-
-    pub fn background_blur(&self, sigma: f32) -> &Self {
-        self.popup_presenter.background_blur(sigma);
-        self
-    }
-
-    pub fn item_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_background_overridden = true;
-        state.item_style.background_color = color;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn item_hover_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_hover_color_overridden = true;
-        state.item_style.hover_background_color = color;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn item_text_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_text_color_overridden = true;
-        state.item_style.text_color = color;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn item_corner_radius(&self, radius: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_corner_radius_overridden = true;
-        state.item_style.corner_radius = radius.max(0.0);
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn item_font(&self, font_family: FontFamily, font_size: f32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.item_font_overridden = true;
-        state.item_style.font_family = font_family;
-        state.item_style.font_size = font_size;
-        drop(state);
-        self.apply_theme();
-        self
-    }
-
-    pub fn separator_color(&self, color: u32) -> &Self {
-        let mut state = self.state.borrow_mut();
-        state.separator_color_overridden = true;
-        state.separator_color = color;
-        drop(state);
-        self.apply_theme();
+    pub fn clear_appearance(&self) -> &Self {
+        self.state.borrow_mut().appearance = None;
+        self.event_target().handle_theme_changed();
         self
     }
 
@@ -1311,9 +1200,12 @@ impl ContextMenu {
 
     fn install_theme_subscription(&self) {
         let event_target = self.event_target();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let guard = subscribe(move |_theme| {
             event_target.handle_theme_changed();
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(guard));
     }
 
     fn clear_panel(&self) {
@@ -1328,7 +1220,6 @@ impl ContextMenu {
         ContextMenuEventTarget {
             panel: self.panel.downgrade(),
             presenter: self.popup_presenter.event_target(),
-            presenter_owner: self.popup_presenter.clone(),
             entries: self.entries.clone(),
             separators: self.separators.clone(),
             current_items: self.current_items.clone(),
@@ -1344,13 +1235,16 @@ impl Node for ContextMenu {
         self.root.retained_node_ref()
     }
 
+    fn retained_owner_attachment(&self) -> Option<Rc<dyn std::any::Any>> {
+        Some(Rc::new(self.clone()))
+    }
+
     fn build_self(&self) {
         self.root.build_self();
     }
 
     fn dispose(&self) {
         self.hide();
-        self.theme_guard.borrow_mut().take();
         self.popup_presenter.dispose();
         for entry in &self.entries {
             if entry.root.handle() != crate::node::NodeHandle::INVALID {
@@ -1363,5 +1257,11 @@ impl Node for ContextMenu {
             }
         }
         self.root.dispose();
+    }
+}
+
+impl crate::node::HasFlexBoxRoot for ContextMenu {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.root
     }
 }

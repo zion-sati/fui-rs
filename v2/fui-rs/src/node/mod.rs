@@ -24,6 +24,7 @@ mod flex_box;
 mod grid;
 mod helpers;
 mod image;
+mod presenter_host_style;
 mod scroll_bar;
 mod scroll_box;
 mod scroll_state;
@@ -45,6 +46,8 @@ pub use helpers::{
     scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Length,
 };
 pub use image::ImageNode;
+pub(crate) use presenter_host_style::HostStyleLayers;
+pub use presenter_host_style::{Corners, EdgeInsets, PresenterHostStyle, Shadow};
 pub use scroll_bar::{ScrollBar, ScrollBarVisibility};
 pub use scroll_box::ScrollBox;
 pub use scroll_state::ScrollState;
@@ -170,6 +173,11 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
         self
     }
 
+    fn clear_padding(&self) -> &Self {
+        self.flex_box_root().clear_padding();
+        self
+    }
+
     fn margin(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
         self.flex_box_root().margin(left, top, right, bottom);
         self
@@ -177,6 +185,11 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
 
     fn corner_radius(&self, radius: f32) -> &Self {
         self.flex_box_root().corner_radius(radius);
+        self
+    }
+
+    fn clear_corners(&self) -> &Self {
+        self.flex_box_root().clear_corners();
         self
     }
 
@@ -195,13 +208,28 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
         self
     }
 
+    fn clear_border(&self) -> &Self {
+        self.flex_box_root().clear_border();
+        self
+    }
+
     fn bg_color(&self, color: u32) -> &Self {
         self.flex_box_root().bg_color(color);
         self
     }
 
+    fn clear_bg_color(&self) -> &Self {
+        self.flex_box_root().clear_bg_color();
+        self
+    }
+
     fn opacity(&self, value: f32) -> &Self {
         self.flex_box_root().opacity(value);
+        self
+    }
+
+    fn clear_opacity(&self) -> &Self {
+        self.flex_box_root().clear_opacity();
         self
     }
 
@@ -220,6 +248,11 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
     ) -> &Self {
         self.flex_box_root()
             .drop_shadow(color, offset_x, offset_y, blur_sigma, spread);
+        self
+    }
+
+    fn clear_drop_shadow(&self) -> &Self {
+        self.flex_box_root().clear_drop_shadow();
         self
     }
 
@@ -270,8 +303,18 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
         self
     }
 
+    fn clear_justify_content(&self) -> &Self {
+        self.flex_box_root().clear_justify_content();
+        self
+    }
+
     fn align_items(&self, align: AlignItems) -> &Self {
         self.flex_box_root().align_items(align);
+        self
+    }
+
+    fn clear_align_items(&self) -> &Self {
+        self.flex_box_root().clear_align_items();
         self
     }
 
@@ -302,6 +345,11 @@ pub trait FlexBoxSurface: HasFlexBoxRoot {
 
     fn cursor(&self, style: CursorStyle) -> &Self {
         self.flex_box_root().cursor(style);
+        self
+    }
+
+    fn clear_cursor(&self) -> &Self {
+        self.flex_box_root().clear_cursor();
         self
     }
 

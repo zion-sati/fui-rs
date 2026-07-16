@@ -1,6 +1,6 @@
 use super::*;
 use crate::ffi::{FlexDirection, PositionType, Unit};
-use crate::node::{portal, Border, Child};
+use crate::node::{portal, Child};
 use crate::popup_presenter::{PopupPlacement, PopupPresenter};
 use std::cell::Cell;
 
@@ -10,6 +10,7 @@ pub struct Popup {
     surface_node: FlexBox,
     presenter: PopupPresenter,
     dismiss_on_backdrop_click: Rc<Cell<bool>>,
+    appearance_value: Rc<RefCell<Option<PopupAppearance>>>,
 }
 
 impl Default for Popup {
@@ -46,6 +47,7 @@ impl Popup {
             surface_node,
             presenter,
             dismiss_on_backdrop_click,
+            appearance_value: Rc::new(RefCell::new(None)),
         }
     }
 
@@ -77,13 +79,15 @@ impl Popup {
         self
     }
 
-    pub fn backdrop_color(&self, color: u32) -> &Self {
-        self.presenter.backdrop_color(color);
+    pub fn appearance(&self, appearance: PopupAppearance) -> &Self {
+        self.appearance_value.replace(Some(appearance));
+        self.sync_appearance();
         self
     }
 
-    pub fn background_blur(&self, sigma: f32) -> &Self {
-        self.presenter.background_blur(sigma);
+    pub fn clear_appearance(&self) -> &Self {
+        self.appearance_value.replace(None);
+        self.sync_appearance();
         self
     }
 
@@ -105,42 +109,16 @@ impl Popup {
         self
     }
 
-    pub fn panel_color(&self, color: u32) -> &Self {
-        self.surface_node.bg_color(color);
-        self
-    }
-
-    pub fn panel_background_blur(&self, sigma: f32) -> &Self {
-        self.surface_node.background_blur(sigma);
-        self
-    }
-
-    pub fn panel_corner_radius(&self, radius: f32) -> &Self {
-        self.surface_node.corner_radius(radius);
-        self
-    }
-
-    pub fn panel_border(&self, width: f32, color: u32) -> &Self {
-        self.surface_node.border(width, color);
-        self
-    }
-
-    pub fn panel_border_config(&self, border: Border) -> &Self {
-        self.surface_node.border_config(border);
-        self
-    }
-
-    pub fn panel_shadow(
-        &self,
-        color: u32,
-        offset_x: f32,
-        offset_y: f32,
-        blur_sigma: f32,
-        spread: f32,
-    ) -> &Self {
+    fn sync_appearance(&self) {
+        let appearance = self.appearance_value.borrow().clone().unwrap_or_default();
+        let panel = appearance.panel.unwrap_or_default();
+        let backdrop = appearance.backdrop.unwrap_or_default();
         self.surface_node
-            .drop_shadow(color, offset_x, offset_y, blur_sigma, spread);
-        self
+            .apply_presenter_style(panel.presenter_host_style())
+            .background_blur(panel.background_blur.unwrap_or(0.0));
+        self.presenter
+            .backdrop_color(backdrop.color.unwrap_or(0x00000000))
+            .background_blur(backdrop.blur.unwrap_or(0.0));
     }
 
     pub fn show_anchored(
@@ -187,5 +165,11 @@ impl Node for Popup {
     fn dispose(&self) {
         self.presenter.dispose();
         self.root.dispose();
+    }
+}
+
+impl crate::node::HasFlexBoxRoot for Popup {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.root
     }
 }

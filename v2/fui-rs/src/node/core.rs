@@ -494,6 +494,7 @@ pub(crate) struct WeakFlexBox {
     pub(crate) core: Weak<RefCell<NodeCore>>,
     pub(crate) props: Weak<RefCell<FlexBoxProps>>,
     pub(crate) active_animations: Weak<RefCell<crate::node::flex_box::FlexBoxAnimations>>,
+    pub(crate) host_style_layers: Weak<RefCell<crate::node::HostStyleLayers>>,
 }
 
 impl WeakFlexBox {
@@ -502,6 +503,7 @@ impl WeakFlexBox {
             core: self.core.upgrade()?,
             props: self.props.upgrade()?,
             active_animations: self.active_animations.upgrade()?,
+            host_style_layers: self.host_style_layers.upgrade()?,
         })
     }
 }

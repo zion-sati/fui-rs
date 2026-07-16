@@ -1,7 +1,28 @@
 use super::*;
-use crate::logger;
 use crate::node::WeakFlexBox;
-use crate::signal::SubscriptionGuard;
+use crate::Border;
+
+#[derive(Clone, Copy)]
+struct ResolvedProgressBarSizing {
+    length: f32,
+    thickness: f32,
+}
+
+fn resolve_sizing(sizing: Option<ProgressBarSizing>) -> ResolvedProgressBarSizing {
+    let sizing = sizing.unwrap_or_default();
+    ResolvedProgressBarSizing {
+        length: if sizing.has_length() {
+            sizing.length_px()
+        } else {
+            PROGRESS_LENGTH
+        },
+        thickness: if sizing.has_thickness() {
+            sizing.thickness_px()
+        } else {
+            PROGRESS_THICKNESS
+        },
+    }
+}
 
 #[derive(Clone)]
 pub struct ProgressBar {
@@ -10,16 +31,10 @@ pub struct ProgressBar {
     min: Rc<Cell<f32>>,
     max: Rc<Cell<f32>>,
     value: Rc<Cell<f32>>,
-    length: Rc<Cell<f32>>,
-    thickness: Rc<Cell<f32>>,
-    track_color_value: Rc<Cell<u32>>,
-    fill_color_value: Rc<Cell<u32>>,
-    track_color_overridden: Rc<Cell<bool>>,
-    fill_color_overridden: Rc<Cell<bool>>,
-    corner_radius_overridden: Rc<Cell<bool>>,
+    sizing_value: Rc<Cell<Option<ProgressBarSizing>>>,
+    colors_value: Rc<Cell<Option<ProgressBarColors>>>,
     weak_root: WeakFlexBox,
     weak_fill: WeakFlexBox,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl Default for ProgressBar {
@@ -41,14 +56,8 @@ impl ProgressBar {
             min: Rc::new(Cell::new(0.0)),
             max: Rc::new(Cell::new(100.0)),
             value: Rc::new(Cell::new(0.0)),
-            length: Rc::new(Cell::new(PROGRESS_LENGTH)),
-            thickness: Rc::new(Cell::new(PROGRESS_THICKNESS)),
-            track_color_value: Rc::new(Cell::new(0)),
-            fill_color_value: Rc::new(Cell::new(0)),
-            track_color_overridden: Rc::new(Cell::new(false)),
-            fill_color_overridden: Rc::new(Cell::new(false)),
-            corner_radius_overridden: Rc::new(Cell::new(false)),
-            theme_guard: Rc::new(RefCell::new(None)),
+            sizing_value: Rc::new(Cell::new(None)),
+            colors_value: Rc::new(Cell::new(None)),
         };
         control.install_visual_subscriptions();
         control.set_value(0.0);
@@ -79,51 +88,33 @@ impl ProgressBar {
         self
     }
 
-    pub fn length(&self, value: f32) -> &Self {
-        if value <= 0.0 {
-            logger::warn(
-                "Layout",
-                &format!("ProgressBar.length() received {value}; clamping to 1.0."),
-            );
-        }
-        self.length.set(if value > 0.0 { value } else { 1.0 });
-        self.sync_geometry();
-        self
-    }
-
-    pub fn thickness(&self, value: f32) -> &Self {
-        if value <= 0.0 {
-            logger::warn(
-                "Layout",
-                &format!("ProgressBar.thickness() received {value}; clamping to 1.0."),
-            );
-        }
-        self.thickness.set(if value > 0.0 { value } else { 1.0 });
-        if !self.corner_radius_overridden.get() {
-            let radius = self.thickness.get() * 0.5;
-            self.root.corner_radius(radius);
-        }
+    pub fn sizing(&self, sizing: ProgressBarSizing) -> &Self {
+        self.sizing_value.set(Some(sizing));
         self.sync_geometry();
         self.sync_visual_state();
         self
     }
 
-    pub fn track_color(&self, color: u32) -> &Self {
-        self.track_color_overridden.set(true);
-        self.track_color_value.set(color);
+    pub fn clear_sizing(&self) -> &Self {
+        self.sizing_value.set(None);
+        self.sync_geometry();
         self.sync_visual_state();
         self
     }
 
-    pub fn fill_color(&self, color: u32) -> &Self {
-        self.fill_color_overridden.set(true);
-        self.fill_color_value.set(color);
+    pub fn colors(&self, colors: ProgressBarColors) -> &Self {
+        self.colors_value.set(Some(colors));
+        self.sync_visual_state();
+        self
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.colors_value.set(None);
         self.sync_visual_state();
         self
     }
 
     pub fn corner_radius(&self, radius: f32) -> &Self {
-        self.corner_radius_overridden.set(true);
         self.root.corner_radius(radius);
         self.fill.corner_radius(radius);
         self
@@ -136,17 +127,9 @@ impl ProgressBar {
     fn install_visual_subscriptions(&self) {
         let weak_root = self.weak_root.clone();
         let weak_fill = self.weak_fill.clone();
-        let min = self.min.clone();
-        let max = self.max.clone();
-        let value = self.value.clone();
-        let length = self.length.clone();
-        let thickness = self.thickness.clone();
-        let track_color_value = self.track_color_value.clone();
-        let fill_color_value = self.fill_color_value.clone();
-        let track_color_overridden = self.track_color_overridden.clone();
-        let fill_color_overridden = self.fill_color_overridden.clone();
-        let corner_radius_overridden = self.corner_radius_overridden.clone();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let sizing_value = self.sizing_value.clone();
+        let colors_value = self.colors_value.clone();
+        let guard = subscribe(move |_theme| {
             let Some(root) = weak_root.upgrade() else {
                 return;
             };
@@ -156,23 +139,13 @@ impl ProgressBar {
             sync_progress_visual_state(
                 &root,
                 &fill,
-                thickness.get(),
-                track_color_value.get(),
-                fill_color_value.get(),
-                track_color_overridden.get(),
-                fill_color_overridden.get(),
-                corner_radius_overridden.get(),
+                resolve_sizing(sizing_value.get()),
+                colors_value.get(),
             );
-            sync_progress_geometry(
-                &root,
-                &fill,
-                min.get(),
-                max.get(),
-                value.get(),
-                length.get(),
-                thickness.get(),
-            );
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(guard));
     }
 
     fn handle_theme_changed(&self) {
@@ -192,8 +165,7 @@ impl ProgressBar {
             self.min.get(),
             self.max.get(),
             self.value.get(),
-            self.length.get(),
-            self.thickness.get(),
+            resolve_sizing(self.sizing_value.get()),
         );
     }
 
@@ -201,12 +173,8 @@ impl ProgressBar {
         sync_progress_visual_state(
             &self.root,
             &self.fill,
-            self.thickness.get(),
-            self.track_color_value.get(),
-            self.fill_color_value.get(),
-            self.track_color_overridden.get(),
-            self.fill_color_overridden.get(),
-            self.corner_radius_overridden.get(),
+            resolve_sizing(self.sizing_value.get()),
+            self.colors_value.get(),
         );
     }
 }
@@ -235,8 +203,7 @@ fn sync_progress_geometry(
     min: f32,
     max: f32,
     current_value: f32,
-    length: f32,
-    thickness: f32,
+    sizing: ResolvedProgressBarSizing,
 ) {
     let range = max - min;
     let fraction = if range > 0.0 {
@@ -244,44 +211,48 @@ fn sync_progress_geometry(
     } else {
         0.0
     };
-    let fill_length = length * fraction;
-    root.width(length, Unit::Pixel)
-        .height(thickness, Unit::Pixel)
+    let fill_length = sizing.length * fraction;
+    root.width(sizing.length, Unit::Pixel)
+        .height(sizing.thickness, Unit::Pixel)
         .semantic_value_range(current_value, min, max)
         .default_semantic_label(format!(
             "Progress bar, value {}, range {} to {}",
             current_value, min, max
         ));
     fill.width(fill_length, Unit::Pixel)
-        .height(thickness, Unit::Pixel);
+        .height(sizing.thickness, Unit::Pixel);
 }
 
 fn sync_progress_visual_state(
     root: &FlexBox,
     fill: &FlexBox,
-    thickness: f32,
-    track_color_value: u32,
-    fill_color_value: u32,
-    track_color_overridden: bool,
-    fill_color_overridden: bool,
-    corner_radius_overridden: bool,
+    sizing: ResolvedProgressBarSizing,
+    colors: Option<ProgressBarColors>,
 ) {
     let theme = current_theme();
-    let track_color = if track_color_overridden {
-        track_color_value
-    } else {
-        theme.colors.scrollbar_track
-    };
-    let fill_color = if fill_color_overridden {
-        fill_color_value
-    } else {
-        theme.colors.accent
-    };
-    if !corner_radius_overridden {
-        let radius = thickness * 0.5;
-        root.corner_radius(radius);
-        fill.corner_radius(radius);
-    }
-    root.bg_color(track_color).border(1.0, theme.colors.border);
-    fill.bg_color(fill_color);
+    let track_color = colors
+        .filter(ProgressBarColors::has_track)
+        .map(|colors| colors.track_color())
+        .unwrap_or(theme.colors.scrollbar_track);
+    let fill_color = colors
+        .filter(ProgressBarColors::has_fill)
+        .map(|colors| colors.fill_color())
+        .unwrap_or(theme.colors.accent);
+    root.apply_presenter_style(
+        crate::PresenterHostStyle::new()
+            .background(track_color)
+            .border(Border::solid(1.0, theme.colors.border))
+            .corners(crate::Corners::all(sizing.thickness * 0.5)),
+    );
+    let corners = root
+        .resolved_host_style()
+        .corners
+        .unwrap_or_else(|| crate::Corners::all(sizing.thickness * 0.5));
+    fill.corners(
+        corners.top_left,
+        corners.top_right,
+        corners.bottom_right,
+        corners.bottom_left,
+    )
+    .bg_color(fill_color);
 }

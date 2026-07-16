@@ -4,7 +4,6 @@ use crate::ffi::{
     AlignItems, CursorStyle, FlexDirection, KeyEventType, PointerEventType, SemanticRole, Unit,
 };
 use crate::node::{flex_box, FlexBox, Node, TextCore, WeakFlexBox};
-use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe};
 use crate::{focus_adorner, focus_visibility};
 use std::cell::{Cell, RefCell};
@@ -44,8 +43,6 @@ pub(crate) struct PressableLabeledControl {
     activation: Rc<RefCell<Option<ActivationCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
     key_handler: Rc<RefCell<Option<KeyCallback>>>,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
-    focus_visibility_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl PressableLabeledControl {
@@ -87,8 +84,6 @@ impl PressableLabeledControl {
             activation: Rc::new(RefCell::new(None)),
             state_changed: Rc::new(RefCell::new(None)),
             key_handler: Rc::new(RefCell::new(None)),
-            theme_guard: Rc::new(RefCell::new(None)),
-            focus_visibility_guard: Rc::new(RefCell::new(None)),
         };
         control.install_handlers();
         control.install_theme_subscription();
@@ -246,17 +241,22 @@ impl PressableLabeledControl {
 
     fn install_theme_subscription(&self) {
         let target = self.event_target();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let theme_guard = subscribe(move |_theme| {
             target.sync_base_theme();
             target.notify_state_changed();
             target.sync_focus_chrome();
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(theme_guard));
 
         let target = self.event_target();
-        *self.focus_visibility_guard.borrow_mut() =
-            Some(focus_visibility::subscribe(move |_visible| {
-                target.sync_focus_chrome();
-            }));
+        let focus_guard = focus_visibility::subscribe(move |_visible| {
+            target.sync_focus_chrome();
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(focus_guard));
     }
 
     fn event_target(&self) -> PressableLabeledControlEventTarget {

@@ -8,7 +8,9 @@ Retained context menu surface.
 
 ## Key APIs
 
-- `items`, `show`, `hide`, `on_visibility_changed`, panel/item styling APIs. Use `MenuItem` for actions/separators.
+- `items`, `show`, `hide`, `on_visibility_changed`,
+  `appearance(ContextMenuAppearance)`, `clear_appearance`. Use `MenuItem` for
+  actions/separators.
 
 ## Notes
 

@@ -32,10 +32,9 @@ pub fn get_control_templates() -> Option<ControlTemplateSet> {
     ACTIVE_CONTROL_TEMPLATES.with(|slot| slot.borrow().clone())
 }
 
-pub fn use_control_templates(templates: Option<ControlTemplateSet>) -> Option<ControlTemplateSet> {
+pub fn use_control_templates(templates: ControlTemplateSet) {
     ACTIVE_CONTROL_TEMPLATES.with(|slot| {
-        *slot.borrow_mut() = templates;
-        slot.borrow().clone()
+        *slot.borrow_mut() = Some(templates);
     })
 }
 

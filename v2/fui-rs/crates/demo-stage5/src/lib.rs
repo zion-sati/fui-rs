@@ -2,9 +2,7 @@ mod generated;
 
 use fui::prelude::*;
 use fui::TextInputColors;
-use fui_rs_demo_shared::{
-    clear_demo_shared_state, demo_card, demo_page_root,
-};
+use fui_rs_demo_shared::{clear_demo_shared_state, demo_card, demo_page_root};
 use std::cell::Cell;
 use std::rc::Rc;
 use AlignItems;
@@ -232,13 +230,13 @@ fn build_page() -> FlexBox {
     let themed = ui! {
         dropdown()
         .items(make_items(&["Ocean", "Forest", "Amber"]))
-        .colors(Some(
+        .colors(
             DropdownColors::new()
                 .background(0xFFF7EDFF)
                 .border(0xF59E0BFF)
                 .text_primary(0x92400EFF)
                 .accent(0xD97706FF),
-        ))
+        )
         .popup_panel_color(if is_dark_mode() {
             0x1F2937FF
         } else {
@@ -300,8 +298,8 @@ fn build_page() -> FlexBox {
     let templated = ui! {
         dropdown()
         .items(make_items(&["Primary", "Secondary", "Ghost"]))
-        .option_row_template(Some(Rc::new(Stage5DropdownTemplate)))
-        .sizing(Some(
+        .option_row_template(Rc::new(Stage5DropdownTemplate))
+        .sizing(
             DropdownSizing::new()
                 .field_height(40.0)
                 .field_font_size(17.0)
@@ -309,7 +307,7 @@ fn build_page() -> FlexBox {
                 .option_font_size(17.0)
                 .chevron_box_size(18.0)
                 .chevron_icon_size(14.0),
-        ))
+        )
     };
     page.child(    &ui! {
             demo_card(
@@ -481,7 +479,7 @@ fn build_page() -> FlexBox {
                         .node_id("stage5-combobox-themed")
                         .width(COMBOBOX_FIELD_WIDTH, Unit::Pixel)
                         .items(vec!["Ocean", "Forest", "Amber"])
-                        .colors(Some(themed_combo_colors))
+                        .colors(themed_combo_colors)
                         .popup_panel_color(if is_dark_mode() {
                             0x1F2937FF
                         } else {
@@ -538,8 +536,8 @@ fn build_page() -> FlexBox {
                         .node_id("stage5-combobox-templated")
                         .width(COMBOBOX_FIELD_WIDTH, Unit::Pixel)
                         .items(vec!["Primary", "Secondary", "Ghost"])
-                        .option_row_template(Some(Rc::new(Stage5DropdownTemplate)))
-                        .sizing(Some(
+                        .option_row_template(Rc::new(Stage5DropdownTemplate))
+                        .sizing(
                             DropdownSizing::new()
                                 .field_height(40.0)
                                 .field_font_size(17.0)
@@ -547,7 +545,7 @@ fn build_page() -> FlexBox {
                                 .option_font_size(17.0)
                                 .chevron_box_size(18.0)
                                 .chevron_icon_size(14.0),
-                        ))
+                        )
                 },
             }
     });
@@ -1214,12 +1212,12 @@ fn build_page() -> FlexBox {
         .text("Disabled themed value")
         .placeholder("Disabled field")
         .enabled(false)
-        .colors(Some(disabled_text_input_colors(&current_theme())))
+        .colors(disabled_text_input_colors(&current_theme()))
     };
     page.bind_theme({
         let disabled = disabled.clone();
         move |_root, theme| {
-            disabled.colors(Some(disabled_text_input_colors(&theme)));
+            disabled.colors(disabled_text_input_colors(&theme));
         }
     });
     let disabled_card = demo_card(

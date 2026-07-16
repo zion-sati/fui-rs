@@ -118,7 +118,211 @@ fn public_prelude_exports_compile() {
 
     let _ = clear_control_templates as fn();
     let _ = get_control_templates as fn() -> Option<ControlTemplateSet>;
-    let _ = use_control_templates as fn(Option<ControlTemplateSet>) -> Option<ControlTemplateSet>;
+    let _ = use_control_templates as fn(ControlTemplateSet);
+}
+
+#[test]
+fn universal_control_host_style_surface_compiles_cohesively() {
+    fn accepts_node<T: Node>(control: &T) {
+        let _ = control.handle();
+    }
+    let button = button("Button");
+    button
+        .width(180.0, Unit::Pixel)
+        .padding(18.0, 10.0, 18.0, 10.0)
+        .corner_radius(12.0)
+        .border(1.0, 0xD1D5DBFF)
+        .bg_color(0x2563EBFF)
+        .drop_shadow(0x00000040, 0.0, 4.0, 12.0, 0.0);
+    accepts_node(&button);
+    accepts_node(&checkbox("Checkbox"));
+    accepts_node(&radio_button("Radio"));
+    accepts_node(&switch("Switch"));
+    accepts_node(&slider());
+    accepts_node(&dropdown());
+    accepts_node(&combo_box());
+    accepts_node(&progress_bar());
+    accepts_node(&text_input());
+    accepts_node(&text_area());
+    accepts_node(&nav_link("/next"));
+
+    let _ = SliderSizing::new().thumb_size(16.0).track_thickness(4.0);
+    let _ = SliderColors::new()
+        .track(0xCBD5E1FF)
+        .fill(0x2563EBFF)
+        .thumb(0xFFFFFFFF);
+    let _ = LabeledControlSizing::new()
+        .indicator_size(18.0)
+        .label_font_size(14.0);
+    let _ = LabeledControlColors::new()
+        .accent(0x2563EBFF)
+        .border(0x94A3B8FF);
+}
+
+#[test]
+fn every_visual_control_exposes_the_universal_inherited_surface() {
+    fn assert_surface<T: Node + HasFlexBoxRoot>(control: &T) {
+        control
+            .width(120.0, Unit::Pixel)
+            .height(40.0, Unit::Pixel)
+            .margin(1.0, 2.0, 3.0, 4.0)
+            .padding(5.0, 6.0, 7.0, 8.0)
+            .bg_color(0x102030FF)
+            .corner_radius(6.0)
+            .border(1.0, 0x405060FF)
+            .cursor(CursorStyle::Pointer)
+            .semantic_label("Universal surface")
+            .on_pointer_down(|event| event.handled = true)
+            .on_key_down(|event| event.handled = true);
+    }
+
+    assert_surface(&button("Button"));
+    assert_surface(&checkbox("Checkbox"));
+    assert_surface(&radio_button("Radio"));
+    assert_surface(&switch("Switch"));
+    assert_surface(&slider());
+    assert_surface(&dropdown());
+    assert_surface(&combo_box());
+    assert_surface(&progress_bar());
+    assert_surface(&text_input());
+    assert_surface(&text_area());
+    assert_surface(&nav_link("/next"));
+    assert_surface(&selection_area());
+    assert_surface(&anti_selection_area());
+    assert_surface(&form());
+    assert_surface(&radio_group());
+    assert_surface(&popup());
+    assert_surface(&dialog("Title", "Body"));
+    assert_surface(&context_menu(Vec::<MenuItem>::new()));
+}
+
+#[test]
+fn control_configuration_uses_direct_values_and_explicit_clear_methods() {
+    let button = button("Button");
+    button
+        .colors(ButtonColors::new())
+        .clear_colors()
+        .clear_template();
+
+    let checkbox = checkbox("Checkbox");
+    checkbox
+        .sizing(LabeledControlSizing::new())
+        .colors(LabeledControlColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_template();
+
+    let radio = radio_button("Radio");
+    radio
+        .sizing(LabeledControlSizing::new())
+        .colors(LabeledControlColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_template();
+
+    let toggle = switch("Switch");
+    toggle
+        .sizing(LabeledControlSizing::new())
+        .colors(LabeledControlColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_template();
+
+    let slider = slider();
+    slider
+        .sizing(SliderSizing::new())
+        .colors(SliderColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_template();
+
+    let progress = progress_bar();
+    progress
+        .sizing(ProgressBarSizing::new().length(220.0).thickness(14.0))
+        .colors(ProgressBarColors::new().track(0xCBD5E1FF).fill(0x2563EBFF))
+        .clear_sizing()
+        .clear_colors();
+
+    let dropdown = dropdown();
+    dropdown
+        .sizing(DropdownSizing::new())
+        .colors(DropdownColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_field_template()
+        .clear_chevron_template()
+        .clear_option_row_template();
+
+    let combo = combo_box();
+    combo
+        .sizing(DropdownSizing::new())
+        .colors(DropdownColors::new())
+        .clear_sizing()
+        .clear_colors()
+        .clear_chevron_template()
+        .clear_option_row_template();
+
+    let input = text_input();
+    input
+        .colors(TextInputColors::new())
+        .clear_colors()
+        .clear_template();
+    let area = text_area();
+    area.colors(TextInputColors::new())
+        .clear_colors()
+        .clear_template();
+
+    use_control_templates(ControlTemplateSet::default());
+    clear_control_templates();
+}
+
+#[test]
+fn overlay_controls_use_cohesive_appearance_recipes() {
+    let surface = SurfaceAppearance::new()
+        .background(0xFFFFFFFF)
+        .background_blur(8.0)
+        .border(Border::solid(1.0, 0xD1D5DBFF))
+        .corners(Corners::all(16.0))
+        .shadow(Shadow::new(0x00000040, 0.0, 8.0, 20.0, 0.0));
+    let backdrop = OverlayBackdropAppearance::new()
+        .color(0x00000066)
+        .blur(12.0);
+
+    popup()
+        .appearance(
+            PopupAppearance::new()
+                .panel(surface.clone())
+                .backdrop(backdrop.clone()),
+        )
+        .clear_appearance();
+    dialog("Title", "Body")
+        .appearance(
+            DialogAppearance::new()
+                .card(surface.clone())
+                .backdrop(backdrop.clone()),
+        )
+        .clear_appearance();
+    context_menu(Vec::<MenuItem>::new())
+        .appearance(
+            ContextMenuAppearance::new()
+                .width(240.0)
+                .panel(surface)
+                .backdrop(backdrop)
+                .item(
+                    ContextMenuItemAppearance::new()
+                        .height(36.0)
+                        .padding(EdgeInsets::new(12.0, 6.0, 12.0, 6.0))
+                        .background(0x00000000)
+                        .hover_background(0xE2E8F0FF)
+                        .text_color(0x0F172AFF)
+                        .corners(Corners::all(8.0))
+                        .font_weight(FontWeight::Regular)
+                        .font_style(FontStyle::Normal)
+                        .font_size(14.0),
+                )
+                .separator_color(0xCBD5E1FF),
+        )
+        .clear_appearance();
 }
 
 #[test]

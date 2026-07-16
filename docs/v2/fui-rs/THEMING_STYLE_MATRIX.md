@@ -23,9 +23,11 @@ Core theme structs:
 
 ## Precedence rules
 
-1. Explicit per-control style overrides win over theme defaults.
-2. Theme updates re-apply non-overridden fields.
-3. Controls with no explicit override for a field remain theme-driven for that field.
+1. Explicit local host properties win per property over presenter defaults.
+2. Typed control recipes such as `ButtonColors` define stateful control visuals.
+3. Presenter styles provide theme/template defaults without mutating local style.
+4. Theme updates re-apply only non-overridden fields.
+5. `clear_*` methods reveal the current presenter/theme value immediately.
 
 ## Control style matrix
 

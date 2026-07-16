@@ -8,7 +8,8 @@ Generic popup overlay surface.
 
 ## Key APIs
 
-- show/hide and child composition APIs for custom overlay surfaces.
+- show/hide and child composition APIs for custom overlay surfaces,
+  `appearance(PopupAppearance)`, `clear_appearance`.
 
 ## Notes
 

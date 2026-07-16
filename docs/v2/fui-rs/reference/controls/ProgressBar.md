@@ -8,7 +8,8 @@ Determinate progress visualization.
 
 ## Key APIs
 
-- `value`, `min`, `max`, `length`, `thickness`, `track_color`, `fill_color`, inherited node/layout APIs.
+- `value`, `min`, `max`, `sizing(ProgressBarSizing)`, `clear_sizing`,
+  `colors(ProgressBarColors)`, `clear_colors`, inherited node/layout APIs.
 
 ## Notes
 

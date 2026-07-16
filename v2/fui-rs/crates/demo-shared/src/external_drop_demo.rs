@@ -460,6 +460,9 @@ impl ExternalDropDemoPanel {
             }
         });
 
-        Self { root, _state: state }
+        Self {
+            root,
+            _state: state,
+        }
     }
 }

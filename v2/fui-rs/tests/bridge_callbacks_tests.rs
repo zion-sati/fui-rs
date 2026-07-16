@@ -94,7 +94,13 @@ fn custom_context_menu_handler_without_menu_does_not_mark_bridge_menu_visible() 
 
 #[test]
 fn asset_callbacks_record_success_and_failure_payloads() {
+    Application::unmount();
+    ffi::test::reset();
     bridge_callbacks::__fui_on_font_loaded(5);
+    let font_calls = ffi::test::take_calls();
+    assert!(font_calls
+        .iter()
+        .any(|call| matches!(call, Call::RequestRender)));
     bridge_callbacks::__fui_on_svg_loaded(6, 24.0, 32.0);
     bridge_callbacks::__fui_on_texture_loaded(7, 48.0, 64.0);
     let svg_error = "bad svg";

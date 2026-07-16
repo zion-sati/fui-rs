@@ -5,7 +5,7 @@ use crate::ffi::{
     SemanticCheckedState, SemanticRole, Unit,
 };
 use crate::node::{
-    flex_box, row, Border, Child, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, WeakNodeRef,
+    flex_box, row, Child, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, WeakNodeRef,
 };
 use crate::theme::{current_theme, subscribe};
 use std::cell::{Cell, RefCell};
@@ -106,6 +106,7 @@ pub struct ComboBoxChangedEventArgs<T> {
 }
 
 pub mod anti_selection_area;
+mod appearance;
 pub mod button;
 pub mod checkbox;
 pub mod combobox;
@@ -130,6 +131,10 @@ pub mod text_area;
 pub mod text_input;
 
 pub use anti_selection_area::AntiSelectionArea;
+pub use appearance::{
+    ContextMenuAppearance, ContextMenuItemAppearance, DialogAppearance, OverlayBackdropAppearance,
+    PopupAppearance, SurfaceAppearance,
+};
 pub use button::Button;
 pub use checkbox::Checkbox;
 pub use combobox::{ComboBox, ComboBoxCommitMode, ComboBoxFilterMode, ComboBoxItem};
@@ -142,7 +147,7 @@ pub use control_template_set::{
 };
 pub use control_tokens::{
     ButtonColors, DropdownColors, DropdownSizing, LabeledControlColors, LabeledControlSizing,
-    SliderColors, SliderSizing, TextInputColors,
+    ProgressBarColors, ProgressBarSizing, SliderColors, SliderSizing, TextInputColors,
 };
 pub use dialog::{Dialog, DialogShownEventArgs};
 pub use dropdown::{Dropdown, DropdownItem};

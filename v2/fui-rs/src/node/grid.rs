@@ -139,6 +139,11 @@ impl Grid {
         self
     }
 
+    pub fn corners(&self, tl: f32, tr: f32, br: f32, bl: f32) -> &Self {
+        self.base.corners(tl, tr, br, bl);
+        self
+    }
+
     pub fn cursor(&self, style: CursorStyle) -> &Self {
         self.base.cursor(style);
         self

@@ -1901,8 +1901,7 @@ fn progress_bar_sets_fill_geometry_and_value_range() {
         .min(0.0)
         .max(200.0)
         .value(50.0)
-        .length(300.0)
-        .thickness(12.0);
+        .sizing(ProgressBarSizing::new().length(300.0).thickness(12.0));
     Application::mount(progress);
     let calls = ffi::test::take_calls();
 

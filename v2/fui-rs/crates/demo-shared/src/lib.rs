@@ -1067,8 +1067,7 @@ impl Stage4Showcase {
             });
         let worker_progress = ui! {
             progress_bar()
-            .length(360.0)
-            .thickness(18.0)
+            .sizing(ProgressBarSizing::new().length(360.0).thickness(18.0))
             .value(0.0)
             .semantic_label("Stage 4 worker progress bar")
         };

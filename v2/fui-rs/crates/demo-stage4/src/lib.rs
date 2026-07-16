@@ -52,13 +52,12 @@ impl ButtonPresenter for HouseButtonPresenter {
         self.label_node.clone()
     }
 
-    fn apply(
+    fn present(
         &self,
-        host: &FlexBox,
         theme: Theme,
         state: ButtonVisualState,
         colors: Option<ButtonColors>,
-    ) {
+    ) -> PresenterHostStyle {
         let background = if !state.enabled {
             0xCBD5E1FF
         } else if state.pressed {
@@ -75,11 +74,6 @@ impl ButtonPresenter for HouseButtonPresenter {
             .filter(|colors| colors.has_text_primary())
             .map(|colors| colors.text_primary_color())
             .unwrap_or(0xFFFFFFFF);
-        host.corner_radius(20.0)
-            .border(2.0, 0x881337FF)
-            .padding(18.0, 10.0, 18.0, 10.0)
-            .bg_color(background)
-            .drop_shadow(0x4C881337, 0.0, 8.0, 18.0, 0.0);
         self.content_root
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::Center);
@@ -88,6 +82,12 @@ impl ButtonPresenter for HouseButtonPresenter {
             .font_weight(FontWeight::Bold)
             .font_size(theme.fonts.size_body + 1.0)
             .text_color(text_color);
+        PresenterHostStyle::new()
+            .background(background)
+            .border(Border::solid(2.0, 0x881337FF))
+            .corners(Corners::all(20.0))
+            .padding(EdgeInsets::new(18.0, 10.0, 18.0, 10.0))
+            .shadow(Shadow::new(0x4C881337, 0.0, 8.0, 18.0, 0.0))
     }
 }
 
@@ -396,13 +396,13 @@ struct Stage4PresentationShowcase {
 
 impl Stage4PresentationShowcase {
     fn new() -> Self {
-        use_control_templates(Some(ControlTemplateSet {
+        use_control_templates(ControlTemplateSet {
             button: Some(Rc::new(HouseButtonTemplate)),
             checkbox_indicator: Some(Rc::new(HouseCheckboxIndicatorTemplate)),
             radio_indicator: Some(Rc::new(HouseRadioIndicatorTemplate)),
             slider: Some(Rc::new(DEFAULT_SLIDER_TEMPLATE)),
             ..ControlTemplateSet::default()
-        }));
+        });
 
         let page = ui! {
             column()
@@ -445,7 +445,7 @@ impl Stage4PresentationShowcase {
         };
         let house_checkbox = ui! {
         checkbox("House template checkbox")
-            .colors(Some(stage4_labeled_colors(0x0EA5E9FF)))
+            .colors(stage4_labeled_colors(0x0EA5E9FF))
             .checked(true)
             .semantic_label("Stage 4 house template checkbox")
             .node_id("stage4-template-house-checkbox")
@@ -468,13 +468,13 @@ impl Stage4PresentationShowcase {
 
         let override_checkbox = ui! {
         checkbox("Local override checkbox")
-            .template(Some(Rc::new(SquareOverrideCheckboxTemplate)))
-            .sizing(Some(
+            .template(Rc::new(SquareOverrideCheckboxTemplate))
+            .sizing(
                 LabeledControlSizing::new()
                     .indicator_size(34.0)
                     .label_font_size(18.0),
-            ))
-            .colors(Some(stage4_labeled_colors(0xF59E0BFF).border(0x92400EFF)))
+            )
+            .colors(stage4_labeled_colors(0xF59E0BFF).border(0x92400EFF))
             .checked(true)
             .semantic_label("Stage 4 local override checkbox")
             .node_id("stage4-template-local-checkbox")
@@ -519,21 +519,21 @@ impl Stage4PresentationShowcase {
         let radio_alpha = radio_button("Compact radio sizing");
         let radio_beta = radio_button("Large radio sizing");
         radio_alpha
-            .sizing(Some(
+            .sizing(
                 LabeledControlSizing::new()
                     .indicator_size(16.0)
                     .label_font_size(14.0),
-            ))
-            .colors(Some(stage4_labeled_colors(0x2563EBFF)))
+            )
+            .colors(stage4_labeled_colors(0x2563EBFF))
             .checked(true)
             .semantic_label("Stage 4 compact radio sizing");
         radio_beta
-            .sizing(Some(
+            .sizing(
                 LabeledControlSizing::new()
                     .indicator_size(30.0)
                     .label_font_size(20.0),
-            ))
-            .colors(Some(stage4_labeled_colors(0x2563EBFF)))
+            )
+            .colors(stage4_labeled_colors(0x2563EBFF))
             .semantic_label("Stage 4 large radio sizing");
         let radio_status = ui! {
         status_text("Radio sizing selected: compact").semantic_label("Radio sizing selected: compact")
@@ -556,11 +556,11 @@ impl Stage4PresentationShowcase {
             });
         let switch_control = ui! {
         switch("Large switch colors")
-            .colors(Some(
+            .colors(
                 stage4_labeled_colors(0x16A34AFF)
                     .background(control_background_color())
                     .border(0x15803DFF),
-            ))
+            )
             .checked(true)
             .semantic_label("Stage 4 switch color presenter")
         };
@@ -579,15 +579,15 @@ impl Stage4PresentationShowcase {
             slider()
             .length(320.0)
             .value(42.0)
-            .sizing(Some(
+            .sizing(
                 SliderSizing::new().thumb_size(30.0).track_thickness(10.0),
-            ))
-            .colors(Some(
+            )
+            .colors(
                 SliderColors::new()
                     .track(0xE2E8F0FF)
                     .fill(0x2563EBFF)
                     .thumb(0x1D4ED8FF),
-            ))
+            )
             .semantic_label("Stage 4 slider sizing presenter")
         };
         let slider_status = ui! {
@@ -629,14 +629,14 @@ impl Stage4PresentationShowcase {
         );
         let color_button = ui! {
             button("Color override button")
-            .colors(Some(
+            .colors(
                 ButtonColors::new()
                     .background(0x0F766EFF)
                     .background_hover(0x14B8A6FF)
                     .background_pressed(0x115E59FF)
                     .text_primary(0xFFFFFFFF)
                     .border(0x134E4AFF),
-            ))
+            )
             .semantic_label("Stage 4 color override button")
             .node_id("stage4-template-color-button")
         };
@@ -646,15 +646,15 @@ impl Stage4PresentationShowcase {
             .min(0.0)
             .max(100.0)
             .value(72.0)
-            .sizing(Some(
+            .sizing(
                 SliderSizing::new().thumb_size(24.0).track_thickness(8.0),
-            ))
-            .colors(Some(
+            )
+            .colors(
                 SliderColors::new()
                     .track(0xFDE68AFF)
                     .fill(0xF97316FF)
                     .thumb(0x9A3412FF),
-            ))
+            )
             .semantic_label("Stage 4 slider color override presenter")
         };
         let colors_card = ui! {
@@ -961,3 +961,47 @@ fui_managed_app!(
     |page: &Stage4PresentationShowcase| page.root.clone(),
     dispose: dispose_stage4_page
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fui::ffi::{self, Call};
+
+    #[test]
+    fn house_button_typography_does_not_change_on_hover() {
+        ffi::test::reset();
+        let presenter = HouseButtonPresenter::new();
+        presenter.present(
+            current_theme(),
+            ButtonVisualState {
+                enabled: true,
+                ..Default::default()
+            },
+            None,
+        );
+        Application::mount(presenter.content_root());
+        let initial_calls = ffi::test::take_calls();
+        assert!(initial_calls.iter().any(|call| matches!(
+            call,
+            Call::SetFont { font_id: 2, size, .. }
+                if (*size - (current_theme().fonts.size_body + 1.0)).abs() < f32::EPSILON
+        )));
+
+        presenter.present(
+            current_theme(),
+            ButtonVisualState {
+                hovered: true,
+                enabled: true,
+                ..Default::default()
+            },
+            None,
+        );
+        let hovered_calls = ffi::test::take_calls();
+        assert!(hovered_calls.iter().any(|call| matches!(
+            call,
+            Call::SetFont { font_id: 2, size, .. }
+                if (*size - (current_theme().fonts.size_body + 1.0)).abs() < f32::EPSILON
+        )));
+        Application::unmount();
+    }
+}

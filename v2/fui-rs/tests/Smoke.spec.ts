@@ -722,6 +722,44 @@ test('generated routed-demo host services and host events flow into the Rust hom
   }).toBe(true);
 });
 
+test('stage 4 house button is bold before hover and keeps its font across hover', async ({ page }) => {
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/stage4/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+  const sceneSurface = page.locator('canvas').first();
+
+  const readLabelFont = async () => await page.evaluate(async () => {
+    const debug = window.__fui_debug;
+    if (debug === undefined || typeof debug.getDebugTree !== 'function') {
+      return null;
+    }
+    const tree = await debug.getDebugTree();
+    const button = tree.nodes.find((entry) => entry.nodeId === 'stage4-template-house-button');
+    if (button === undefined) {
+      return null;
+    }
+    const pending = [...button.childHandles];
+    while (pending.length > 0) {
+      const handle = pending.shift();
+      if (handle === undefined) {
+        continue;
+      }
+      const node = tree.nodesByHandle[handle];
+      if (node.behavior.textNode) {
+        return { fontId: node.style.fontId, fontSize: node.style.fontSize };
+      }
+      pending.push(...node.childHandles);
+    }
+    return null;
+  });
+
+  await expect.poll(readLabelFont).toEqual({ fontId: 2, fontSize: 17 });
+  const bounds = await debugNodeScreenBounds(page, sceneSurface, 'Stage 4 house template button');
+  await page.mouse.move(bounds.x + (bounds.width / 2), bounds.y + (bounds.height / 2));
+  await expect.poll(readLabelFont).toEqual({ fontId: 2, fontSize: 17 });
+  await page.mouse.move(0, 0);
+  await expect.poll(readLabelFont).toEqual({ fontId: 2, fontSize: 17 });
+});
+
 test('virtual list on the routed dashboard advances its visible window on scroll', async ({ page }) => {
   await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);
@@ -2017,6 +2055,44 @@ test('routes to the stage 5 text input page with readable dark themed disabled i
   expect(darkStyles?.disabledCardBg).toBe(0x341528FF);
   expect(darkStyles?.disabledTextColor).toBe(0x94A3B8FF);
   expect(darkStyles?.disabledVisibleHeight).toBeGreaterThan(0);
+});
+
+test('live system theme changes preserve retained control geometry', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/stage5/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  const readCard = async () => await page.evaluate(async () => {
+    const debug = window.__fui_debug;
+    if (debug === undefined || typeof debug.getDebugTree !== 'function') {
+      return null;
+    }
+    const tree = await debug.getDebugTree();
+    const card = tree.nodes.find((entry) => entry.semanticLabel === 'Stage 5 text input status card');
+    if (card === undefined) {
+      return null;
+    }
+    return {
+      background: card.style.bgColor,
+      width: card.bounds.width,
+      height: card.bounds.height,
+    };
+  });
+
+  const light = await readCard();
+  expect(light).not.toBeNull();
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect.poll(async () => (await readCard())?.background ?? 0).not.toBe(light?.background ?? 0);
+  const dark = await readCard();
+  expect(dark?.width).toBe(light?.width);
+  expect(dark?.height).toBe(light?.height);
+
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(async () => (await readCard())?.background ?? 0).toBe(light?.background ?? 0);
+  const restored = await readCard();
+  expect(restored?.width).toBe(light?.width);
+  expect(restored?.height).toBe(light?.height);
 });
 
 test('stage 5 modal dialog opens and cancels from keyboard', async ({ page }) => {

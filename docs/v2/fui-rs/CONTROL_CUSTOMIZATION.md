@@ -12,13 +12,14 @@ needs to change.
 
 ```rust
 let primary = button("Save");
-primary.colors(ButtonColors {
-    background: 0x2563EBFF,
-    hover_background: 0x1D4ED8FF,
-    pressed_background: 0x1E40AFFF,
-    text: 0xFFFFFFFF,
-    border: 0x1D4ED8FF,
-});
+primary.colors(
+    ButtonColors::new()
+        .background(0x2563EBFF)
+        .background_hover(0x1D4ED8FF)
+        .background_pressed(0x1E40AFFF)
+        .text_primary(0xFFFFFFFF)
+        .border(0x1D4ED8FF),
+);
 ```
 
 Labeled controls share sizing and color token concepts:
@@ -30,6 +31,65 @@ Labeled controls share sizing and color token concepts:
 - `DropdownColors`
 - `DropdownSizing`
 - `TextInputColors`
+- `ProgressBarColors`
+- `ProgressBarSizing`
+
+Configuration setters take direct values. Clear an override explicitly with its
+`clear_*` method, for example `button.clear_colors()`,
+`text_input.clear_template()`, or `dialog.clear_appearance()`. FUI-RS does not
+use public `Option<T>` setters for this surface.
+
+## Host style precedence
+
+Controls resolve two host-style layers independently:
+
+1. Presenter style provides the control or template default.
+2. Local node style, such as `background(...)`, `border_config(...)`,
+   `corners(...)`, `padding(...)`, `shadow(...)`, and `opacity(...)`, wins per
+   property.
+
+Clearing a local property reveals the current presenter value. Theme changes,
+hover/pressed transitions, and template replacement therefore cannot overwrite
+an explicit local host property.
+
+Presenter implementations return `PresenterHostStyle`; they do not mutate the
+control host directly:
+
+```rust
+fn present(
+    &self,
+    theme: Theme,
+    state: ButtonVisualState,
+    _colors: Option<ButtonColors>,
+) -> PresenterHostStyle {
+    self.label.text_color(theme.colors.text_primary);
+    PresenterHostStyle::new()
+        .background(theme.colors.accent)
+        .border(Border::solid(1.0, theme.colors.border))
+        .corners(Corners::all(if state.pressed { 6.0 } else { 8.0 }))
+}
+```
+
+## Overlay appearance recipes
+
+Use one recipe per overlay instead of setting unrelated visual fields:
+
+```rust
+dialog("Sign in", "Enter your credentials").appearance(
+    DialogAppearance::new()
+        .backdrop(OverlayBackdropAppearance::new().background(0x00000080))
+        .card(
+            SurfaceAppearance::new()
+                .background(0xFFFFFFFF)
+                .border(Border::solid(1.0, 0xCBD5E1FF))
+                .corners(Corners::all(16.0)),
+        ),
+);
+```
+
+`PopupAppearance`, `DialogAppearance`, and `ContextMenuAppearance` preserve
+theme defaults for omitted fields. `clear_appearance()` restores the complete
+live theme recipe atomically.
 
 ## Templates
 
@@ -77,17 +137,19 @@ Use `clear_control_templates()` to return to defaults.
 
 ## Presenter boundaries
 
-A presenter owns visual composition, not interaction semantics. Built-in controls
-own enabled state, focus state, keyboard behavior, events, and semantic state.
-Custom presenters should render the visual state they are given and avoid taking
-over control logic unless the template contract explicitly asks for it.
+A presenter owns visual composition and returns host defaults, not interaction
+semantics. Built-in controls own enabled state, focus state, keyboard behavior,
+events, and semantic state. Custom presenters should render the visual state
+they are given and avoid taking over control logic unless the template contract
+explicitly asks for it.
 
 ## Retained lifecycle guidance
 
-Templates and presenters are retained objects. Store any subscription guards or
-owned child nodes in the presenter/control state. Do not create `Rc` self-cycles:
-subscription closures should capture only the retained fields they need or use
-weak references where necessary.
+Templates and presenters are retained objects. Node-owned theme subscriptions
+are retained for the node lifetime and unsubscribe on unmount. Do not create
+`Rc` self-cycles: subscription closures should capture weak targets or only the
+retained fields they need. Use RAII guards for subscriber-owned non-node
+subscriptions.
 
 ## See also
 

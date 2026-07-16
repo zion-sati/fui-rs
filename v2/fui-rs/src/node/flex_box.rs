@@ -14,6 +14,7 @@ pub struct FlexBox {
     pub(crate) core: Rc<RefCell<NodeCore>>,
     pub(crate) props: Rc<RefCell<FlexBoxProps>>,
     pub(crate) active_animations: Rc<RefCell<FlexBoxAnimations>>,
+    pub(crate) host_style_layers: Rc<RefCell<HostStyleLayers>>,
 }
 
 impl Default for FlexBox {
@@ -24,6 +25,7 @@ impl Default for FlexBox {
             core: Rc::new(RefCell::new(core)),
             props: Rc::new(RefCell::new(FlexBoxProps::default())),
             active_animations: Rc::new(RefCell::new(FlexBoxAnimations::default())),
+            host_style_layers: Rc::new(RefCell::new(HostStyleLayers::default())),
         }
     }
 }
@@ -99,6 +101,7 @@ impl FlexBox {
             core: Rc::downgrade(&self.core),
             props: Rc::downgrade(&self.props),
             active_animations: Rc::downgrade(&self.active_animations),
+            host_style_layers: Rc::downgrade(&self.host_style_layers),
         }
     }
 
@@ -207,6 +210,11 @@ impl FlexBox {
     }
 
     pub fn bg_color(&self, color: u32) -> &Self {
+        self.host_style_layers.borrow_mut().local.background = Some(color);
+        self.set_effective_background_color(color)
+    }
+
+    fn set_effective_background_color(&self, color: u32) -> &Self {
         self.cancel_background_color_transition();
         if self.should_animate_background_color(color) {
             let timing = {
@@ -233,6 +241,8 @@ impl FlexBox {
     }
 
     pub fn padding(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
+        self.host_style_layers.borrow_mut().local.padding =
+            Some(EdgeInsets::new(left, top, right, bottom));
         self.props.borrow_mut().padding = Some((left, top, right, bottom));
         if self.has_built_handle() {
             ui::set_padding(self.handle().raw(), left, top, right, bottom);
@@ -242,6 +252,7 @@ impl FlexBox {
     }
 
     pub fn flex_direction(&self, direction: FlexDirection) -> &Self {
+        self.host_style_layers.borrow_mut().local.flex_direction = Some(direction);
         self.props.borrow_mut().flex_direction = Some(direction);
         if self.has_built_handle() {
             ui::set_flex_direction(self.handle().raw(), direction as u32);
@@ -255,6 +266,7 @@ impl FlexBox {
     }
 
     pub fn corners(&self, tl: f32, tr: f32, br: f32, bl: f32) -> &Self {
+        self.host_style_layers.borrow_mut().local.corners = Some(Corners::new(tl, tr, br, bl));
         let existing = self.props.borrow().box_style.unwrap_or(BoxStyle {
             radius_tl: 0.0,
             radius_tr: 0.0,
@@ -285,6 +297,7 @@ impl FlexBox {
     }
 
     pub fn border_config(&self, border: Border) -> &Self {
+        self.host_style_layers.borrow_mut().local.border = Some(border);
         let existing = self.props.borrow().box_style.unwrap_or(BoxStyle {
             radius_tl: 0.0,
             radius_tr: 0.0,
@@ -313,6 +326,11 @@ impl FlexBox {
 
     pub fn opacity(&self, value: f32) -> &Self {
         let value = value.clamp(0.0, 1.0);
+        self.host_style_layers.borrow_mut().local.opacity = Some(value);
+        self.set_effective_opacity(value)
+    }
+
+    fn set_effective_opacity(&self, value: f32) -> &Self {
         self.cancel_opacity_transition();
         if self.should_animate_opacity(value) {
             let timing = {
@@ -360,6 +378,8 @@ impl FlexBox {
         blur_sigma: f32,
         spread: f32,
     ) -> &Self {
+        self.host_style_layers.borrow_mut().local.shadow =
+            Some(Shadow::new(color, offset_x, offset_y, blur_sigma, spread));
         self.props.borrow_mut().drop_shadow = Some(DropShadow {
             color,
             offset_x,
@@ -469,6 +489,7 @@ impl FlexBox {
     }
 
     pub fn cursor(&self, style: CursorStyle) -> &Self {
+        self.host_style_layers.borrow_mut().local.cursor = Some(style);
         self.core.borrow_mut().behavior.cursor = Some(style);
         crate::event::handle_cursor_style_changed(self.handle());
         self
@@ -491,9 +512,15 @@ impl FlexBox {
     }
 
     fn apply_animated_opacity(&self, value: f32) {
-        self.props.borrow_mut().opacity = Some(value.clamp(0.0, 1.0));
+        let value = value.clamp(0.0, 1.0);
+        self.props.borrow_mut().opacity = Some(value);
         if self.has_built_handle() {
-            self.build_self();
+            ui::set_layer_effect(
+                self.handle().raw(),
+                value,
+                self.props.borrow().blur_sigma.unwrap_or(0.0),
+                0,
+            );
             self.notify_retained_mutation();
         }
     }
@@ -699,11 +726,13 @@ impl FlexBox {
     }
 
     pub fn justify_content(&self, justify: JustifyContent) -> &Self {
+        self.host_style_layers.borrow_mut().local.justify_content = Some(justify);
         self.core.borrow_mut().behavior.justify_content = Some(justify);
         self
     }
 
     pub fn align_items(&self, align: AlignItems) -> &Self {
+        self.host_style_layers.borrow_mut().local.align_items = Some(align);
         self.core.borrow_mut().behavior.align_items = Some(align);
         self
     }
@@ -716,6 +745,220 @@ impl FlexBox {
     pub fn margin(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
         self.core.borrow_mut().behavior.margin = Some((left, top, right, bottom));
         self
+    }
+
+    pub fn apply_presenter_style(&self, style: PresenterHostStyle) -> &Self {
+        let previous = self.host_style_layers.borrow().resolved();
+        self.host_style_layers.borrow_mut().presenter = style;
+        self.sync_resolved_host_style_if_changed(previous);
+        self
+    }
+
+    pub fn clear_presenter_style(&self) -> &Self {
+        self.apply_presenter_style(PresenterHostStyle::new())
+    }
+
+    pub fn clear_bg_color(&self) -> &Self {
+        self.clear_local_host_style(|style| style.background = None)
+    }
+
+    pub fn clear_padding(&self) -> &Self {
+        self.clear_local_host_style(|style| style.padding = None)
+    }
+
+    pub fn clear_corners(&self) -> &Self {
+        self.clear_local_host_style(|style| style.corners = None)
+    }
+
+    pub fn clear_border(&self) -> &Self {
+        self.clear_local_host_style(|style| style.border = None)
+    }
+
+    pub fn clear_drop_shadow(&self) -> &Self {
+        self.clear_local_host_style(|style| style.shadow = None)
+    }
+
+    pub fn clear_opacity(&self) -> &Self {
+        self.clear_local_host_style(|style| style.opacity = None)
+    }
+
+    pub fn clear_flex_direction(&self) -> &Self {
+        self.clear_local_host_style(|style| style.flex_direction = None)
+    }
+
+    pub fn clear_justify_content(&self) -> &Self {
+        self.clear_local_host_style(|style| style.justify_content = None)
+    }
+
+    pub fn clear_align_items(&self) -> &Self {
+        self.clear_local_host_style(|style| style.align_items = None)
+    }
+
+    pub fn clear_cursor(&self) -> &Self {
+        self.clear_local_host_style(|style| style.cursor = None)
+    }
+
+    pub fn resolved_host_style(&self) -> PresenterHostStyle {
+        self.host_style_layers.borrow().resolved()
+    }
+
+    fn clear_local_host_style(&self, clear: impl FnOnce(&mut PresenterHostStyle)) -> &Self {
+        let previous = self.host_style_layers.borrow().resolved();
+        clear(&mut self.host_style_layers.borrow_mut().local);
+        self.sync_resolved_host_style_if_changed(previous);
+        self
+    }
+
+    fn sync_resolved_host_style_if_changed(&self, previous: PresenterHostStyle) {
+        let resolved = self.host_style_layers.borrow().resolved();
+        if resolved == previous {
+            return;
+        }
+        self.sync_resolved_host_style(previous, resolved);
+    }
+
+    fn sync_resolved_host_style(&self, previous: PresenterHostStyle, resolved: PresenterHostStyle) {
+        let background_changed = previous.background != resolved.background;
+        let padding_changed = previous.padding != resolved.padding;
+        let flex_direction_changed = previous.flex_direction != resolved.flex_direction;
+        let justify_content_changed = previous.justify_content != resolved.justify_content;
+        let align_items_changed = previous.align_items != resolved.align_items;
+        let box_style_changed =
+            previous.corners != resolved.corners || previous.border != resolved.border;
+        let opacity_changed = previous.opacity != resolved.opacity;
+        let shadow_changed = previous.shadow != resolved.shadow;
+        let cursor_changed = previous.cursor != resolved.cursor;
+
+        {
+            let mut props = self.props.borrow_mut();
+            props.padding = resolved
+                .padding
+                .map(|value| (value.left, value.top, value.right, value.bottom));
+            props.flex_direction = resolved.flex_direction;
+            props.opacity = resolved.opacity;
+            props.drop_shadow = resolved.shadow.map(|value| DropShadow {
+                color: value.color,
+                offset_x: value.offset_x,
+                offset_y: value.offset_y,
+                blur_sigma: value.blur_sigma,
+                spread: value.spread,
+            });
+            props.box_style = if resolved.corners.is_some() || resolved.border.is_some() {
+                let corners = resolved.corners.unwrap_or_else(|| Corners::all(0.0));
+                let border = resolved
+                    .border
+                    .unwrap_or_else(|| Border::solid(0.0, 0x00000000));
+                Some(BoxStyle {
+                    radius_tl: corners.top_left,
+                    radius_tr: corners.top_right,
+                    radius_br: corners.bottom_right,
+                    radius_bl: corners.bottom_left,
+                    border_width: border.width,
+                    border_color: border.color,
+                    border_style: border.style,
+                    border_dash_on: border.dash_on,
+                    border_dash_off: border.dash_off,
+                })
+            } else {
+                None
+            };
+        }
+        {
+            let mut core = self.core.borrow_mut();
+            core.behavior.justify_content = resolved.justify_content;
+            core.behavior.align_items = resolved.align_items;
+            core.behavior.cursor = resolved.cursor;
+        }
+        if !self.has_built_handle() {
+            self.props.borrow_mut().bg_color = resolved.background;
+            self.props.borrow_mut().opacity = resolved.opacity;
+            return;
+        }
+
+        let handle = self.handle().raw();
+        let mut direct_native_change = false;
+        if box_style_changed {
+            let corners = resolved.corners.unwrap_or_else(|| Corners::all(0.0));
+            let border = resolved
+                .border
+                .unwrap_or_else(|| Border::solid(0.0, 0x00000000));
+            ui::set_box_style(
+                handle,
+                if background_changed {
+                    previous.background.unwrap_or(0x00000000)
+                } else {
+                    resolved.background.unwrap_or(0x00000000)
+                },
+                corners.top_left,
+                corners.top_right,
+                corners.bottom_right,
+                corners.bottom_left,
+                border.width,
+                border.color,
+                border.style as u32,
+                border.dash_on,
+                border.dash_off,
+            );
+            direct_native_change = true;
+        }
+        if padding_changed {
+            let padding = resolved.padding.unwrap_or_else(|| EdgeInsets::all(0.0));
+            ui::set_padding(
+                handle,
+                padding.left,
+                padding.top,
+                padding.right,
+                padding.bottom,
+            );
+            direct_native_change = true;
+        }
+        if flex_direction_changed {
+            ui::set_flex_direction(
+                handle,
+                resolved.flex_direction.unwrap_or(FlexDirection::Column) as u32,
+            );
+            direct_native_change = true;
+        }
+        if justify_content_changed {
+            ui::set_justify_content(
+                handle,
+                resolved.justify_content.unwrap_or(JustifyContent::Start) as u32,
+            );
+            direct_native_change = true;
+        }
+        if align_items_changed {
+            ui::set_align_items(
+                handle,
+                resolved.align_items.unwrap_or(AlignItems::Stretch) as u32,
+            );
+            direct_native_change = true;
+        }
+        if shadow_changed {
+            let shadow = resolved
+                .shadow
+                .unwrap_or_else(|| Shadow::new(0x00000000, 0.0, 0.0, 0.0, 0.0));
+            ui::set_drop_shadow(
+                handle,
+                shadow.color,
+                shadow.offset_x,
+                shadow.offset_y,
+                shadow.blur_sigma,
+                shadow.spread,
+            );
+            direct_native_change = true;
+        }
+        if cursor_changed {
+            crate::event::handle_cursor_style_changed(self.handle());
+        }
+        if direct_native_change {
+            self.notify_retained_mutation();
+        }
+        if background_changed {
+            self.set_effective_background_color(resolved.background.unwrap_or(0x00000000));
+        }
+        if opacity_changed {
+            self.set_effective_opacity(resolved.opacity.unwrap_or(1.0));
+        }
     }
 
     pub fn position_type(&self, position_type: PositionType) -> &Self {

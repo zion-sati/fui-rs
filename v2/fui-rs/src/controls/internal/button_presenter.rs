@@ -1,6 +1,8 @@
 use crate::controls::ButtonColors;
 use crate::ffi::{AlignItems, FlexDirection, JustifyContent};
-use crate::node::{flex_box, FlexBox, TextCore};
+use crate::node::{
+    flex_box, Border, Corners, EdgeInsets, FlexBox, PresenterHostStyle, Shadow, TextCore,
+};
 use crate::theme::Theme;
 use crate::{FontStyle, FontWeight};
 use std::rc::Rc;
@@ -16,13 +18,12 @@ pub struct ButtonVisualState {
 pub trait ButtonPresenter {
     fn content_root(&self) -> FlexBox;
     fn label_node(&self) -> TextCore;
-    fn apply(
+    fn present(
         &self,
-        host: &FlexBox,
         theme: Theme,
         state: ButtonVisualState,
         colors: Option<ButtonColors>,
-    );
+    ) -> PresenterHostStyle;
 }
 
 pub trait ButtonTemplate {
@@ -60,13 +61,12 @@ impl ButtonPresenter for DefaultButtonPresenter {
         self.label_node.clone()
     }
 
-    fn apply(
+    fn present(
         &self,
-        host: &FlexBox,
         theme: Theme,
         state: ButtonVisualState,
         colors: Option<ButtonColors>,
-    ) {
+    ) -> PresenterHostStyle {
         let background = if !state.enabled {
             colors
                 .and_then(|colors| colors.background)
@@ -100,19 +100,6 @@ impl ButtonPresenter for DefaultButtonPresenter {
                 .and_then(|colors| colors.text_primary)
                 .unwrap_or(theme.colors.text_on_accent)
         };
-        host.flex_direction(FlexDirection::Row)
-            .justify_content(JustifyContent::Center)
-            .align_items(AlignItems::Center)
-            .corner_radius(theme.spacing.sm)
-            .border(1.0, border)
-            .padding(
-                theme.spacing.md,
-                theme.spacing.sm,
-                theme.spacing.md,
-                theme.spacing.sm,
-            )
-            .drop_shadow(0x00000000, 0.0, 0.0, 0.0, 0.0)
-            .bg_color(background);
         self.content_root
             .flex_direction(FlexDirection::Row)
             .align_items(AlignItems::Center)
@@ -123,6 +110,20 @@ impl ButtonPresenter for DefaultButtonPresenter {
             .font_style(FontStyle::Normal)
             .font_size(theme.fonts.size_body)
             .text_color(text_color);
+        PresenterHostStyle::new()
+            .flex_direction(FlexDirection::Row)
+            .justify_content(JustifyContent::Center)
+            .align_items(AlignItems::Center)
+            .corners(Corners::all(theme.spacing.sm))
+            .border(Border::solid(1.0, border))
+            .padding(EdgeInsets::new(
+                theme.spacing.md,
+                theme.spacing.sm,
+                theme.spacing.md,
+                theme.spacing.sm,
+            ))
+            .shadow(Shadow::new(0x00000000, 0.0, 0.0, 0.0, 0.0))
+            .background(background)
     }
 }
 

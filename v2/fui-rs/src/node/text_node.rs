@@ -648,10 +648,45 @@ impl Node for TextNode {
     }
 
     fn build_self(&self) {
+        if self.props.borrow().has_font {
+            self.resolve_font_id();
+        }
         apply_text_props(
             self.handle(),
             &self.props.borrow(),
             self.core.borrow().behavior.clone(),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::{self, Call};
+    use crate::Application;
+
+    #[test]
+    fn prebuild_font_family_weight_and_style_are_resolved_during_build() {
+        ffi::test::reset();
+        let theme = theme::current_theme();
+        let label = TextCore::new("Bold before build");
+        label
+            .font_family(theme.fonts.body_family)
+            .font_weight(FontWeight::Bold)
+            .font_style(FontStyle::Normal)
+            .font_size(17.0);
+
+        Application::mount(label.clone());
+        let handle = label.handle().raw();
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetFont {
+                handle: call_handle,
+                font_id: 2,
+                size,
+            } if *call_handle == handle && (*size - 17.0).abs() < f32::EPSILON
+        )));
+        Application::unmount();
     }
 }

@@ -88,6 +88,44 @@ impl SliderSizing {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ProgressBarSizing {
+    length: f32,
+    thickness: f32,
+}
+
+impl ProgressBarSizing {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn length(mut self, value: f32) -> Self {
+        self.length = sanitize_positive("ProgressBarSizing", "length", value);
+        self
+    }
+
+    pub fn thickness(mut self, value: f32) -> Self {
+        self.thickness = sanitize_positive("ProgressBarSizing", "thickness", value);
+        self
+    }
+
+    pub fn has_length(&self) -> bool {
+        self.length > 0.0
+    }
+
+    pub fn has_thickness(&self) -> bool {
+        self.thickness > 0.0
+    }
+
+    pub fn length_px(&self) -> f32 {
+        self.length
+    }
+
+    pub fn thickness_px(&self) -> f32 {
+        self.thickness
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct DropdownSizing {
     field_font_size: f32,
     option_font_size: f32,
@@ -404,6 +442,44 @@ impl SliderColors {
 
     pub fn thumb_color(&self) -> u32 {
         self.thumb.unwrap_or(0)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ProgressBarColors {
+    track: Option<u32>,
+    fill: Option<u32>,
+}
+
+impl ProgressBarColors {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn track(mut self, color: u32) -> Self {
+        self.track = Some(color);
+        self
+    }
+
+    pub fn fill(mut self, color: u32) -> Self {
+        self.fill = Some(color);
+        self
+    }
+
+    pub fn has_track(&self) -> bool {
+        self.track.is_some()
+    }
+
+    pub fn track_color(&self) -> u32 {
+        self.track.unwrap_or(0)
+    }
+
+    pub fn has_fill(&self) -> bool {
+        self.fill.is_some()
+    }
+
+    pub fn fill_color(&self) -> u32 {
+        self.fill.unwrap_or(0)
     }
 }
 

@@ -8,7 +8,8 @@ Modal overlay with title/body and actions.
 
 ## Key APIs
 
-- `show`, `hide`, `on_accept`, `on_cancel`, `on_shown`, card/backdrop/action styling APIs.
+- `show`, `hide`, `on_accept`, `on_cancel`, `on_shown`,
+  `appearance(DialogAppearance)`, `clear_appearance`.
 
 ## Notes
 

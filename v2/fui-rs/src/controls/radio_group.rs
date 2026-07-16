@@ -280,4 +280,10 @@ impl Node for RadioGroup {
     }
 }
 
+impl crate::node::HasFlexBoxRoot for RadioGroup {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.root
+    }
+}
+
 pub(crate) type WeakRadioGroupEventTarget = Weak<RadioGroupEventTarget>;

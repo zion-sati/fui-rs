@@ -151,6 +151,7 @@ Public template/style types:
 
 - `ControlTemplateSet`
 - `use_control_templates(...)`, `get_control_templates()`, `clear_control_templates()`
+- `PresenterHostStyle`, `SurfaceAppearance`, `OverlayBackdropAppearance`
 - `ButtonTemplate`, `ButtonPresenter`, `ButtonVisualState`, `ButtonColors`
 - `CheckboxIndicatorTemplate`, `CheckboxIndicatorPresenter`, `CheckboxIndicatorVisualState`
 - `RadioIndicatorTemplate`, `RadioIndicatorPresenter`, `RadioIndicatorVisualState`
@@ -159,10 +160,16 @@ Public template/style types:
 - `DropdownFieldTemplate`, `DropdownChevronTemplate`, `DropdownOptionRowTemplate`
 - `TextInputTemplate`, `TextInputPresenter`, `TextInputVisualState`, `TextInputColors`
 - `LabeledControlColors`, `LabeledControlSizing`, `DropdownColors`, `DropdownSizing`
+- `ProgressBarColors`, `ProgressBarSizing`
+- `PopupAppearance`, `DialogAppearance`, `ContextMenuAppearance`, `ContextMenuItemAppearance`
 - `LabeledControlTextStyle` for shared `font_family`, `font_size`, and `text_color`
 - `DEFAULT_*_TEMPLATE` constants and `create_default_*_presenter(...)` helpers
 
 See [Control customization and templating](./CONTROL_CUSTOMIZATION.md).
+
+Configuration setters take direct values. Use explicit `clear_colors()`,
+`clear_sizing()`, `clear_template()`, and `clear_appearance()` methods where
+available; there are no compatibility `Option<T>` setters.
 
 ## Events
 

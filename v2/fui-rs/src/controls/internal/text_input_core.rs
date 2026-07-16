@@ -147,12 +147,6 @@ pub struct TextInputCore {
     focus_visibility_guard: RefCell<Option<SubscriptionGuard>>,
 }
 
-impl Default for TextInputCore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl TextInputCore {
     pub fn new() -> Self {
         Self::with_profile(TextInputProfile::single_line())
@@ -200,7 +194,7 @@ impl TextInputCore {
         };
 
         let presenter = create_presenter(profile, None);
-        presenter.bind(root.clone(), editor_text.clone(), placeholder_host.clone());
+        presenter.bind(editor_text.clone(), placeholder_host.clone());
 
         let this = Self {
             self_weak: RefCell::new(Weak::new()),
@@ -357,7 +351,15 @@ impl TextInputCore {
         self.selection_range(end, end)
     }
 
-    pub fn colors(&self, colors: Option<TextInputColors>) -> &Self {
+    pub fn colors(&self, colors: TextInputColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<TextInputColors>) -> &Self {
         self.colors_value.set(colors);
         self.sync_theme_state();
         self
@@ -423,14 +425,18 @@ impl TextInputCore {
         self
     }
 
-    pub fn template(&self, template: Option<Rc<dyn TextInputTemplate>>) -> &Self {
+    pub fn template(&self, template: Rc<dyn TextInputTemplate>) -> &Self {
+        self.set_template(Some(template))
+    }
+
+    pub fn clear_template(&self) -> &Self {
+        self.set_template(None)
+    }
+
+    fn set_template(&self, template: Option<Rc<dyn TextInputTemplate>>) -> &Self {
         *self.template.borrow_mut() = template.clone();
         let presenter = create_presenter(self.profile, template);
-        presenter.bind(
-            self.root.clone(),
-            self.editor_text.clone(),
-            self.placeholder_host.clone(),
-        );
+        presenter.bind(self.editor_text.clone(), self.placeholder_host.clone());
         *self.presenter.borrow_mut() = presenter;
         self.sync_theme_state();
         self
@@ -629,7 +635,7 @@ impl TextInputCore {
             theme.fonts.size_body
         };
         let line_height = resolved_font_size + theme.spacing.sm;
-        self.presenter.borrow().apply(
+        let host_style = self.presenter.borrow().present(
             theme.clone(),
             &TextInputVisualState {
                 multiline: self.profile.multiline,
@@ -638,6 +644,7 @@ impl TextInputCore {
             },
             self.colors_value.get(),
         );
+        self.root.apply_presenter_style(host_style);
 
         let colors = self.colors_value.get();
         let text_color = if is_enabled(&self.root) {
@@ -1013,7 +1020,18 @@ impl TextInputCore {
             && is_enabled(&self.root)
             && focus_visibility::keyboard_focus_visible()
         {
-            focus_adorner::show_standard(&self.root, current_theme().spacing.sm);
+            let corners = self
+                .root
+                .resolved_host_style()
+                .corners
+                .unwrap_or_else(|| crate::Corners::all(current_theme().spacing.sm));
+            focus_adorner::show_standard_corners(
+                &self.root,
+                corners.top_left,
+                corners.top_right,
+                corners.bottom_right,
+                corners.bottom_left,
+            );
             return;
         }
         focus_adorner::hide_owner(&self.root);
@@ -1052,12 +1070,6 @@ impl TextInputCore {
     }
 }
 
-impl HasFlexBoxRoot for TextInputCore {
-    fn flex_box_root(&self) -> &FlexBox {
-        &self.root
-    }
-}
-
 impl TextInputCore {
     pub(crate) fn build_control(&self) {
         self.root.build();
@@ -1070,5 +1082,11 @@ impl TextInputCore {
 
     pub(crate) fn editor_node(&self) -> TextCore {
         self.editor_text.clone()
+    }
+}
+
+impl HasFlexBoxRoot for TextInputCore {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.root
     }
 }

@@ -85,45 +85,46 @@ fn resolve_text_input_colors(
 
 #[derive(Clone, Default)]
 struct ComboBoxEditorPresenter {
-    host: RefCell<Option<FlexBox>>,
     editor_host: RefCell<Option<TextCore>>,
     placeholder_host: RefCell<Option<FlexBox>>,
 }
 
 impl TextInputPresenter for ComboBoxEditorPresenter {
-    fn bind(&self, host: FlexBox, editor_host: TextCore, placeholder_host: FlexBox) {
-        *self.host.borrow_mut() = Some(host);
+    fn bind(&self, editor_host: TextCore, placeholder_host: FlexBox) {
         *self.editor_host.borrow_mut() = Some(editor_host);
         *self.placeholder_host.borrow_mut() = Some(placeholder_host);
     }
 
-    fn apply(&self, _theme: Theme, state: &TextInputVisualState, _colors: Option<TextInputColors>) {
-        let Some(host) = self.host.borrow().clone() else {
-            return;
-        };
+    fn present(
+        &self,
+        _theme: Theme,
+        state: &TextInputVisualState,
+        _colors: Option<TextInputColors>,
+    ) -> crate::PresenterHostStyle {
         let Some(editor_host) = self.editor_host.borrow().clone() else {
-            return;
+            return crate::PresenterHostStyle::new();
         };
         let Some(placeholder_host) = self.placeholder_host.borrow().clone() else {
-            return;
+            return crate::PresenterHostStyle::new();
         };
         let editable_cursor = if state.enabled {
             CursorStyle::Text
         } else {
             CursorStyle::Default
         };
-        host.bg_color(0x00000000)
-            .corner_radius(0.0)
-            .border(0.0, 0x00000000)
-            .padding(0.0, 0.0, 0.0, 0.0)
-            .align_items(AlignItems::Center)
-            .cursor(editable_cursor)
-            .opacity(if state.enabled { 1.0 } else { 0.6 });
         editor_host.cursor(editable_cursor);
         placeholder_host
             .position(0.0, 0.0)
             .width(100.0, Unit::Percent)
             .cursor(editable_cursor);
+        crate::PresenterHostStyle::new()
+            .background(0x00000000)
+            .corners(crate::Corners::all(0.0))
+            .border(crate::Border::solid(0.0, 0x00000000))
+            .padding(crate::EdgeInsets::all(0.0))
+            .align_items(AlignItems::Center)
+            .cursor(editable_cursor)
+            .opacity(if state.enabled { 1.0 } else { 0.6 })
     }
 }
 
@@ -252,7 +253,7 @@ impl ComboBox {
         let editor = TextInput::new();
         editor
             .text(text.clone())
-            .template(Some(Rc::new(ComboBoxEditorTemplate)));
+            .template(Rc::new(ComboBoxEditorTemplate));
         editor.fill_width();
 
         let chevron_presenter = create_chevron_presenter(None, None);
@@ -395,6 +396,7 @@ impl ComboBox {
         });
         *shared.self_weak.borrow_mut() = Rc::downgrade(&shared);
         *shared_slot.borrow_mut() = Some(Rc::downgrade(&shared));
+        root.retained_node_ref().retain_attachment(shared.clone());
         shared.rebuild_filtered_indices();
 
         popup_list.popup_presenter.overlay_node().on_click({
@@ -753,7 +755,15 @@ impl ComboBox {
         self
     }
 
-    pub fn sizing(&self, sizing: Option<DropdownSizing>) -> &Self {
+    pub fn sizing(&self, sizing: DropdownSizing) -> &Self {
+        self.set_sizing(Some(sizing))
+    }
+
+    pub fn clear_sizing(&self) -> &Self {
+        self.set_sizing(None)
+    }
+
+    fn set_sizing(&self, sizing: Option<DropdownSizing>) -> &Self {
         self.shared.sizing_value.set(sizing);
         let previous_presenter = self.shared.chevron_presenter.borrow().clone();
         let next_presenter =
@@ -769,14 +779,30 @@ impl ComboBox {
         self
     }
 
-    pub fn colors(&self, colors: Option<DropdownColors>) -> &Self {
+    pub fn colors(&self, colors: DropdownColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<DropdownColors>) -> &Self {
         self.shared.colors_value.set(colors);
         self.shared.popup_list.colors(colors);
         self.shared.handle_theme_changed();
         self
     }
 
-    pub fn chevron_template(&self, template: Option<Rc<dyn DropdownChevronTemplate>>) -> &Self {
+    pub fn chevron_template(&self, template: Rc<dyn DropdownChevronTemplate>) -> &Self {
+        self.set_chevron_template(Some(template))
+    }
+
+    pub fn clear_chevron_template(&self) -> &Self {
+        self.set_chevron_template(None)
+    }
+
+    fn set_chevron_template(&self, template: Option<Rc<dyn DropdownChevronTemplate>>) -> &Self {
         *self.shared.chevron_template_value.borrow_mut() = template.clone();
         let previous_presenter = self.shared.chevron_presenter.borrow().clone();
         let next_presenter = create_chevron_presenter(template, self.shared.sizing_value.get());
@@ -790,7 +816,15 @@ impl ComboBox {
         self
     }
 
-    pub fn option_row_template(
+    pub fn option_row_template(&self, template: Rc<dyn DropdownOptionRowTemplate>) -> &Self {
+        self.set_option_row_template(Some(template))
+    }
+
+    pub fn clear_option_row_template(&self) -> &Self {
+        self.set_option_row_template(None)
+    }
+
+    fn set_option_row_template(
         &self,
         template: Option<Rc<dyn DropdownOptionRowTemplate>>,
     ) -> &Self {
@@ -1490,8 +1524,12 @@ impl ComboBoxShared {
         self.editor
             .height(field_content_height, Unit::Pixel)
             .font_size(field_font_size)
-            .line_height(field_content_height)
-            .colors(resolve_text_input_colors(colors, &theme));
+            .line_height(field_content_height);
+        if let Some(colors) = resolve_text_input_colors(colors, &theme) {
+            self.editor.colors(colors);
+        } else {
+            self.editor.clear_colors();
+        }
         self.chevron_host
             .width(chevron_box_size, Unit::Pixel)
             .height(field_content_height, Unit::Pixel)

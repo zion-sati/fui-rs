@@ -238,6 +238,7 @@ impl Dropdown {
         });
         *shared.self_weak.borrow_mut() = Rc::downgrade(&shared);
         *shared_slot.borrow_mut() = Some(Rc::downgrade(&shared));
+        root.retained_node_ref().retain_attachment(shared.clone());
 
         popup_list.popup_presenter.overlay_node().on_click({
             let weak_shared = Rc::downgrade(&shared);
@@ -470,7 +471,15 @@ impl Dropdown {
         self
     }
 
-    pub fn sizing(&self, sizing: Option<DropdownSizing>) -> &Self {
+    pub fn sizing(&self, sizing: DropdownSizing) -> &Self {
+        self.set_sizing(Some(sizing))
+    }
+
+    pub fn clear_sizing(&self) -> &Self {
+        self.set_sizing(None)
+    }
+
+    fn set_sizing(&self, sizing: Option<DropdownSizing>) -> &Self {
         self.shared.close();
         self.shared.sizing_value.set(sizing);
         if self.shared.uses_default_field_presenter() {
@@ -506,14 +515,30 @@ impl Dropdown {
         self
     }
 
-    pub fn colors(&self, colors: Option<DropdownColors>) -> &Self {
+    pub fn colors(&self, colors: DropdownColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<DropdownColors>) -> &Self {
         self.shared.colors_value.set(colors);
         self.shared.popup_list.colors(colors);
         self.shared.handle_theme_changed();
         self
     }
 
-    pub fn field_template(&self, template: Option<Rc<dyn DropdownFieldTemplate>>) -> &Self {
+    pub fn field_template(&self, template: Rc<dyn DropdownFieldTemplate>) -> &Self {
+        self.set_field_template(Some(template))
+    }
+
+    pub fn clear_field_template(&self) -> &Self {
+        self.set_field_template(None)
+    }
+
+    fn set_field_template(&self, template: Option<Rc<dyn DropdownFieldTemplate>>) -> &Self {
         self.shared.close();
         *self.shared.field_template_value.borrow_mut() = template.clone();
         let next_field_presenter = create_field_presenter(template, self.shared.sizing_value.get());
@@ -528,7 +553,15 @@ impl Dropdown {
         self
     }
 
-    pub fn chevron_template(&self, template: Option<Rc<dyn DropdownChevronTemplate>>) -> &Self {
+    pub fn chevron_template(&self, template: Rc<dyn DropdownChevronTemplate>) -> &Self {
+        self.set_chevron_template(Some(template))
+    }
+
+    pub fn clear_chevron_template(&self) -> &Self {
+        self.set_chevron_template(None)
+    }
+
+    fn set_chevron_template(&self, template: Option<Rc<dyn DropdownChevronTemplate>>) -> &Self {
         self.shared.close();
         *self.shared.chevron_template_value.borrow_mut() = template.clone();
         let previous_presenter = self.shared.chevron_presenter.borrow().clone();
@@ -549,7 +582,15 @@ impl Dropdown {
         self
     }
 
-    pub fn option_row_template(
+    pub fn option_row_template(&self, template: Rc<dyn DropdownOptionRowTemplate>) -> &Self {
+        self.set_option_row_template(Some(template))
+    }
+
+    pub fn clear_option_row_template(&self) -> &Self {
+        self.set_option_row_template(None)
+    }
+
+    fn set_option_row_template(
         &self,
         template: Option<Rc<dyn DropdownOptionRowTemplate>>,
     ) -> &Self {

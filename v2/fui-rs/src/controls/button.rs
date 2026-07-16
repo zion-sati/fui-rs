@@ -4,7 +4,6 @@ use super::internal::button_presenter::{
 use super::*;
 use crate::ffi::CursorStyle;
 use crate::node::{TextCore, WeakFlexBox};
-use crate::signal::SubscriptionGuard;
 use crate::{focus_adorner, focus_visibility};
 use std::rc::Rc;
 
@@ -22,16 +21,10 @@ pub struct Button {
     pressed_state: Rc<Cell<bool>>,
     focused_state: Rc<Cell<bool>>,
     keyboard_armed_key: Rc<RefCell<Option<String>>>,
-    background_override: Rc<Cell<Option<u32>>>,
-    hover_background_override: Rc<Cell<Option<u32>>>,
-    pressed_background_override: Rc<Cell<Option<u32>>>,
-    border_override: Rc<Cell<Option<Border>>>,
     font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
     font_size_override: Rc<Cell<Option<f32>>>,
     text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<ButtonColors>>>,
-    theme_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
-    focus_visibility_guard: Rc<RefCell<Option<SubscriptionGuard>>>,
 }
 
 impl Button {
@@ -41,10 +34,7 @@ impl Button {
         let presenter = create_button_presenter(None);
         let label_node = presenter.label_node();
         label_node.text(label.clone());
-        root.flex_direction(crate::FlexDirection::Row)
-            .justify_content(JustifyContent::Center)
-            .align_items(AlignItems::Center)
-            .interactive(true)
+        root.interactive(true)
             .focusable(true, 0)
             .semantic_role(SemanticRole::Button)
             .semantic_label(label.clone())
@@ -64,16 +54,10 @@ impl Button {
             pressed_state: Rc::new(Cell::new(false)),
             focused_state: Rc::new(Cell::new(false)),
             keyboard_armed_key: Rc::new(RefCell::new(None)),
-            background_override: Rc::new(Cell::new(None)),
-            hover_background_override: Rc::new(Cell::new(None)),
-            pressed_background_override: Rc::new(Cell::new(None)),
-            border_override: Rc::new(Cell::new(None)),
             font_family_override: Rc::new(RefCell::new(None)),
             font_size_override: Rc::new(Cell::new(None)),
             text_color_override: Rc::new(Cell::new(None)),
             colors_value: Rc::new(Cell::new(None)),
-            theme_guard: Rc::new(RefCell::new(None)),
-            focus_visibility_guard: Rc::new(RefCell::new(None)),
         };
         control.install_visual_subscriptions();
         control.sync_visual_state();
@@ -172,13 +156,29 @@ impl Button {
         self
     }
 
-    pub fn template(&self, template: Option<Rc<dyn ButtonTemplate>>) -> &Self {
+    pub fn template(&self, template: Rc<dyn ButtonTemplate>) -> &Self {
+        self.set_template(Some(template))
+    }
+
+    pub fn clear_template(&self) -> &Self {
+        self.set_template(None)
+    }
+
+    fn set_template(&self, template: Option<Rc<dyn ButtonTemplate>>) -> &Self {
         self.template.replace(template.clone());
         self.replace_presenter(create_button_presenter(template));
         self
     }
 
-    pub fn colors(&self, colors: Option<ButtonColors>) -> &Self {
+    pub fn colors(&self, colors: ButtonColors) -> &Self {
+        self.set_colors(Some(colors))
+    }
+
+    pub fn clear_colors(&self) -> &Self {
+        self.set_colors(None)
+    }
+
+    fn set_colors(&self, colors: Option<ButtonColors>) -> &Self {
         self.colors_value.set(colors);
         self.sync_visual_state();
         self
@@ -212,48 +212,6 @@ impl Button {
         self
     }
 
-    pub fn corner_radius(&self, radius: f32) -> &Self {
-        self.root.corner_radius(radius);
-        self.sync_focus_chrome();
-        self
-    }
-
-    pub fn corners(&self, tl: f32, tr: f32, br: f32, bl: f32) -> &Self {
-        self.root.corners(tl, tr, br, bl);
-        self.sync_focus_chrome();
-        self
-    }
-
-    pub fn hover_bg_color(&self, color: u32) -> &Self {
-        self.hover_background_override.set(Some(color));
-        self.sync_visual_state();
-        self
-    }
-
-    pub fn pressed_bg_color(&self, color: u32) -> &Self {
-        self.pressed_background_override.set(Some(color));
-        self.sync_visual_state();
-        self
-    }
-
-    pub fn bg_color(&self, color: u32) -> &Self {
-        self.background_override.set(Some(color));
-        self.sync_visual_state();
-        self
-    }
-
-    pub fn border(&self, width: f32, color: u32) -> &Self {
-        self.border_override.set(Some(Border::solid(width, color)));
-        self.sync_visual_state();
-        self
-    }
-
-    pub fn border_config(&self, border: Border) -> &Self {
-        self.border_override.set(Some(border));
-        self.sync_visual_state();
-        self
-    }
-
     fn set_explicit_text_color(&self, color: u32) {
         self.text_color_override.set(Some(color));
         self.sync_visual_state();
@@ -271,16 +229,21 @@ impl Button {
 
     fn install_visual_subscriptions(&self) {
         let event_target = self.event_target();
-        *self.theme_guard.borrow_mut() = Some(subscribe(move |_theme| {
+        let theme_guard = subscribe(move |_theme| {
             event_target.sync_visual_state();
             event_target.sync_focus_chrome();
-        }));
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(theme_guard));
 
         let event_target = self.event_target();
-        *self.focus_visibility_guard.borrow_mut() =
-            Some(focus_visibility::subscribe(move |_visible| {
-                event_target.sync_focus_chrome();
-            }));
+        let focus_guard = focus_visibility::subscribe(move |_visible| {
+            event_target.sync_focus_chrome();
+        });
+        self.root
+            .retained_node_ref()
+            .retain_attachment(Rc::new(focus_guard));
     }
 
     fn event_target(&self) -> ButtonEventTarget {
@@ -294,10 +257,6 @@ impl Button {
             pressed_state: self.pressed_state.clone(),
             focused_state: self.focused_state.clone(),
             keyboard_armed_key: self.keyboard_armed_key.clone(),
-            background_override: self.background_override.clone(),
-            hover_background_override: self.hover_background_override.clone(),
-            pressed_background_override: self.pressed_background_override.clone(),
-            border_override: self.border_override.clone(),
             font_family_override: self.font_family_override.clone(),
             font_size_override: self.font_size_override.clone(),
             text_color_override: self.text_color_override.clone(),
@@ -339,22 +298,11 @@ impl Button {
             self.pressed_state.get(),
             self.focused_state.get(),
             self.is_enabled(),
-            self.background_override.get(),
-            self.hover_background_override.get(),
-            self.pressed_background_override.get(),
-            self.border_override.get(),
             self.font_family_override.borrow().clone(),
             self.font_size_override.get(),
             self.text_color_override.get(),
             self.colors_value.get(),
         );
-        self.root.cursor(if self.is_enabled() {
-            CursorStyle::Pointer
-        } else {
-            CursorStyle::Default
-        });
-        self.root
-            .opacity(if self.is_enabled() { 1.0 } else { 0.38 });
     }
 
     fn sync_focus_chrome(&self) {
@@ -418,18 +366,13 @@ fn sync_button_visual_state(
     pressed: bool,
     focused: bool,
     enabled: bool,
-    background_override: Option<u32>,
-    hover_background_override: Option<u32>,
-    pressed_background_override: Option<u32>,
-    border_override: Option<Border>,
     font_family_override: Option<crate::FontFamily>,
     font_size_override: Option<f32>,
     text_color_override: Option<u32>,
     colors: Option<ButtonColors>,
 ) {
     let presenter = presenter.borrow().clone();
-    presenter.apply(
-        root,
+    let mut host_style = presenter.present(
         current_theme(),
         ButtonVisualState {
             hovered,
@@ -439,21 +382,13 @@ fn sync_button_visual_state(
         },
         colors,
     );
-    let override_background = if !enabled {
-        background_override
-    } else if pressed {
-        pressed_background_override.or(background_override)
-    } else if hovered {
-        hover_background_override.or(background_override)
+    host_style.cursor = Some(if enabled {
+        CursorStyle::Pointer
     } else {
-        background_override
-    };
-    if let Some(color) = override_background {
-        root.bg_color(color);
-    }
-    if let Some(border) = border_override {
-        root.border_config(border);
-    }
+        CursorStyle::Default
+    });
+    host_style.opacity = Some(if enabled { 1.0 } else { 0.38 });
+    root.apply_presenter_style(host_style);
     if let Some(family) = font_family_override {
         presenter.label_node().font_family(family);
     }
@@ -467,8 +402,17 @@ fn sync_button_visual_state(
 
 fn sync_button_focus_chrome(root: &FlexBox, focused: bool, enabled: bool) {
     if focused && enabled && focus_visibility::keyboard_focus_visible() {
-        let radius = current_theme().spacing.sm;
-        focus_adorner::show_standard_corners(root, radius, radius, radius, radius);
+        let corners = root
+            .resolved_host_style()
+            .corners
+            .unwrap_or_else(|| crate::Corners::all(current_theme().spacing.sm));
+        focus_adorner::show_standard_corners(
+            root,
+            corners.top_left,
+            corners.top_right,
+            corners.bottom_right,
+            corners.bottom_left,
+        );
         return;
     }
     focus_adorner::hide_owner(root);
@@ -497,10 +441,6 @@ struct ButtonEventTarget {
     pressed_state: Rc<Cell<bool>>,
     focused_state: Rc<Cell<bool>>,
     keyboard_armed_key: Rc<RefCell<Option<String>>>,
-    background_override: Rc<Cell<Option<u32>>>,
-    hover_background_override: Rc<Cell<Option<u32>>>,
-    pressed_background_override: Rc<Cell<Option<u32>>>,
-    border_override: Rc<Cell<Option<Border>>>,
     font_family_override: Rc<RefCell<Option<crate::FontFamily>>>,
     font_size_override: Rc<Cell<Option<f32>>>,
     text_color_override: Rc<Cell<Option<u32>>>,
@@ -525,25 +465,11 @@ impl ButtonEventTarget {
             self.pressed_state.get(),
             self.focused_state.get(),
             root.retained_node_ref().is_enabled_for_routing(),
-            self.background_override.get(),
-            self.hover_background_override.get(),
-            self.pressed_background_override.get(),
-            self.border_override.get(),
             self.font_family_override.borrow().clone(),
             self.font_size_override.get(),
             self.text_color_override.get(),
             self.colors_value.get(),
         );
-        root.cursor(if root.retained_node_ref().is_enabled_for_routing() {
-            CursorStyle::Pointer
-        } else {
-            CursorStyle::Default
-        });
-        root.opacity(if root.retained_node_ref().is_enabled_for_routing() {
-            1.0
-        } else {
-            0.38
-        });
     }
 
     fn sync_focus_chrome(&self) {

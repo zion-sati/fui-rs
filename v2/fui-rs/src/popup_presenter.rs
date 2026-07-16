@@ -322,6 +322,38 @@ impl PopupPresenter {
 }
 
 impl PopupPresenterEventTarget {
+    pub(crate) fn is_open(&self) -> bool {
+        self.state.borrow().open
+    }
+
+    pub(crate) fn surface_x(&self) -> f32 {
+        self.state.borrow().surface_x
+    }
+
+    pub(crate) fn surface_y(&self) -> f32 {
+        self.state.borrow().surface_y
+    }
+
+    pub(crate) fn backdrop_color(&self, color: u32) {
+        self.state.borrow_mut().backdrop_color = color;
+        self.apply_backdrop_style();
+    }
+
+    pub(crate) fn background_blur(&self, sigma: f32) {
+        self.state.borrow_mut().background_blur_sigma = sigma.max(0.0);
+        self.apply_backdrop_style();
+    }
+
+    fn apply_backdrop_style(&self) {
+        let Some(overlay) = self.overlay_node.upgrade() else {
+            return;
+        };
+        let state = *self.state.borrow();
+        overlay
+            .bg_color(state.backdrop_color)
+            .background_blur(state.background_blur_sigma);
+    }
+
     pub(crate) fn hide(&self) {
         let Some(root) = self.root.upgrade() else {
             return;
