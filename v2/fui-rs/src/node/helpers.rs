@@ -181,9 +181,12 @@ pub(crate) fn apply_text_props(handle: NodeHandle, props: &TextProps, behavior: 
     if props.has_style_runs {
         ui::set_text_style_runs(handle.raw(), &props.style_runs);
     }
-    if let Some(color) = props.text_color {
-        ui::set_text_color(handle.raw(), color);
-    }
+    ui::set_text_color(
+        handle.raw(),
+        props
+            .text_color
+            .unwrap_or_else(|| crate::theme::current_theme().colors.text_primary),
+    );
     if let Some(line_height) = props.line_height {
         ui::set_line_height(handle.raw(), line_height);
     }

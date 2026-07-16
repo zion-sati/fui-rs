@@ -135,6 +135,34 @@ fn unspecified_dimensions_remain_unset_while_explicit_auto_is_preserved() {
 }
 
 #[test]
+fn text_build_uses_the_active_theme_color_unless_explicitly_overridden() {
+    ffi::test::reset();
+    use_system_theme();
+    let themed = text("Themed text");
+    let explicit = text("Explicit text");
+    explicit.text_color(0xA1B2C3FF);
+    let root = column();
+    root.child(&themed).child(&explicit);
+
+    Application::mount(root);
+    let themed_handle = themed.handle().raw();
+    let explicit_handle = explicit.handle().raw();
+    let theme_color = current_theme().colors.text_primary;
+    let calls = ffi::test::take_calls();
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == themed_handle && *color == theme_color
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == explicit_handle && *color == 0xA1B2C3FF
+    )));
+}
+
+#[test]
 fn loaded_callbacks_fire_during_mount_before_initial_commit() {
     ffi::test::reset();
     let label = text("Before");
