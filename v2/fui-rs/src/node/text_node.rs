@@ -279,6 +279,10 @@ impl TextNode {
         self
     }
 
+    pub fn max_lines(&self, max_lines: i32) -> &Self {
+        self.text_limits(i32::MAX, max_lines)
+    }
+
     pub fn wrapping(&self, wrap: bool) -> &Self {
         self.props.borrow_mut().wrapping = Some(wrap);
         if self.has_built_handle() {

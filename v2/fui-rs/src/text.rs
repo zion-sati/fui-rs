@@ -963,6 +963,21 @@ mod tests {
     }
 
     #[test]
+    fn rich_text_inherits_fui_as_max_lines_surface() {
+        ffi::test::reset();
+        let node = RichText::from_text("One line");
+        node.max_lines(1).build();
+        assert!(ffi::test::take_calls().iter().any(|call| matches!(
+            call,
+            Call::SetTextLimits {
+                max_chars,
+                max_lines,
+                ..
+            } if *max_chars == i32::MAX && *max_lines == 1
+        )));
+    }
+
+    #[test]
     fn text_layout_waits_for_loaded_and_fonts_before_reporting_ready() {
         ffi::test::reset();
         frame_scheduler::reset_commit_state();
