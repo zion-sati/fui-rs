@@ -4,9 +4,9 @@ pub mod assets;
 #[doc(hidden)]
 pub mod bindings;
 pub mod bitmap;
-pub mod color;
 #[doc(hidden)]
 pub mod bridge_callbacks;
+pub mod color;
 pub(crate) mod context_menu_manager;
 pub mod controls;
 pub mod debug;
@@ -456,8 +456,9 @@ pub mod prelude {
     pub use crate::drawing::{DrawContext, Paint, Path};
     pub use crate::event::{
         FocusChangedEventArgs, GestureEventArgs, GestureEventKind, GestureEventPhase,
-        GestureIntent, KeyEventArgs, LongPressEventArgs, PointerEventArgs, PointerType,
-        SelectionChangedEventArgs, TextChangedEventArgs, WheelEventArgs,
+        GestureIntent, KeyEventArgs, LongPressEventArgs, PointerButton, PointerButtons,
+        PointerEventArgs, PointerType, SelectionChangedEventArgs, TextChangedEventArgs,
+        WheelEventArgs,
     };
     pub use crate::external_drop::{
         ExternalDropEventArgs, ExternalDropItemInfo, ExternalDropItemKind,
@@ -581,8 +582,8 @@ pub use drag_drop::{
 pub use drawing::{DrawContext, Paint, Path};
 pub use event::{
     FocusChangedEventArgs, GestureEventArgs, GestureEventKind, GestureEventPhase, GestureIntent,
-    KeyEventArgs, LongPressEventArgs, PointerEventArgs, PointerType, SelectionChangedEventArgs,
-    TextChangedEventArgs, WheelEventArgs,
+    KeyEventArgs, LongPressEventArgs, PointerButton, PointerButtons, PointerEventArgs, PointerType,
+    SelectionChangedEventArgs, TextChangedEventArgs, WheelEventArgs,
 };
 pub use external_drop::{ExternalDropEventArgs, ExternalDropItemInfo, ExternalDropItemKind};
 pub use fetch::{Fetch, FetchErrorEventArgs, FetchRequest, FetchResponse};

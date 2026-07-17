@@ -528,7 +528,7 @@ impl SliderEventTarget {
     }
 
     fn handle_pointer_move(&self, event: &mut PointerEventArgs) {
-        if !self.is_enabled() || !self.dragging_state.get() || event.buttons == 0 {
+        if !self.is_enabled() || !self.dragging_state.get() || event.buttons.is_empty() {
             return;
         }
         self.update_value_from_pointer(event.scene_x, event.scene_y, true, true);

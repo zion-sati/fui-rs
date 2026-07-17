@@ -43,6 +43,58 @@ impl PointerType {
     }
 }
 
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerButton {
+    None = -1,
+    Primary = 0,
+    Auxiliary = 1,
+    Secondary = 2,
+    Back = 3,
+    Forward = 4,
+}
+
+impl PointerButton {
+    pub fn from_raw(value: i32) -> Self {
+        match value {
+            0 => Self::Primary,
+            1 => Self::Auxiliary,
+            2 => Self::Secondary,
+            3 => Self::Back,
+            4 => Self::Forward,
+            _ => Self::None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PointerButtons(u32);
+
+impl PointerButtons {
+    pub const NONE: Self = Self(0);
+    pub const PRIMARY: Self = Self(1 << 0);
+    pub const SECONDARY: Self = Self(1 << 1);
+    pub const AUXILIARY: Self = Self(1 << 2);
+    pub const BACK: Self = Self(1 << 3);
+    pub const FORWARD: Self = Self(1 << 4);
+
+    pub const fn from_raw(value: u32) -> Self {
+        Self(value)
+    }
+
+    pub const fn bits(self) -> u32 {
+        self.0
+    }
+
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    pub const fn contains(self, buttons: Self) -> bool {
+        self.0 & buttons.0 == buttons.0
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GestureIntent {
     None = 0,
@@ -109,8 +161,8 @@ pub struct PointerEventArgs {
     pub modifiers: u32,
     pub pointer_id: i32,
     pub pointer_type: PointerType,
-    pub button: i32,
-    pub buttons: u32,
+    pub button: PointerButton,
+    pub buttons: PointerButtons,
     pub pressure: f32,
     pub width: f32,
     pub height: f32,
@@ -145,8 +197,8 @@ impl PointerEventArgs {
             modifiers,
             pointer_id,
             pointer_type,
-            button,
-            buttons,
+            button: PointerButton::from_raw(button),
+            buttons: PointerButtons::from_raw(buttons),
             pressure,
             width,
             height,

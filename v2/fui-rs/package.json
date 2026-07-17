@@ -1,6 +1,6 @@
 {
   "name": "@effindomv2/fui-rs",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "private": false,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
   "description": "EffinDom v2 Rust frontend framework SDK and host generators",
@@ -33,11 +33,12 @@
     "generate:host": "npm run generate:host-services && npm run generate:host-events:home && npm run generate:host-events:workbench && npm run generate:host-events:stage4 && npm run generate:host-events:stage5 && npm run generate:host-events:immediate-drawing && npm run generate:worker-host-services && npm run generate:framework-host-services",
     "guard:runtime-dependency": "bash scripts/check-runtime-dependency.sh",
     "lint": "cd ../.. && npm run lint:v2",
+    "lint:rust": "bash -lc 'source \"$HOME/.cargo/env\" && cargo clippy --manifest-path Cargo.toml --all-targets -- -D warnings'",
     "build": "npm run guard:runtime-dependency && npm run check:abi && bash scripts/build.sh",
     "test:unit": "npm run guard:runtime-dependency && npm run check:abi && npm run generate:host && bash -lc 'source \"$HOME/.cargo/env\" && cargo test --manifest-path Cargo.toml'",
     "test:integration": "npm --prefix ../.. run build:v2:browser-bridge && npm run build && playwright test -c playwright.config.ts",
     "typecheck": "npm run guard:runtime-dependency && npm run check:abi && tsc -p tsconfig.json --noEmit",
-    "prepublishOnly": "npm run check:abi && npm run lint && npm run typecheck"
+    "prepublishOnly": "npm run check:abi && npm run lint && npm run lint:rust && npm run typecheck"
   },
   "dependencies": {
     "@effindomv2/runtime": "0.1.26"

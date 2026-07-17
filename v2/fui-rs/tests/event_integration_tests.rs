@@ -3360,6 +3360,23 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
         } if target == "https://example.com/docs"
     )));
 
+    pointer_event(PointerEventType::Down, handle, 10.0, 10.0, 1, 4, 1);
+    pointer_event(PointerEventType::Up, handle, 10.0, 10.0, 1, 0, 1);
+    let calls = ffi::test::take_calls();
+    let middle_click_navigations = calls
+        .iter()
+        .filter(|call| {
+            matches!(
+                call,
+                Call::NavigateTo {
+                    target,
+                    open_in_new_tab: true,
+                } if target == "https://example.com/docs"
+            )
+        })
+        .count();
+    assert_eq!(middle_click_navigations, 1);
+
     focus(&link);
     ffi::test::take_calls();
     assert!(key_event(KeyEventType::Down, "Enter", 0));

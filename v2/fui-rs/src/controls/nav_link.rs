@@ -1,6 +1,6 @@
 use super::*;
 use crate::bindings::ui;
-use crate::event::PointerType;
+use crate::event::{PointerButton, PointerType};
 use crate::ffi::{CursorStyle, HandleValue, SemanticRole};
 use crate::navigation;
 use crate::node::{text, NodeHandle, NodeRef, WeakFlexBox};
@@ -14,8 +14,13 @@ thread_local! {
     static ACTIVE_PREVIEW_OWNER: Cell<u64> = const { Cell::new(HandleValue::Invalid as u64) };
 }
 
-fn is_primary_activation_pointer(event: &PointerEventArgs) -> bool {
-    event.button == 0
+fn is_middle_mouse_button(event: &PointerEventArgs) -> bool {
+    event.pointer_type == PointerType::Mouse && event.button == PointerButton::Auxiliary
+}
+
+fn is_activation_pointer(event: &PointerEventArgs) -> bool {
+    event.button == PointerButton::Primary
+        || is_middle_mouse_button(event)
         || event.pointer_type == PointerType::Touch
         || event.pointer_type == PointerType::Pen
 }
@@ -126,21 +131,22 @@ impl NavLink {
         });
         let target = self.event_target();
         self.root.on_pointer_down(move |event| {
-            if !is_primary_activation_pointer(event) {
+            if !is_activation_pointer(event) {
                 target.pointer_pressed.set(false);
                 target.pointer_pressed_open_in_new_tab.set(false);
                 return;
             }
             target.pointer_pressed.set(true);
-            target
-                .pointer_pressed_open_in_new_tab
-                .set(target.should_open_in_new_tab(event.modifiers));
+            target.pointer_pressed_open_in_new_tab.set(
+                is_middle_mouse_button(event) || target.should_open_in_new_tab(event.modifiers),
+            );
             event.handled = true;
         });
         let target = self.event_target();
         self.root.on_pointer_up(move |event| {
-            if target.pointer_pressed.replace(false) && is_primary_activation_pointer(event) {
+            if target.pointer_pressed.replace(false) && is_activation_pointer(event) {
                 let open_in_new_tab = target.pointer_pressed_open_in_new_tab.get()
+                    || is_middle_mouse_button(event)
                     || target.should_open_in_new_tab(event.modifiers);
                 target.activate(open_in_new_tab);
                 event.handled = true;
@@ -442,7 +448,9 @@ impl NavLinkEventTarget {
         let color = if self.hovered.get() {
             theme.colors.accent_hovered
         } else {
-            self.text_color_override.get().unwrap_or(theme.colors.accent)
+            self.text_color_override
+                .get()
+                .unwrap_or(theme.colors.accent)
         };
         if self.label.handle() != NodeHandle::INVALID {
             ui::set_text_color(self.label.handle().raw(), color);

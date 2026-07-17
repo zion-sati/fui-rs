@@ -3,7 +3,7 @@ use crate::drag_drop::{
     DragCompletedEventArgs, DragDataObject, DragDropEffects, DragEventArgs, DropProposal,
 };
 use crate::drag_gesture::{DragCompletedEvent, DragGesture, DragStartedEvent};
-use crate::event::{SelectionChangedEventArgs, TextChangedEventArgs};
+use crate::event::{PointerButton, SelectionChangedEventArgs, TextChangedEventArgs};
 use crate::external_drop::ExternalDropEventArgs;
 use crate::persisted::PersistedStateAdapter;
 use crate::tool_tip::ToolTip;
@@ -31,7 +31,7 @@ pub(crate) type ExternalDragEventCallback = Rc<dyn Fn(ExternalDropEventArgs)>;
 pub(crate) type EffectiveEnabledChangedCallback = Rc<dyn Fn(bool)>;
 
 pub(crate) fn is_primary_activation_pointer(event: &PointerEventArgs) -> bool {
-    event.button == 0
+    event.button == PointerButton::Primary
         || event.pointer_type == PointerType::Touch
         || event.pointer_type == PointerType::Pen
 }
@@ -513,11 +513,7 @@ impl NodeRef {
         self.inner.borrow().handle
     }
 
-    pub(crate) fn set_semantic_checked(
-        &self,
-        state: SemanticCheckedState,
-        announce: bool,
-    ) {
+    pub(crate) fn set_semantic_checked(&self, state: SemanticCheckedState, announce: bool) {
         let handle = {
             let mut core = self.inner.borrow_mut();
             core.behavior.semantic_checked = Some(state);

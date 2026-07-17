@@ -106,7 +106,10 @@ mod tests {
     #[test]
     fn color_helpers_mask_channels_and_interpolate() {
         assert_eq!(rgba(0x112, 0x134, 0x156, 0x178), 0x12345678);
-        assert_eq!(mix_color(rgb(0, 0, 0), rgb(255, 255, 255), 0.5), rgba(128, 128, 128, 255));
+        assert_eq!(
+            mix_color(rgb(0, 0, 0), rgb(255, 255, 255), 0.5),
+            rgba(128, 128, 128, 255)
+        );
         assert_eq!(hsl_to_color(0.0, 1.0, 0.5), rgb(255, 0, 0));
     }
 }

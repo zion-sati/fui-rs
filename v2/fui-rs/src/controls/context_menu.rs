@@ -1,6 +1,6 @@
 use super::ContextMenuAppearance;
 use crate::bindings::ui;
-use crate::event::{self, PointerEventArgs, PointerType};
+use crate::event::{self, PointerButton, PointerEventArgs, PointerType};
 use crate::ffi::{
     BorderStyle, CursorStyle, HandleValue, KeyEventType, SemanticRole, TextAlign, TextOverflow,
     Unit,
@@ -29,7 +29,7 @@ thread_local! {
 }
 
 fn is_primary_activation_pointer(event: &PointerEventArgs) -> bool {
-    event.button == 0
+    event.button == PointerButton::Primary
         || event.pointer_type == PointerType::Touch
         || event.pointer_type == PointerType::Pen
 }
