@@ -31,6 +31,8 @@ Public lifecycle types and macros:
 - `fui_managed_app!(PageType, build_page, get_root, dispose: dispose_page)`
 - `fui_managed_app!(PageType, build_page, get_root, mount: mount_page, dispose: dispose_page)`
 - `fui_component!(ComponentType => root_field)`
+- `fui_component!(ComponentType => root_field, owner: state_field)`
+- `fui_component!(ComponentType => root_field, owners: [state_field, guard_field])`
 
 Normal apps and route pages should use the macros. They emit the browser harness
 `__runApp` / `__disposeApp` exports and keep ABI details out of user code.
@@ -79,7 +81,7 @@ FUI-RS follows Rust conventions while keeping the UI model retained and explicit
 - Use `fui_app!` and `fui_managed_app!` so app authors do not write browser lifecycle exports manually.
 - Use `ui!` for static mixed child trees when Rust's concrete collection types would otherwise require noisy conversions.
 - Fluent borrowed expressions can be placed directly in `ui!`; they preserve the original retained identity.
-- Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot` forwarding for retained wrappers.
+- Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot` forwarding for retained wrappers. Declare `owner:` or `owners:` when weak callbacks or RAII guards depend on component-owned state.
 - Use ordinary Rust closure capture for event handlers and callbacks.
 - Keep RAII guards alive for subscriptions, pending file requests, timers, workers, and similar resources when the API returns one.
 - Treat cloned controls as cheap handles to the same retained UI object, not as duplicated controls.
@@ -102,7 +104,9 @@ Constructors and helpers:
 - `px(value)`, `pct(value)`, `auto()`, `fill()`
 - `viewport_width()`, `viewport_height()`
 - `children![...]`, `ui! { ... }`
-- `fui_component!(Type => root)`
+- `fui_component!(Type => root)` for stateless wrappers
+- `fui_component!(Type => root, owner: state)` for one retained owner
+- `fui_component!(Type => root, owners: [state, subscriptions])` for multiple retained owners
 
 Common public style/layout types:
 

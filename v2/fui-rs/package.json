@@ -1,6 +1,6 @@
 {
   "name": "@effindomv2/fui-rs",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "private": false,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
   "description": "EffinDom v2 Rust frontend framework SDK and host generators",

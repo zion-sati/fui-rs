@@ -322,7 +322,7 @@ pub(crate) struct ExternalDropDemoPanel {
     _state: Rc<ExternalDropDemoState>,
 }
 
-fui_component!(ExternalDropDemoPanel => root);
+fui_component!(ExternalDropDemoPanel => root, owner: _state);
 
 impl ExternalDropDemoPanel {
     pub(crate) fn new() -> Self {

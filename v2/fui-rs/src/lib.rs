@@ -317,13 +317,22 @@ macro_rules! ui {
 #[macro_export]
 macro_rules! fui_component {
     ($component:ty => $root:ident) => {
+        $crate::fui_component!(@impl $component => $root, [root]);
+    };
+    ($component:ty => $root:ident, owner: $owner:ident) => {
+        $crate::fui_component!(@impl $component => $root, [owner $owner]);
+    };
+    ($component:ty => $root:ident, owners: [$($owner:ident),+ $(,)?]) => {
+        $crate::fui_component!(@impl $component => $root, [owners $($owner),+]);
+    };
+    (@impl $component:ty => $root:ident, $owner_spec:tt) => {
         impl $crate::Node for $component {
             fn retained_node_ref(&self) -> $crate::node::NodeRef {
                 $crate::Node::retained_node_ref(&self.$root)
             }
 
             fn retained_owner_attachment(&self) -> Option<std::rc::Rc<dyn std::any::Any>> {
-                $crate::Node::retained_owner_attachment(&self.$root)
+                $crate::fui_component!(@owner_attachment self, $root, $owner_spec)
             }
 
             fn build_self(&self) {
@@ -336,6 +345,16 @@ macro_rules! fui_component {
                 $crate::HasFlexBoxRoot::flex_box_root(&self.$root)
             }
         }
+    };
+    (@owner_attachment $this:ident, $root:ident, [root]) => {
+        $crate::Node::retained_owner_attachment(&$this.$root)
+    };
+    (@owner_attachment $this:ident, $root:ident, [owner $owner:ident]) => {{
+        let owner: std::rc::Rc<dyn std::any::Any> = $this.$owner.clone();
+        Some(owner)
+    }};
+    (@owner_attachment $this:ident, $root:ident, [owners $($owner:ident),+]) => {
+        Some(std::rc::Rc::new(($($this.$owner.clone(),)+)))
     };
 }
 

@@ -815,7 +815,7 @@ pub(crate) struct ReorderDemoPanel {
     _guards: Rc<Vec<Subscription>>,
 }
 
-fui_component!(ReorderDemoPanel => root);
+fui_component!(ReorderDemoPanel => root, owners: [_state, _guards]);
 
 impl ReorderDemoPanel {
     pub(crate) fn new() -> Self {

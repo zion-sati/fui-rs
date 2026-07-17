@@ -166,8 +166,19 @@ fui_component!(SettingsHeader => root);
 ```
 
 The macro delegates `Node` and `HasFlexBoxRoot`; it does not create another UI
-node. Keep an intermediate variable when callbacks or later mutations need the
-control. Do not use `Deref` to imitate UI inheritance.
+node. Stateful components whose callbacks capture weak state must declare the
+state retained by their parent:
+
+```rust
+fui_component!(DropPanel => root, owner: state);
+fui_component!(SubscribedPanel => root, owners: [state, subscriptions]);
+```
+
+This allows stateful components to be placed inline in `ui!` without losing
+their callback or RAII-subscription lifetime. Owner fields must not strongly own
+the component root or an ancestor, because that would create an `Rc` cycle. Keep
+an intermediate variable only when later mutations need the control. Do not use
+`Deref` to imitate UI inheritance.
 
 ## Common node state APIs
 

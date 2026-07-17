@@ -10,7 +10,7 @@ struct ParityComponent {
     value: std::rc::Rc<std::cell::Cell<i32>>,
 }
 
-fui_component!(ParityComponent => root);
+fui_component!(ParityComponent => root, owner: value);
 
 fn assert_type<T: ?Sized>() {}
 
@@ -555,6 +555,22 @@ fn component_macro_delegates_to_the_designated_retained_root_without_wrapper_nod
     assert!(calls.iter().any(
         |call| matches!(call, Call::NodeAddChild { child, .. } if *child == component_handle)
     ));
+}
+
+#[test]
+fn component_macro_retains_declared_owner_for_inline_child_lifetime() {
+    let parent = column();
+    let owner = std::rc::Rc::new(std::cell::Cell::new(7));
+    let weak_owner = std::rc::Rc::downgrade(&owner);
+    parent.child(&ParityComponent {
+        root: row(),
+        value: owner.clone(),
+    });
+    drop(owner);
+
+    assert_eq!(weak_owner.upgrade().map(|value| value.get()), Some(7));
+    drop(parent);
+    assert!(weak_owner.upgrade().is_none());
 }
 
 #[test]
