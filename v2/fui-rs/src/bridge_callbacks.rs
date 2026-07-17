@@ -105,25 +105,27 @@ pub fn persisted_restore_count() -> u32 {
     PERSIST_RESTORE_COUNT.with(Cell::get)
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_viewport_changed(width: f32, height: f32) {
     ui::resize_window(width, height);
     viewport::set_viewport_size(width, height);
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_frame(timestamp_ms: f64) {
     frame_signal::set_frame_time(timestamp_ms);
     animation::tick_animations(timestamp_ms);
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_route_changed(route_ptr: *const u8, route_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `route_ptr` must be null for an empty route or point to `route_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_route_changed(route_ptr: *const u8, route_len: u32) {
     let route = read_utf8(route_ptr, route_len);
     CURRENT_ROUTE.with(|slot| slot.replace(route));
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_scroll(
     handle: u64,
     offset_x: f32,
@@ -155,25 +157,25 @@ pub extern "C" fn __fui_on_scroll(
     );
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_can_show_context_menu(handle: u64) -> bool {
     context_menu_manager::can_show_for_handle(handle)
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_context_menu(handle: u64, x: f32, y: f32) {
     LAST_CONTEXT_MENU.with(|slot| slot.replace(Some(ContextMenuRequest { handle, x, y })));
     let shown = context_menu_manager::show_for_current_selection(handle, x, y);
     CONTEXT_MENU_VISIBLE.with(|visible| visible.set(shown));
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_hide_active_context_menu() {
     context_menu_manager::hide_active_menu();
     CONTEXT_MENU_VISIBLE.with(|visible| visible.set(false));
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_font_loaded(font_id: u32) {
     LAST_FONT_LOADED.with(|slot| slot.set(Some(font_id)));
     assets::on_font_loaded(font_id);
@@ -182,7 +184,7 @@ pub extern "C" fn __fui_on_font_loaded(font_id: u32) {
     crate::frame_scheduler::mark_needs_commit();
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_svg_loaded(svg_id: u32, width: f32, height: f32) {
     LAST_SVG_LOADED.with(|slot| {
         slot.replace(Some(AssetReady {
@@ -194,8 +196,10 @@ pub extern "C" fn __fui_on_svg_loaded(svg_id: u32, width: f32, height: f32) {
     assets::on_svg_loaded(svg_id, width, height);
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_svg_failed(svg_id: u32, error_ptr: *const u8, error_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `error_ptr` must be null for an empty message or point to `error_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_svg_failed(svg_id: u32, error_ptr: *const u8, error_len: u32) {
     let error = read_utf8(error_ptr, error_len);
     LAST_SVG_FAILED.with(|slot| {
         slot.replace(Some(AssetFailure {
@@ -206,7 +210,7 @@ pub extern "C" fn __fui_on_svg_failed(svg_id: u32, error_ptr: *const u8, error_l
     assets::on_svg_failed(svg_id, error);
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_texture_loaded(texture_id: u32, width: f32, height: f32) {
     LAST_TEXTURE_LOADED.with(|slot| {
         slot.replace(Some(AssetReady {
@@ -218,8 +222,14 @@ pub extern "C" fn __fui_on_texture_loaded(texture_id: u32, width: f32, height: f
     assets::on_texture_loaded(texture_id, width, height);
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_texture_failed(texture_id: u32, error_ptr: *const u8, error_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `error_ptr` must be null for an empty message or point to `error_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_texture_failed(
+    texture_id: u32,
+    error_ptr: *const u8,
+    error_len: u32,
+) {
     let error = read_utf8(error_ptr, error_len);
     LAST_TEXTURE_FAILED.with(|slot| {
         slot.replace(Some(AssetFailure {
@@ -230,13 +240,13 @@ pub extern "C" fn __fui_on_texture_failed(texture_id: u32, error_ptr: *const u8,
     assets::on_texture_failed(texture_id, error);
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_capture_persisted_ui_state() {
     PERSIST_CAPTURE_COUNT.with(|count| count.set(count.get() + 1));
     Application::capture_persisted_ui_state();
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_restore_persisted_ui_state() {
     PERSIST_RESTORE_COUNT.with(|count| count.set(count.get() + 1));
     Application::restore_persisted_ui_state();

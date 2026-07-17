@@ -5,6 +5,7 @@ edition = "2021"
 license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
 [dependencies]
+fui = { package = "fui-rs", path = "../..", default-features = false, features = ["worker-runtime"] }
 
 [features]
 native-runtime = []

@@ -15,30 +15,20 @@ thread_local! {
     static REGISTERED_FONT_FALLBACKS: RefCell<Vec<(u32, u32)>> = const { RefCell::new(Vec::new()) };
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum FontStyle {
+    #[default]
     Normal = 0,
     Italic = 1,
 }
 
-impl Default for FontStyle {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum FontWeight {
+    #[default]
     Regular = 400,
     Medium = 500,
     Semibold = 600,
     Bold = 700,
-}
-
-impl Default for FontWeight {
-    fn default() -> Self {
-        Self::Regular
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -308,6 +298,7 @@ pub struct FontFamily {
 }
 
 impl FontFamily {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         regular_stack: FontStack,
         bold_stack: Option<FontStack>,
@@ -331,6 +322,7 @@ impl FontFamily {
     }
 
     #[cfg(test)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_ids(
         regular: u32,
         bold: u32,

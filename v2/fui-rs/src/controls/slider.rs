@@ -673,6 +673,7 @@ impl SliderEventTarget {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_slider_visual_state(
     value: f32,
     min: f32,

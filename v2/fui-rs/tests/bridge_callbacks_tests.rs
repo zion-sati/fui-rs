@@ -18,7 +18,9 @@ fn viewport_callback_resizes_ui() {
 #[test]
 fn route_callback_reads_pointer_length_payload() {
     let route = "/demo?tab=stage4";
-    bridge_callbacks::__fui_on_route_changed(route.as_ptr(), route.len() as u32);
+    unsafe {
+        bridge_callbacks::__fui_on_route_changed(route.as_ptr(), route.len() as u32);
+    }
     assert_eq!(current_route(), route);
 }
 
@@ -105,12 +107,14 @@ fn asset_callbacks_record_success_and_failure_payloads() {
     bridge_callbacks::__fui_on_texture_loaded(7, 48.0, 64.0);
     let svg_error = "bad svg";
     let texture_error = "bad texture";
-    bridge_callbacks::__fui_on_svg_failed(8, svg_error.as_ptr(), svg_error.len() as u32);
-    bridge_callbacks::__fui_on_texture_failed(
-        9,
-        texture_error.as_ptr(),
-        texture_error.len() as u32,
-    );
+    unsafe {
+        bridge_callbacks::__fui_on_svg_failed(8, svg_error.as_ptr(), svg_error.len() as u32);
+        bridge_callbacks::__fui_on_texture_failed(
+            9,
+            texture_error.as_ptr(),
+            texture_error.len() as u32,
+        );
+    }
 
     assert_eq!(last_font_loaded(), Some(5));
     assert_eq!(

@@ -7,7 +7,6 @@ use fui_rs_demo_shared::generated::host_services::{
 };
 use fui_rs_demo_shared::{clear_demo_shared_state, demo_card, demo_page_root};
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::rc::Rc;
 use AlignItems;
 
@@ -15,13 +14,18 @@ thread_local! {
     static DEMO_HOST_TICK: Cell<i32> = const { Cell::new(0) };
     static DEMO_HOST_DARK_MODE: Cell<bool> = const { Cell::new(false) };
     static DEMO_SUBSCRIPTIONS: RefCell<Vec<Subscription>> = const { RefCell::new(Vec::new()) };
+    static DEMO_HOST_EVENT_SUBSCRIPTIONS: RefCell<Vec<HostEventSubscription>> = const { RefCell::new(Vec::new()) };
 }
 
 const SIDEBAR_LIST_TOTAL_ITEMS: i32 = 10_000;
 const SIDEBAR_LIST_ITEM_HEIGHT: f32 = 20.0;
 
+struct SidebarListRow {
+    label: TextNode,
+}
+
 fn update_virtual_list_metrics(
-    list: &VirtualList,
+    list: &VirtualList<SidebarListRow>,
     offset_label: &TextNode,
     first_visible_label: &TextNode,
     rendered_rows_label: &TextNode,
@@ -55,28 +59,31 @@ fn build_dashboard_page() -> ScrollBox {
             }
         ))
     };
-    generated::host_events::on_demo_shell_clock_tick_changed({
-        let tick_label = tick_label.clone();
-        move |tick| {
-            DEMO_HOST_TICK.with(|slot| slot.set(tick));
-            tick_label.text(format!("Tick: {}", tick));
-        }
-    });
-    generated::host_events::on_demo_shell_accent_color_changed({
-        let accent_label = accent_label.clone();
-        move |_accent| {
-            accent_label.text(format!("Accent: {}", demo_shell_accent_color_hex()));
-        }
-    });
-    generated::host_events::on_demo_shell_dark_mode_changed({
-        let dark_mode_label = dark_mode_label.clone();
-        move |is_dark| {
-            DEMO_HOST_DARK_MODE.with(|slot| slot.set(is_dark));
-            dark_mode_label.text(format!(
-                "Dark mode: {}",
-                if is_dark { "true" } else { "false" }
-            ));
-        }
+    DEMO_HOST_EVENT_SUBSCRIPTIONS.with(|slot| {
+        let mut subscriptions = slot.borrow_mut();
+        subscriptions.push(generated::host_events::on_demo_shell_clock_tick_changed({
+            let tick_label = tick_label.clone();
+            move |tick| {
+                DEMO_HOST_TICK.with(|slot| slot.set(tick));
+                tick_label.text(format!("Tick: {}", tick));
+            }
+        }));
+        subscriptions.push(generated::host_events::on_demo_shell_accent_color_changed({
+            let accent_label = accent_label.clone();
+            move |_accent| {
+                accent_label.text(format!("Accent: {}", demo_shell_accent_color_hex()));
+            }
+        }));
+        subscriptions.push(generated::host_events::on_demo_shell_dark_mode_changed({
+            let dark_mode_label = dark_mode_label.clone();
+            move |is_dark| {
+                DEMO_HOST_DARK_MODE.with(|slot| slot.set(is_dark));
+                dark_mode_label.text(format!(
+                    "Dark mode: {}",
+                    if is_dark { "true" } else { "false" }
+                ));
+            }
+        }));
     });
 
     let virtual_list_card = ui! {
@@ -86,33 +93,22 @@ fn build_dashboard_page() -> ScrollBox {
             0xFDE68AFF,
         ).margin(0.0, 0.0, 0.0, 16.0)
     };
-    let row_labels: Rc<std::cell::RefCell<HashMap<usize, TextNode>>> =
-        Rc::new(std::cell::RefCell::new(HashMap::new()));
-    let sidebar_list = ui! {
-        virtual_list(SIDEBAR_LIST_TOTAL_ITEMS, SIDEBAR_LIST_ITEM_HEIGHT)
-            .onBindItem({
-                let captured_row_labels = row_labels.clone();
-                move |container, index| {
-                    let key = std::ptr::from_ref(container) as usize;
-                    let existing = { captured_row_labels.borrow().get(&key).cloned() };
-                    let label = if let Some(existing) = existing {
-                        existing
-                    } else {
-                        let label = text("");
-                        container.child(&label);
-                        captured_row_labels.borrow_mut().insert(key, label.clone());
-                        label
-                    };
-                    let text_value = format!("Item {}", index);
-                    label.text(&text_value);
-                    label.semantic_label(&text_value);
-                }
-            })
-            .node_id("demo-dashboard:sidebar-list")
-            .persist_scroll(true)
-            .width(100.0, Unit::Percent)
-            .height(180.0, Unit::Pixel)
-    };
+    let sidebar_list = virtual_list(SIDEBAR_LIST_TOTAL_ITEMS, SIDEBAR_LIST_ITEM_HEIGHT)
+        .item_template(|container| {
+            let label = text("");
+            container.child(&label);
+            SidebarListRow { label }
+        });
+    sidebar_list
+        .on_bind_item(|row, index| {
+            let text_value = format!("Item {}", index);
+            row.label.text(&text_value);
+            row.label.semantic_label(&text_value);
+        })
+        .node_id("demo-dashboard:sidebar-list")
+        .persist_scroll(true)
+        .width(100.0, Unit::Percent)
+        .height(180.0, Unit::Pixel);
     let list_offset_label = text("");
     let first_visible_label = text("");
     let rendered_rows_label = text("");
@@ -290,6 +286,7 @@ fn mount_dashboard_page(_: &ScrollBox) {
 
 fn dispose_dashboard_page(_: &ScrollBox) {
     DEMO_SUBSCRIPTIONS.with(|slot| slot.borrow_mut().clear());
+    DEMO_HOST_EVENT_SUBSCRIPTIONS.with(|slot| slot.borrow_mut().clear());
     clear_demo_shared_state();
 }
 

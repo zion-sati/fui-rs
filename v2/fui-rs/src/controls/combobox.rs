@@ -28,6 +28,9 @@ use crate::{app, frame_scheduler, ThemeBindable};
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+type ComboBoxChangedCallback = Rc<dyn Fn(crate::controls::ComboBoxChangedEventArgs<ComboBoxItem>)>;
+type ComboBoxTextChangedCallback = Rc<dyn Fn(TextChangedEventArgs)>;
+
 const DEFAULT_PANEL_BACKGROUND_BLUR_SIGMA: f32 = 10.0;
 
 fn strings_equal_ignore_case(left: &str, right: &str) -> bool {
@@ -211,9 +214,8 @@ struct ComboBoxShared {
     popup_panel_background_blur_overridden: Cell<bool>,
     suppress_editor_changed: Cell<bool>,
     last_auto_complete_text_value: RefCell<String>,
-    changed_callback:
-        RefCell<Option<Rc<dyn Fn(crate::controls::ComboBoxChangedEventArgs<ComboBoxItem>)>>>,
-    text_changed_callback: RefCell<Option<Rc<dyn Fn(TextChangedEventArgs)>>>,
+    changed_callback: RefCell<Option<ComboBoxChangedCallback>>,
+    text_changed_callback: RefCell<Option<ComboBoxTextChangedCallback>>,
     theme_guard: RefCell<Option<SubscriptionGuard>>,
     focus_visibility_guard: RefCell<Option<SubscriptionGuard>>,
 }

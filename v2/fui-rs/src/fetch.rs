@@ -337,8 +337,10 @@ pub fn reset_fetch_runtime() {
     });
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_fetch_complete(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_fetch_complete(
     request_id: u32,
     ok: bool,
     status: i32,
@@ -361,8 +363,14 @@ pub extern "C" fn __fui_on_fetch_complete(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_fetch_error(request_id: u32, payload_ptr: *const u8, payload_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_fetch_error(
+    request_id: u32,
+    payload_ptr: *const u8,
+    payload_len: u32,
+) {
     let message = if payload_ptr.is_null() || payload_len == 0 {
         "Fetch request failed.".to_string()
     } else {
@@ -413,7 +421,9 @@ mod tests {
             }
             bytes
         };
-        super::__fui_on_fetch_complete(1, true, 200, payload.as_ptr(), payload.len() as u32);
+        unsafe {
+            super::__fui_on_fetch_complete(1, true, 200, payload.as_ptr(), payload.len() as u32);
+        }
         assert_eq!(&*result.borrow(), "OK");
         drop(request);
     }
@@ -464,7 +474,9 @@ mod tests {
             }
             bytes
         };
-        super::__fui_on_fetch_complete(1, true, 200, payload.as_ptr(), payload.len() as u32);
+        unsafe {
+            super::__fui_on_fetch_complete(1, true, 200, payload.as_ptr(), payload.len() as u32);
+        }
         assert_eq!(&*result.borrow(), "");
         drop(request);
     }
@@ -493,7 +505,9 @@ mod tests {
                 result_clone.replace(event.message);
             })
             .start();
-        super::__fui_on_fetch_error(1, std::ptr::null(), 0);
+        unsafe {
+            super::__fui_on_fetch_error(1, std::ptr::null(), 0);
+        }
         assert_eq!(&*result.borrow(), "Fetch request failed.");
         drop(request);
     }

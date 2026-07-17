@@ -409,6 +409,7 @@ impl CheckboxEventTarget {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply_checkbox_state(
     presenter: &Rc<RefCell<Rc<dyn CheckboxIndicatorPresenter>>>,
     weak_root: &Rc<WeakNodeRef>,

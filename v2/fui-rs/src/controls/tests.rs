@@ -213,7 +213,9 @@ fn press_enter(node_ref: &crate::node::NodeRef) {
 }
 
 fn key_event(event_type: KeyEventType, key: &str, modifiers: u32) -> bool {
-    event::__fui_on_key_event(event_type as u32, key.as_ptr(), key.len() as u32, modifiers)
+    unsafe {
+        event::__fui_on_key_event(event_type as u32, key.as_ptr(), key.len() as u32, modifiers)
+    }
 }
 
 fn blur(node_ref: &crate::node::NodeRef) {
@@ -1407,7 +1409,7 @@ fn retained_dropdown_keeps_theme_subscription_after_wrapper_drop() {
     let mut theme = current_theme();
     theme.colors.surface = 0x135724FF;
     theme.colors.border = 0x246813FF;
-    theme.colors.text_primary = 0xABCDEFff;
+    theme.colors.text_primary = 0xABCDEFFF;
     use_custom_theme(theme.clone());
     let calls = ffi::test::take_calls();
 
@@ -4212,7 +4214,9 @@ fn text_input_text_replaced_event_updates_value_and_emits_changed() {
         })
         .expect("expected text input editor node id to be applied");
 
-    event::__fui_on_text_replaced(editor_handle, 0, 0, b"hello".as_ptr(), 5);
+    unsafe {
+        event::__fui_on_text_replaced(editor_handle, 0, 0, b"hello".as_ptr(), 5);
+    }
 
     assert_eq!(input.value(), "hello");
     assert_eq!(&*last_text.borrow(), "hello");
@@ -4474,7 +4478,9 @@ fn text_input_text_replacement_clamps_selection_bytes_from_char_positions() {
         })
         .expect("expected text input editor node id to be applied");
 
-    event::__fui_on_text_replaced(editor_handle, 1, 5, std::ptr::null(), 0);
+    unsafe {
+        event::__fui_on_text_replaced(editor_handle, 1, 5, std::ptr::null(), 0);
+    }
 
     assert_eq!(input.value(), "ab");
     assert_eq!(input.selection_start(), 0);
@@ -4660,16 +4666,22 @@ fn text_area_readonly_disabled_placeholder_and_line_height_follow_text_input_cor
             if *handle == editor_handle && (*line_height - 26.0).abs() < f32::EPSILON
     )));
 
-    event::__fui_on_text_replaced(editor_handle, 0, 0, b"Hello\nworld".as_ptr(), 11);
+    unsafe {
+        event::__fui_on_text_replaced(editor_handle, 0, 0, b"Hello\nworld".as_ptr(), 11);
+    }
     assert_eq!(input.value(), "Hello\nworld");
 
-    event::__fui_on_text_changed(editor_handle, b"alpha\nbeta".as_ptr(), 10);
+    unsafe {
+        event::__fui_on_text_changed(editor_handle, b"alpha\nbeta".as_ptr(), 10);
+    }
     assert_eq!(input.value(), "alpha\nbeta");
     event::__fui_on_selection_changed(editor_handle, 6, 10);
     assert_eq!(input.selection_start(), 6);
     assert_eq!(input.selection_end(), 10);
 
-    event::__fui_on_text_replaced(editor_handle, 0, 11, std::ptr::null(), 0);
+    unsafe {
+        event::__fui_on_text_replaced(editor_handle, 0, 11, std::ptr::null(), 0);
+    }
     assert_eq!(input.value(), "");
     Application::unmount();
 }

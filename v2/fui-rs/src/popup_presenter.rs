@@ -189,6 +189,7 @@ impl PopupPresenter {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn show_anchored_with_placement(
         &self,
         anchor_x: f32,

@@ -31,7 +31,7 @@ pub fn scroll_box() -> ScrollBox {
     ScrollBox::new()
 }
 
-pub fn virtual_list(total_items: i32, item_height: f32) -> VirtualList {
+pub fn virtual_list(total_items: i32, item_height: f32) -> VirtualList<FlexBox> {
     VirtualList::new(total_items, item_height)
 }
 

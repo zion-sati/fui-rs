@@ -262,7 +262,7 @@ pub(crate) struct LinearGradient {
     pub(crate) offsets: Vec<f32>,
     pub(crate) colors: Vec<u32>,
 }
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct FlexBoxProps {
     pub(crate) width: Option<(f32, Unit)>,
     pub(crate) height: Option<(f32, Unit)>,
@@ -276,25 +276,6 @@ pub(crate) struct FlexBoxProps {
     pub(crate) background_blur_sigma: Option<f32>,
     pub(crate) linear_gradient: Option<LinearGradient>,
     pub(crate) transitions: Option<NodeTransitions>,
-}
-
-impl Default for FlexBoxProps {
-    fn default() -> Self {
-        Self {
-            width: None,
-            height: None,
-            bg_color: None,
-            padding: None,
-            flex_direction: None,
-            box_style: None,
-            opacity: None,
-            blur_sigma: None,
-            drop_shadow: None,
-            background_blur_sigma: None,
-            linear_gradient: None,
-            transitions: None,
-        }
-    }
 }
 
 #[derive(Clone, Default)]
@@ -2219,7 +2200,7 @@ pub trait Node: Clone {
     }
 }
 
-impl<T: Node + ?Sized> Node for &T {
+impl<T: Node> Node for &T {
     fn retained_node_ref(&self) -> NodeRef {
         (*self).retained_node_ref()
     }

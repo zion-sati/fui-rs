@@ -25,6 +25,10 @@ use std::rc::{Rc, Weak};
 
 const UNLIMITED_TEXT_LENGTH: i32 = i32::MAX;
 
+type TextChangedCallback = Rc<dyn Fn(TextChangedEventArgs)>;
+type SelectionChangedCallback = Rc<dyn Fn(SelectionChangedEventArgs)>;
+type FocusChangedCallback = Rc<dyn Fn(FocusChangedEventArgs)>;
+
 #[derive(Clone, Copy)]
 pub(crate) struct TextInputProfile {
     max_lines: i32,
@@ -140,9 +144,9 @@ pub struct TextInputCore {
     selection_start_bytes: Cell<u32>,
     selection_end_bytes: Cell<u32>,
     focused_state: Cell<bool>,
-    changed_callback: RefCell<Option<Rc<dyn Fn(TextChangedEventArgs)>>>,
-    selection_changed_callback: RefCell<Option<Rc<dyn Fn(SelectionChangedEventArgs)>>>,
-    focus_changed_callback: RefCell<Option<Rc<dyn Fn(FocusChangedEventArgs)>>>,
+    changed_callback: RefCell<Option<TextChangedCallback>>,
+    selection_changed_callback: RefCell<Option<SelectionChangedCallback>>,
+    focus_changed_callback: RefCell<Option<FocusChangedCallback>>,
     theme_guard: RefCell<Option<SubscriptionGuard>>,
     focus_visibility_guard: RefCell<Option<SubscriptionGuard>>,
 }

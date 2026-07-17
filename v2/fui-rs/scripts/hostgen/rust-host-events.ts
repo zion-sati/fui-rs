@@ -38,9 +38,9 @@ function rustValueType(type: HostServiceTypeName): string {
 
 function callbackType(args: readonly HostServiceTypeName[]): string {
   if (args.length === 0) {
-    return "Box<dyn Fn()>";
+    return "Rc<dyn Fn()>";
   }
-  return `Box<dyn Fn(${args.map((arg) => rustValueType(arg)).join(", ")})>`;
+  return `Rc<dyn Fn(${args.map((arg) => rustValueType(arg)).join(", ")})>`;
 }
 
 function emitExportArgs(args: readonly HostServiceTypeName[]): string {
@@ -125,7 +125,21 @@ export async function generateRustHostEventsFile(
     "#![allow(dead_code)]",
     "#![allow(non_snake_case)]",
     "",
-    "use std::cell::RefCell;",
+    "use fui::HostEventSubscription;",
+    "use std::cell::{Cell, RefCell};",
+    "use std::rc::Rc;",
+    "",
+    "thread_local! {",
+    "    static NEXT_HOST_EVENT_SUBSCRIPTION_ID: Cell<u64> = const { Cell::new(1) };",
+    "}",
+    "",
+    "fn next_host_event_subscription_id() -> u64 {",
+    "    NEXT_HOST_EVENT_SUBSCRIPTION_ID.with(|next| {",
+    "        let id = next.get();",
+    "        next.set(id.wrapping_add(1).max(1));",
+    "        id",
+    "    })",
+    "}",
     "",
   ];
   methods.forEach((method) => {
@@ -133,36 +147,52 @@ export async function generateRustHostEventsFile(
     const callbackTy = callbackType(method.args);
     lines.push("thread_local! {");
     lines.push(
-      `    static ${handlerName.toUpperCase()}_HANDLER: RefCell<Option<${callbackTy}>> = const { RefCell::new(None) };`,
+      `    static ${handlerName.toUpperCase()}_HANDLER: RefCell<Option<(u64, ${callbackTy})>> = const { RefCell::new(None) };`,
     );
     lines.push("}");
     lines.push("");
     lines.push(
-      `pub fn on_${handlerName}(callback: impl Fn(${method.args.map((arg) => rustValueType(arg)).join(", ")}) + 'static) {`,
+      `pub fn on_${handlerName}(callback: impl Fn(${method.args.map((arg) => rustValueType(arg)).join(", ")}) + 'static) -> HostEventSubscription {`,
     );
+    lines.push("    let subscription_id = next_host_event_subscription_id();");
     lines.push(
-      `    ${handlerName.toUpperCase()}_HANDLER.with(|slot| *slot.borrow_mut() = Some(Box::new(callback)));`,
+      `    ${handlerName.toUpperCase()}_HANDLER.with(|slot| *slot.borrow_mut() = Some((subscription_id, Rc::new(callback))));`,
     );
+    lines.push("    HostEventSubscription::new(move || {");
+    lines.push(`        ${handlerName.toUpperCase()}_HANDLER.with(|slot| {`);
+    lines.push("            let should_clear = slot.borrow().as_ref().is_some_and(|(id, _)| *id == subscription_id);");
+    lines.push("            if should_clear {");
+    lines.push("                *slot.borrow_mut() = None;");
+    lines.push("            }");
+    lines.push("        });");
+    lines.push("    })");
     lines.push("}");
     lines.push("");
     lines.push(`pub fn clear_${handlerName}() {`);
     lines.push(`    ${handlerName.toUpperCase()}_HANDLER.with(|slot| *slot.borrow_mut() = None);`);
     lines.push("}");
     lines.push("");
+    const hasPointerArgs = method.args.some((type) =>
+      type === "string" || type === "bytes" || type.endsWith("_array")
+    );
+    if (hasPointerArgs) {
+      lines.push("/// # Safety");
+      lines.push("/// Pointer arguments must reference readable WASM memory for their declared lengths.");
+    }
     lines.push("#[no_mangle]");
-    lines.push(`pub extern "C" fn ${method.exportName}(${emitExportArgs(method.args)}) {`);
-    lines.push(`    ${handlerName.toUpperCase()}_HANDLER.with(|slot| {`);
-    lines.push("        let handler = slot.borrow();");
-    lines.push("        let Some(callback) = handler.as_ref() else {");
-    lines.push("            return;");
-    lines.push("        };");
+    lines.push(`pub ${hasPointerArgs ? "unsafe " : ""}extern "C" fn ${method.exportName}(${emitExportArgs(method.args)}) {`);
+    lines.push(`    let callback = ${handlerName.toUpperCase()}_HANDLER.with(|slot| {`);
+    lines.push("        slot.borrow().as_ref().map(|(_, callback)| callback.clone())");
+    lines.push("    });");
+    lines.push("    let Some(callback) = callback else {");
+    lines.push("        return;");
+    lines.push("    };");
     lines.push(...emitDecodedArgs(method.args));
     if (method.args.length === 0) {
       lines.push("        callback();");
     } else {
       lines.push(`        callback(${method.args.map((_arg, index) => `arg${String(index)}`).join(", ")});`);
     }
-    lines.push("    });");
     lines.push("}");
     lines.push("");
   });

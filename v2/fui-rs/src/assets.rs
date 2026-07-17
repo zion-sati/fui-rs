@@ -332,7 +332,7 @@ pub fn release_svg_asset(svg_id: u32) {
     }
     let remaining = SVG_REF_COUNTS.with(|ref_counts| decrement_ref_count(ref_counts, svg_id));
     let pinned = PINNED_SVG_IDS.with(|ids| ids.borrow().contains(&svg_id));
-    if remaining > 0 || remaining < 0 || pinned {
+    if remaining != 0 || pinned {
         return;
     }
     let url = get_svg_record(svg_id).borrow().url.clone();
@@ -352,7 +352,7 @@ pub fn release_texture_asset(texture_id: u32) {
     let remaining =
         TEXTURE_REF_COUNTS.with(|ref_counts| decrement_ref_count(ref_counts, texture_id));
     let pinned = PINNED_TEXTURE_IDS.with(|ids| ids.borrow().contains(&texture_id));
-    if remaining > 0 || remaining < 0 || pinned {
+    if remaining != 0 || pinned {
         return;
     }
     let url = get_texture_record(texture_id).borrow().url.clone();

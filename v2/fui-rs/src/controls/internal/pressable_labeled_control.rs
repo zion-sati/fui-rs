@@ -372,6 +372,7 @@ impl WeakPressableLabeledControl {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn sync_base_theme_parts(
     root: &FlexBox,
     label_node: &TextCore,

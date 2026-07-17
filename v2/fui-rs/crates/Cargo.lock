@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "fui-rs"
-version = "0.1.17"
+version = "0.1.18"
 
 [[package]]
 name = "fui-rs-demo-home"
@@ -56,3 +56,6 @@ dependencies = [
 [[package]]
 name = "fui-rs-demo-worker"
 version = "0.1.0"
+dependencies = [
+ "fui-rs",
+]

@@ -74,6 +74,75 @@ fui_app!(FlexBox, build_page);
 | Browser file/fetch/worker bridges | Available |
 | Host services/events generator support | Available |
 
+## Recycled virtual-list rows
+
+`VirtualList` creates a fixed retained row pool. Use `item_template` once to
+construct typed row state, then update that state from `on_bind_item` whenever a
+pool slot is assigned a new item index:
+
+```rust
+struct ContactRow {
+    name: TextNode,
+}
+
+let contacts = virtual_list(10_000, 28.0)
+    .item_template(|container| {
+        let name = text("");
+        container.child(&name);
+        ContactRow { name }
+    });
+contacts.on_bind_item(|row, index| {
+    row.name.text(format!("Contact {index}"));
+});
+```
+
+The template is not rerun while scrolling. Do not key recycled rows by pointer
+or create controls inside `on_bind_item`.
+
+## Scrollbar styling
+
+Apply common scrollbar chrome without leaving fluent `ScrollBox` construction:
+
+```rust
+let content = scroll_box().scrollbar_style(
+    ScrollBarStyle::new()
+        .track_width(10.0)
+        .thumb_width(7.0)
+        .thumb_corner_radius(3.5),
+);
+```
+
+Use `vertical_scrollbar()` or `horizontal_scrollbar()` afterward for an
+axis-specific override.
+
+## Host-event lifetime
+
+Generated `on_*` host-event functions return `HostEventSubscription`. Retain
+the guard for exactly as long as the handler should remain active; dropping it
+unsubscribes automatically. Replacing a handler is generation-safe, so dropping
+an older guard cannot remove its replacement.
+
+## Worker entrypoints
+
+Enable the `worker-runtime` feature, implement `Default + WorkerJob`, and let
+the SDK emit resumable entries plus the shared callback-buffer ABI:
+
+```rust
+use fui::prelude::*;
+
+#[derive(Default)]
+struct PrimeJob {
+    state: WorkerJobState,
+}
+
+impl WorkerJob for PrimeJob {
+    fn state(&mut self) -> &mut WorkerJobState { &mut self.state }
+    fn run(&mut self) { self.complete("done"); }
+}
+
+fui_worker!(primeWorker => PrimeJob);
+```
+
 ## Architecture
 
 FUI-RS builds Rust retained UI objects into the EffinDom v2 runtime through the

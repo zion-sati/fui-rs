@@ -102,6 +102,12 @@ pub struct ApplicationRegistration {
     build_page_fn: Rc<dyn Fn() -> FlexBox>,
 }
 
+impl Default for ApplicationRegistration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApplicationRegistration {
     pub fn new() -> Self {
         Self {
@@ -318,6 +324,7 @@ impl Node for NodeRefMount {
     fn build_self(&self) {}
 }
 
+#[cfg(not(feature = "worker-runtime"))]
 #[no_mangle]
 pub extern "C" fn __flushRenders() {
     Application::flush_renders();

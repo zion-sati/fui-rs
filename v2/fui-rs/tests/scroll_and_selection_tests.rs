@@ -94,11 +94,13 @@ fn selection_area_sets_bridge_flag_and_receives_cross_selection_text() {
     )));
 
     let text = "picked";
-    fui::event::__fui_on_cross_selection_changed(
-        area.handle().raw(),
-        text.as_ptr(),
-        text.len() as u32,
-    );
+    unsafe {
+        fui::event::__fui_on_cross_selection_changed(
+            area.handle().raw(),
+            text.as_ptr(),
+            text.len() as u32,
+        );
+    }
     assert_eq!(area.selected_text(), "picked");
 }
 
@@ -176,4 +178,48 @@ fn virtual_list_restores_persisted_scroll_through_inner_scroll_box() {
 
     assert_eq!(list.scroll_state().offset_y(), 80.0);
     assert_eq!(list.first_visible_index(), 4);
+}
+
+#[test]
+fn scroll_box_common_style_applies_to_both_axes_and_allows_axis_overrides() {
+    ffi::test::reset();
+    let content = flex_box();
+    content.width(400.0, Unit::Pixel).height(400.0, Unit::Pixel);
+    let scroll = scroll_box();
+    scroll
+        .width(100.0, Unit::Pixel)
+        .height(100.0, Unit::Pixel)
+        .vertical_scrollbar_visibility(ScrollBarVisibility::Always)
+        .horizontal_scrollbar_visibility(ScrollBarVisibility::Always)
+        .scrollbar_style(
+            ScrollBarStyle::new()
+                .track_width(12.0)
+                .thumb_width(7.0)
+                .thumb_min_height(24.0)
+                .track_corner_radius(5.0)
+                .thumb_corner_radius(3.0)
+                .track_color(0x112233FF)
+                .thumb_color(0x445566FF),
+        )
+        .child(&content);
+    scroll.vertical_scrollbar().thumb_width(9.0);
+
+    Application::mount(scroll);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { bg_color, .. } if *bg_color == 0x112233FF
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetBoxStyle { bg_color, .. } if *bg_color == 0x445566FF
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { value, .. } if (*value - 9.0).abs() < f32::EPSILON
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { value, .. } if (*value - 7.0).abs() < f32::EPSILON
+    )));
 }

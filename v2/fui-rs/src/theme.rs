@@ -517,12 +517,12 @@ trait Pipe: Sized {
 
 impl<T> Pipe for T {}
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_system_dark_mode_changed(is_dark: bool) {
     handle_system_dark_mode_changed(is_dark);
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_system_accent_color_changed(color: u32) {
     handle_system_accent_color_changed(color);
 }

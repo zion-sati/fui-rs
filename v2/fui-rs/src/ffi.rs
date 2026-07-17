@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 pub use crate::generated::ffi::*;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
@@ -3433,7 +3435,7 @@ pub unsafe fn fui_canvas_create_offscreen(width: u32, height: u32) -> u32 {
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_canvas_get_offscreen_ptr(offscreen_id: u32) -> usize {
     push_call(Call::CanvasGetOffscreenPtr { offscreen_id });
-    (0x1000 + offscreen_id as usize) as usize
+    0x1000 + offscreen_id as usize
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]

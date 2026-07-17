@@ -219,6 +219,13 @@ impl ScrollBox {
         self
     }
 
+    pub fn scrollbar_style(&self, style: ScrollBarStyle) -> &Self {
+        style.apply_to(&self.inner.vertical_scrollbar);
+        style.apply_to(&self.inner.horizontal_scrollbar);
+        self.refresh_chrome();
+        self
+    }
+
     fn attach_listeners(&self) {
         let weak = Rc::downgrade(&self.inner);
         self.inner

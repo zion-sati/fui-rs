@@ -16,6 +16,12 @@ pub struct ScrollView {
     active_animations: Rc<RefCell<ScrollViewAnimationState>>,
 }
 
+impl Default for ScrollView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScrollView {
     pub fn new() -> Self {
         let core = Rc::new(RefCell::new(NodeCore::new(NodeKind::ScrollView)));
@@ -473,6 +479,20 @@ impl ScrollView {
     }
 }
 
+impl Node for ScrollView {
+    fn retained_node_ref(&self) -> NodeRef {
+        NodeRef::from_node(self.core.clone(), self.clone())
+    }
+
+    fn build_self(&self) {
+        apply_scroll_view_props(
+            self.handle(),
+            &self.props.borrow(),
+            self.core.borrow().behavior.clone(),
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -542,19 +562,5 @@ mod tests {
                 ..
             }
         )));
-    }
-}
-
-impl Node for ScrollView {
-    fn retained_node_ref(&self) -> NodeRef {
-        NodeRef::from_node(self.core.clone(), self.clone())
-    }
-
-    fn build_self(&self) {
-        apply_scroll_view_props(
-            self.handle(),
-            &self.props.borrow(),
-            self.core.borrow().behavior.clone(),
-        );
     }
 }

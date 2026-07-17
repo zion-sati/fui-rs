@@ -304,7 +304,9 @@ fn primary_click_at(handle: u64, scene_x: f32, scene_y: f32, click_count: i32) {
 }
 
 fn key_event(event_type: KeyEventType, key: &str, modifiers: u32) -> bool {
-    event::__fui_on_key_event(event_type as u32, key.as_ptr(), key.len() as u32, modifiers)
+    unsafe {
+        event::__fui_on_key_event(event_type as u32, key.as_ptr(), key.len() as u32, modifiers)
+    }
 }
 
 fn cursor_styles(calls: &[Call]) -> Vec<u32> {
@@ -1644,7 +1646,7 @@ fn focused_key_event_routes_to_focused_node() {
     let handle = root.handle().raw();
     event::__fui_on_focus_changed(handle, true);
     assert!(focus_state.get());
-    assert!(event::__fui_on_key_event(1, b"Enter".as_ptr(), 5, 0));
+    assert!(unsafe { event::__fui_on_key_event(1, b"Enter".as_ptr(), 5, 0) });
     assert_eq!(key_hits.get(), 1);
 }
 
@@ -1812,8 +1814,8 @@ fn button_click_key_and_multi_click_handlers_fire() {
     primary_click(handle, 3);
     primary_click(handle, 4);
     event::__fui_on_focus_changed(handle, true);
-    assert!(event::__fui_on_key_event(1, b"Enter".as_ptr(), 5, 0));
-    assert!(event::__fui_on_key_event(2, b"Enter".as_ptr(), 5, 0));
+    assert!(unsafe { event::__fui_on_key_event(1, b"Enter".as_ptr(), 5, 0) });
+    assert!(unsafe { event::__fui_on_key_event(2, b"Enter".as_ptr(), 5, 0) });
 
     assert_eq!(click_count.get(), 5);
     assert_eq!(double_count.get(), 1);
@@ -1928,7 +1930,7 @@ fn slider_keyboard_changes_value_and_semantic_range() {
     let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
     event::__fui_on_focus_changed(handle, true);
 
-    assert!(event::__fui_on_key_event(1, b"ArrowRight".as_ptr(), 10, 0));
+    assert!(unsafe { event::__fui_on_key_event(1, b"ArrowRight".as_ptr(), 10, 0) });
     assert_eq!(last_value.get(), 30.0);
     let calls = ffi::test::take_calls();
     assert_eq!(
@@ -1957,9 +1959,9 @@ fn slider_keyboard_changes_value_and_semantic_range() {
     assert!(!calls
         .iter()
         .any(|call| matches!(call, Call::RequestSemanticAnnouncement { .. })));
-    assert!(event::__fui_on_key_event(1, b"Home".as_ptr(), 4, 0));
+    assert!(unsafe { event::__fui_on_key_event(1, b"Home".as_ptr(), 4, 0) });
     assert_eq!(last_value.get(), 0.0);
-    assert!(event::__fui_on_key_event(1, b"End".as_ptr(), 3, 0));
+    assert!(unsafe { event::__fui_on_key_event(1, b"End".as_ptr(), 3, 0) });
     assert_eq!(last_value.get(), 100.0);
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(|call| matches!(call, Call::SetSemanticValueRange { handle: range_handle, value_now, value_min, value_max, .. } if *range_handle == handle && *value_now == 100.0 && *value_min == 0.0 && *value_max == 100.0)));
@@ -2099,7 +2101,7 @@ fn disabled_slider_ignores_pointer_and_keyboard() {
         0.0,
         1,
     );
-    assert!(!event::__fui_on_key_event(1, b"ArrowRight".as_ptr(), 10, 0));
+    assert!(!unsafe { event::__fui_on_key_event(1, b"ArrowRight".as_ptr(), 10, 0) });
 
     assert_eq!(last_value.get(), 25.0);
     let calls = ffi::test::take_calls();

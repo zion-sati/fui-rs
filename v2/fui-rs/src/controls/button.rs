@@ -374,6 +374,7 @@ impl LabeledControlTextStyle for Button {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn sync_button_visual_state(
     root: &FlexBox,
     presenter: &Rc<RefCell<Rc<dyn ButtonPresenter>>>,

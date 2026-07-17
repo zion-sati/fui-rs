@@ -399,9 +399,7 @@ fn finish_session(
     notify_target_leave: bool,
 ) {
     let target = with_state(|state| {
-        let Some(active) = state.active_session.as_ref() else {
-            return None;
-        };
+        let active = state.active_session.as_ref()?;
         if !Rc::ptr_eq(&active.inner, &session.inner) {
             return None;
         }

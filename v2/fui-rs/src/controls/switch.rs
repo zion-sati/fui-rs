@@ -324,6 +324,7 @@ impl SwitchEventTarget {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply_switch_checked(
     presenter: &Rc<RefCell<Rc<dyn SwitchIndicatorPresenter>>>,
     weak_root: &Rc<WeakNodeRef>,

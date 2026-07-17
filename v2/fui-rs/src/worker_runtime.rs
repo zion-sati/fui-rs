@@ -42,7 +42,9 @@ fn with_utf8(value: &str, callback: impl FnOnce(usize, u32)) {
 pub struct WorkerRuntime;
 
 impl WorkerRuntime {
-    pub fn entry_input(input_ptr: usize, input_len: u32) -> String {
+    /// # Safety
+    /// `input_ptr` must reference at least `input_len` readable bytes when `input_len` is non-zero.
+    pub unsafe fn entry_input(input_ptr: usize, input_len: u32) -> String {
         if input_ptr == 0 || input_len == 0 {
             return String::new();
         }
@@ -56,7 +58,7 @@ impl WorkerRuntime {
             return;
         }
         #[cfg(target_arch = "wasm32")]
-        send_text(progress.as_ref(), |ptr, len| unsafe {
+        with_utf8(progress.as_ref(), |ptr, len| unsafe {
             host_worker_report_progress(ptr, len);
         });
         #[cfg(not(target_arch = "wasm32"))]
@@ -69,7 +71,7 @@ impl WorkerRuntime {
         }
         WORKER_TERMINAL_SENT.with(|sent| sent.set(true));
         #[cfg(target_arch = "wasm32")]
-        send_text(result.as_ref(), |ptr, len| unsafe {
+        with_utf8(result.as_ref(), |ptr, len| unsafe {
             host_worker_complete_string(ptr, len);
         });
         #[cfg(not(target_arch = "wasm32"))]
@@ -82,7 +84,7 @@ impl WorkerRuntime {
         }
         WORKER_TERMINAL_SENT.with(|sent| sent.set(true));
         #[cfg(target_arch = "wasm32")]
-        send_text(message.as_ref(), |ptr, len| unsafe {
+        with_utf8(message.as_ref(), |ptr, len| unsafe {
             host_worker_fail(ptr, len);
         });
         #[cfg(not(target_arch = "wasm32"))]
@@ -153,20 +155,62 @@ pub fn worker_text_buffer_size() -> u32 {
     WORKER_CALLBACK_BUFFER.with(|buffer| buffer.borrow().len() as u32)
 }
 
-pub fn handle_fetch_complete(
-    request_id: u32,
-    ok: bool,
-    status: i32,
-    payload_ptr: *const u8,
-    payload_len: u32,
-) {
-    crate::fetch::__fui_on_fetch_complete(request_id, ok, status, payload_ptr, payload_len);
-}
-
-pub fn handle_fetch_error(request_id: u32, payload_ptr: *const u8, payload_len: u32) {
-    crate::fetch::__fui_on_fetch_error(request_id, payload_ptr, payload_len);
-}
-
 pub fn reset_worker_runtime() {
     WORKER_TERMINAL_SENT.with(|sent| sent.set(false));
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{fui_worker, WorkerJob, WorkerJobState};
+    use std::cell::{Cell, RefCell};
+
+    thread_local! {
+        static START_INPUT: RefCell<String> = const { RefCell::new(String::new()) };
+        static RUN_COUNT: Cell<u32> = const { Cell::new(0) };
+    }
+
+    #[derive(Default)]
+    struct TestJob {
+        state: WorkerJobState,
+    }
+
+    impl WorkerJob for TestJob {
+        fn state(&mut self) -> &mut WorkerJobState {
+            &mut self.state
+        }
+
+        fn on_start(&mut self, input: String) {
+            START_INPUT.with(|value| value.replace(input));
+        }
+
+        fn run(&mut self) {
+            let run_count = RUN_COUNT.with(|value| {
+                let next = value.get() + 1;
+                value.set(next);
+                next
+            });
+            if run_count == 2 {
+                self.complete("complete");
+            }
+        }
+    }
+
+    fui_worker!(test_worker_entry => TestJob);
+
+    #[test]
+    fn worker_macro_keeps_job_state_across_resumes_and_exports_shared_buffer() {
+        RUN_COUNT.with(|value| value.set(0));
+        START_INPUT.with(|value| value.borrow_mut().clear());
+        let input = "start";
+
+        unsafe {
+            test_worker_entry(input.as_ptr() as usize, input.len() as u32);
+            test_worker_entry(0, 0);
+        }
+
+        assert_eq!(START_INPUT.with(|value| value.borrow().clone()), "start");
+        assert_eq!(RUN_COUNT.with(Cell::get), 2);
+        assert_ne!(__fui_worker_text_buffer(), 0);
+        assert!(__fui_worker_text_buffer_size() > 0);
+    }
 }

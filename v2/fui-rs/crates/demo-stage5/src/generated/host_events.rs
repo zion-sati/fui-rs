@@ -4,14 +4,37 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
+use fui::HostEventSubscription;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 thread_local! {
-    static DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER: RefCell<Option<Box<dyn Fn(u32)>>> = const { RefCell::new(None) };
+    static NEXT_HOST_EVENT_SUBSCRIPTION_ID: Cell<u64> = const { Cell::new(1) };
 }
 
-pub fn on_demo_shell_accent_color_changed(callback: impl Fn(u32) + 'static) {
-    DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some(Box::new(callback)));
+fn next_host_event_subscription_id() -> u64 {
+    NEXT_HOST_EVENT_SUBSCRIPTION_ID.with(|next| {
+        let id = next.get();
+        next.set(id.wrapping_add(1).max(1));
+        id
+    })
+}
+
+thread_local! {
+    static DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(u32)>)>> = const { RefCell::new(None) };
+}
+
+pub fn on_demo_shell_accent_color_changed(callback: impl Fn(u32) + 'static) -> HostEventSubscription {
+    let subscription_id = next_host_event_subscription_id();
+    DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some((subscription_id, Rc::new(callback))));
+    HostEventSubscription::new(move || {
+        DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER.with(|slot| {
+            let should_clear = slot.borrow().as_ref().is_some_and(|(id, _)| *id == subscription_id);
+            if should_clear {
+                *slot.borrow_mut() = None;
+            }
+        });
+    })
 }
 
 pub fn clear_demo_shell_accent_color_changed() {
@@ -20,21 +43,30 @@ pub fn clear_demo_shell_accent_color_changed() {
 
 #[no_mangle]
 pub extern "C" fn __fui_host_event_demoShellAccentColorChanged(arg0: u32) {
-    DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER.with(|slot| {
-        let handler = slot.borrow();
-        let Some(callback) = handler.as_ref() else {
-            return;
-        };
-        callback(arg0);
+    let callback = DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER.with(|slot| {
+        slot.borrow().as_ref().map(|(_, callback)| callback.clone())
     });
+    let Some(callback) = callback else {
+        return;
+    };
+        callback(arg0);
 }
 
 thread_local! {
-    static DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER: RefCell<Option<Box<dyn Fn(i32)>>> = const { RefCell::new(None) };
+    static DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(i32)>)>> = const { RefCell::new(None) };
 }
 
-pub fn on_demo_shell_clock_tick_changed(callback: impl Fn(i32) + 'static) {
-    DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some(Box::new(callback)));
+pub fn on_demo_shell_clock_tick_changed(callback: impl Fn(i32) + 'static) -> HostEventSubscription {
+    let subscription_id = next_host_event_subscription_id();
+    DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some((subscription_id, Rc::new(callback))));
+    HostEventSubscription::new(move || {
+        DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER.with(|slot| {
+            let should_clear = slot.borrow().as_ref().is_some_and(|(id, _)| *id == subscription_id);
+            if should_clear {
+                *slot.borrow_mut() = None;
+            }
+        });
+    })
 }
 
 pub fn clear_demo_shell_clock_tick_changed() {
@@ -43,21 +75,30 @@ pub fn clear_demo_shell_clock_tick_changed() {
 
 #[no_mangle]
 pub extern "C" fn __fui_host_event_demoShellClockTickChanged(arg0: i32) {
-    DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER.with(|slot| {
-        let handler = slot.borrow();
-        let Some(callback) = handler.as_ref() else {
-            return;
-        };
-        callback(arg0);
+    let callback = DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER.with(|slot| {
+        slot.borrow().as_ref().map(|(_, callback)| callback.clone())
     });
+    let Some(callback) = callback else {
+        return;
+    };
+        callback(arg0);
 }
 
 thread_local! {
-    static DEMO_SHELL_DARK_MODE_CHANGED_HANDLER: RefCell<Option<Box<dyn Fn(bool)>>> = const { RefCell::new(None) };
+    static DEMO_SHELL_DARK_MODE_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(bool)>)>> = const { RefCell::new(None) };
 }
 
-pub fn on_demo_shell_dark_mode_changed(callback: impl Fn(bool) + 'static) {
-    DEMO_SHELL_DARK_MODE_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some(Box::new(callback)));
+pub fn on_demo_shell_dark_mode_changed(callback: impl Fn(bool) + 'static) -> HostEventSubscription {
+    let subscription_id = next_host_event_subscription_id();
+    DEMO_SHELL_DARK_MODE_CHANGED_HANDLER.with(|slot| *slot.borrow_mut() = Some((subscription_id, Rc::new(callback))));
+    HostEventSubscription::new(move || {
+        DEMO_SHELL_DARK_MODE_CHANGED_HANDLER.with(|slot| {
+            let should_clear = slot.borrow().as_ref().is_some_and(|(id, _)| *id == subscription_id);
+            if should_clear {
+                *slot.borrow_mut() = None;
+            }
+        });
+    })
 }
 
 pub fn clear_demo_shell_dark_mode_changed() {
@@ -66,11 +107,11 @@ pub fn clear_demo_shell_dark_mode_changed() {
 
 #[no_mangle]
 pub extern "C" fn __fui_host_event_demoShellDarkModeChanged(arg0: bool) {
-    DEMO_SHELL_DARK_MODE_CHANGED_HANDLER.with(|slot| {
-        let handler = slot.borrow();
-        let Some(callback) = handler.as_ref() else {
-            return;
-        };
-        callback(arg0);
+    let callback = DEMO_SHELL_DARK_MODE_CHANGED_HANDLER.with(|slot| {
+        slot.borrow().as_ref().map(|(_, callback)| callback.clone())
     });
+    let Some(callback) = callback else {
+        return;
+    };
+        callback(arg0);
 }

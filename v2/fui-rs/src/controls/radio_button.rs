@@ -383,6 +383,7 @@ impl RadioEventTarget {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply_radio_checked(
     presenter: &Rc<RefCell<Rc<dyn RadioIndicatorPresenter>>>,
     weak_root: &Rc<WeakNodeRef>,

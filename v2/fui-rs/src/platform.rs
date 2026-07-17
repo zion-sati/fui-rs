@@ -260,6 +260,9 @@ pub fn show_open_folder_dialog(
 }
 
 #[cfg(feature = "native-runtime")]
+/// # Safety
+/// `payload` must reference at least `payload_length` readable bytes when
+/// `payload_length` is non-zero.
 #[no_mangle]
 pub unsafe extern "C" fn __fui_complete_native_file_dialog(
     request_id: u64,

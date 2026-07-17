@@ -26,6 +26,8 @@ use crate::ThemeBindable;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+type DropdownChangedCallback = Rc<dyn Fn(DropdownChangedEventArgs<DropdownItem>)>;
+
 const DEFAULT_PANEL_BACKGROUND_BLUR_SIGMA: f32 = 10.0;
 
 fn is_activation_key(event: &KeyEventArgs) -> bool {
@@ -110,7 +112,7 @@ struct DropdownShared {
     popup_panel_background_blur_sigma_value: Cell<f32>,
     popup_panel_color_overridden: Cell<bool>,
     popup_panel_background_blur_overridden: Cell<bool>,
-    changed_callback: RefCell<Option<Rc<dyn Fn(DropdownChangedEventArgs<DropdownItem>)>>>,
+    changed_callback: RefCell<Option<DropdownChangedCallback>>,
     theme_guard: RefCell<Option<SubscriptionGuard>>,
     focus_visibility_guard: RefCell<Option<SubscriptionGuard>>,
 }

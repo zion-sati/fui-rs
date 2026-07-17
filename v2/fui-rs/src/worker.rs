@@ -108,7 +108,7 @@ impl Worker {
         if already_started {
             return self;
         }
-        if input.as_bytes().len() > MAX_WORKER_START_INPUT_BYTES {
+        if input.len() > MAX_WORKER_START_INPUT_BYTES {
             let (worker_id, callback) = {
                 let mut inner = self.inner.borrow_mut();
                 inner.started = true;
@@ -186,8 +186,14 @@ fn with_active_worker(worker_id: u32, callback: impl FnOnce(&mut WorkerInner)) {
     callback(&mut inner);
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_worker_progress(worker_id: u32, text_ptr: *const u8, text_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_worker_progress(
+    worker_id: u32,
+    text_ptr: *const u8,
+    text_len: u32,
+) {
     let message = if text_ptr.is_null() || text_len == 0 {
         String::new()
     } else {
@@ -204,8 +210,14 @@ pub extern "C" fn __fui_on_worker_progress(worker_id: u32, text_ptr: *const u8, 
     });
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_worker_complete(worker_id: u32, text_ptr: *const u8, text_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `text_ptr` must be null for an empty result or point to `text_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_worker_complete(
+    worker_id: u32,
+    text_ptr: *const u8,
+    text_len: u32,
+) {
     let result = if text_ptr.is_null() || text_len == 0 {
         String::new()
     } else {
@@ -228,8 +240,10 @@ pub extern "C" fn __fui_on_worker_complete(worker_id: u32, text_ptr: *const u8, 
     }
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_worker_error(worker_id: u32, text_ptr: *const u8, text_len: u32) {
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_worker_error(worker_id: u32, text_ptr: *const u8, text_len: u32) {
     let message = if text_ptr.is_null() || text_len == 0 {
         String::new()
     } else {
@@ -300,8 +314,10 @@ mod tests {
                 result_clone.replace(event.result);
             })
             .start("hello");
-        super::__fui_on_worker_progress(1, b"25%".as_ptr(), 3);
-        super::__fui_on_worker_complete(1, b"done".as_ptr(), 4);
+        unsafe {
+            super::__fui_on_worker_progress(1, b"25%".as_ptr(), 3);
+            super::__fui_on_worker_complete(1, b"done".as_ptr(), 4);
+        }
         assert_eq!(&*progress.borrow(), "25%");
         assert_eq!(&*result.borrow(), "done");
     }

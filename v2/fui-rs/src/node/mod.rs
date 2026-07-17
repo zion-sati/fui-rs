@@ -48,7 +48,7 @@ pub use helpers::{
 pub use image::ImageNode;
 pub(crate) use presenter_host_style::HostStyleLayers;
 pub use presenter_host_style::{Corners, EdgeInsets, PresenterHostStyle, Shadow};
-pub use scroll_bar::{ScrollBar, ScrollBarVisibility};
+pub use scroll_bar::{ScrollBar, ScrollBarStyle, ScrollBarVisibility};
 pub use scroll_box::ScrollBox;
 pub use scroll_state::ScrollState;
 pub use scroll_view::ScrollView;

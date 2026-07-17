@@ -1,22 +1,14 @@
 mod generated;
-mod job;
-mod runtime;
 
 use generated::worker_host_services::demo_worker_clock_wall_clock_since_epoch_ms;
-use job::{WorkerJob, WorkerJobState};
-use runtime::{
+use fui::worker_runtime::{
     file_read_chunk, file_worker_write_chunk, reset_worker_runtime, worker_text_buffer_ptr,
-    worker_text_buffer_size, WorkerRuntime,
 };
-use std::cell::RefCell;
+use fui::{fui_worker, WorkerJob, WorkerJobState, WorkerRuntime};
 
 const PRIME_SEARCH_TOTAL_MS: f64 = 1600.0;
 const PRIME_SEARCH_YIELD_INTERVAL_MS: f64 = 250.0;
 const PRIME_TIME_CHECK_MASK: i32 = 127;
-
-thread_local! {
-    static ACTIVE_PRIME_JOB: RefCell<Option<Stage4PrimeWorkerJob>> = const { RefCell::new(None) };
-}
 
 fn parse_prime_search_percent(started_at_ms: f64, now_ms: f64) -> i32 {
     let elapsed_ms = now_ms - started_at_ms;
@@ -125,30 +117,24 @@ impl WorkerJob for Stage4PrimeWorkerJob {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn stage4PrimeWorker(input_ptr: usize, input_len: u32) {
-    let input = WorkerRuntime::entry_input(input_ptr, input_len);
-    ACTIVE_PRIME_JOB.with(|slot| {
-        let mut state = slot.borrow_mut();
-        let mut job = state.take().unwrap_or_default();
-        if job.resume(input) {
-            *state = Some(job);
-        }
-    });
-}
+fui_worker!(stage4PrimeWorker => Stage4PrimeWorkerJob);
 
+/// # Safety
+/// `input_ptr` must reference `input_len` readable bytes when `input_len` is non-zero.
 #[no_mangle]
-pub extern "C" fn stage4FailWorker(input_ptr: usize, input_len: u32) {
+pub unsafe extern "C" fn stage4FailWorker(input_ptr: usize, input_len: u32) {
     reset_worker_runtime();
-    let _ = WorkerRuntime::entry_input(input_ptr, input_len);
+    let _ = unsafe { WorkerRuntime::entry_input(input_ptr, input_len) };
     let now = demo_worker_clock_wall_clock_since_epoch_ms();
     WorkerRuntime::fail(format!("worker failure clock={:.0}", now));
 }
 
+/// # Safety
+/// `input_ptr` must reference `input_len` readable bytes when `input_len` is non-zero.
 #[no_mangle]
-pub extern "C" fn stage4FileProcessorWorker(input_ptr: usize, input_len: u32) {
+pub unsafe extern "C" fn stage4FileProcessorWorker(input_ptr: usize, input_len: u32) {
     reset_worker_runtime();
-    let _ = WorkerRuntime::entry_input(input_ptr, input_len);
+    let _ = unsafe { WorkerRuntime::entry_input(input_ptr, input_len) };
     const READ_CHUNK_SIZE: i32 = 64 * 1024;
     let buffer_ptr = worker_text_buffer_ptr();
     let mut offset: u64 = 0;
@@ -172,32 +158,4 @@ pub extern "C" fn stage4FileProcessorWorker(input_ptr: usize, input_len: u32) {
         "{{\"hash\":{},\"algo\":\"djb2\",\"bytes\":{}}}",
         hash, offset
     ));
-}
-
-#[no_mangle]
-pub extern "C" fn __fui_worker_text_buffer() -> usize {
-    worker_text_buffer_ptr()
-}
-
-#[no_mangle]
-pub extern "C" fn __fui_worker_text_buffer_size() -> u32 {
-    worker_text_buffer_size()
-}
-
-#[no_mangle]
-pub extern "C" fn __fui_on_fetch_complete(
-    _request_id: u32,
-    _ok: bool,
-    _status: i32,
-    _payload_ptr: *const u8,
-    _payload_len: u32,
-) {
-}
-
-#[no_mangle]
-pub extern "C" fn __fui_on_fetch_error(
-    _request_id: u32,
-    _payload_ptr: *const u8,
-    _payload_len: u32,
-) {
 }

@@ -1124,11 +1124,8 @@ fn finish_worker_process(
     Option<FileWorkerCompleteCallback>,
     Option<FileErrorCallback>,
 )> {
-    let Some(request) =
-        ACTIVE_WORKER_PROCESS_REQUESTS.with(|requests| requests.borrow_mut().remove(&request_id))
-    else {
-        return None;
-    };
+    let request = ACTIVE_WORKER_PROCESS_REQUESTS
+        .with(|requests| requests.borrow_mut().remove(&request_id))?;
     let mut inner = request.borrow_mut();
     if inner.finished {
         return None;
@@ -1160,8 +1157,10 @@ pub fn reset_file_runtime() {
     NEXT_FILE_REQUEST_ID.with(|slot| *slot.borrow_mut() = 1);
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_pick_result(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_pick_result(
     request_id: u32,
     status: u32,
     payload_ptr: *const u8,
@@ -1191,8 +1190,10 @@ pub extern "C" fn __fui_on_file_pick_result(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_read_result(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_read_result(
     request_id: u32,
     status: u32,
     offset_bytes: u64,
@@ -1227,8 +1228,10 @@ pub extern "C" fn __fui_on_file_read_result(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_save_result(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_save_result(
     request_id: u32,
     status: u32,
     written_bytes: u64,
@@ -1264,8 +1267,10 @@ pub extern "C" fn __fui_on_file_save_result(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_writer_created(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_writer_created(
     request_id: u32,
     status: u32,
     payload_ptr: *const u8,
@@ -1301,8 +1306,10 @@ pub extern "C" fn __fui_on_file_writer_created(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_write_result(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_write_result(
     request_id: u32,
     status: u32,
     written_bytes: u64,
@@ -1332,8 +1339,10 @@ pub extern "C" fn __fui_on_file_write_result(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_finish_result(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_finish_result(
     request_id: u32,
     status: u32,
     written_bytes: u64,
@@ -1370,8 +1379,10 @@ pub extern "C" fn __fui_on_file_finish_result(
     );
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_worker_process_progress(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_worker_process_progress(
     request_id: u32,
     processed_bytes: u64,
     total_bytes: u64,
@@ -1398,8 +1409,10 @@ pub extern "C" fn __fui_on_file_worker_process_progress(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_worker_process_chunk(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_worker_process_chunk(
     request_id: u32,
     offset_bytes: u64,
     file_size_bytes: u64,
@@ -1426,8 +1439,10 @@ pub extern "C" fn __fui_on_file_worker_process_chunk(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_worker_process_complete(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_worker_process_complete(
     request_id: u32,
     processed_bytes: u64,
     payload_ptr: *const u8,
@@ -1451,8 +1466,10 @@ pub extern "C" fn __fui_on_file_worker_process_complete(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn __fui_on_file_worker_process_error(
+#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+/// # Safety
+/// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
+pub unsafe extern "C" fn __fui_on_file_worker_process_error(
     request_id: u32,
     status: u32,
     payload_ptr: *const u8,
@@ -1513,12 +1530,14 @@ mod tests {
         payload.extend_from_slice(b"note.txt");
         payload.extend_from_slice(&10u32.to_le_bytes());
         payload.extend_from_slice(b"text/plain");
-        super::__fui_on_file_pick_result(
-            1,
-            FILE_STATUS_SUCCESS,
-            payload.as_ptr(),
-            payload.len() as u32,
-        );
+        unsafe {
+            super::__fui_on_file_pick_result(
+                1,
+                FILE_STATUS_SUCCESS,
+                payload.as_ptr(),
+                payload.len() as u32,
+            );
+        }
 
         let picked = picked.borrow();
         assert_eq!(picked.len(), 1);
@@ -1542,14 +1561,16 @@ mod tests {
         assert!(calls.iter().any(|call| matches!(call, Call::FileReadChunk { request_id, file_id, offset_bytes, max_bytes } if *request_id == 1 && file_id == "picked-1" && *offset_bytes == 10 && *max_bytes == 8)));
 
         let bytes = b"1234".to_vec();
-        super::__fui_on_file_read_result(
-            1,
-            FILE_STATUS_SUCCESS,
-            10,
-            100,
-            bytes.as_ptr(),
-            bytes.len() as u32,
-        );
+        unsafe {
+            super::__fui_on_file_read_result(
+                1,
+                FILE_STATUS_SUCCESS,
+                10,
+                100,
+                bytes.as_ptr(),
+                bytes.len() as u32,
+            );
+        }
         let chunk = chunk.borrow().clone().expect("chunk");
         assert_eq!(chunk.offset_bytes, 10);
         assert_eq!(chunk.file_size_bytes, 100);
@@ -1585,12 +1606,14 @@ mod tests {
             "writer-1",
             Some("report.txt"),
         );
-        super::__fui_on_file_writer_created(
-            1,
-            FILE_STATUS_SUCCESS,
-            payload.as_ptr(),
-            payload.len() as u32,
-        );
+        unsafe {
+            super::__fui_on_file_writer_created(
+                1,
+                FILE_STATUS_SUCCESS,
+                payload.as_ptr(),
+                payload.len() as u32,
+            );
+        }
         let writer = writer.borrow().clone().expect("writer");
         assert_eq!(writer.file_name, "report.txt");
         assert_eq!(writer.mode, FileSaveMode::NativePicker);
@@ -1604,13 +1627,15 @@ mod tests {
         let calls = ffi::test::take_calls();
         assert!(calls.iter().any(|call| matches!(call, Call::FileWriterFinish { request_id, writer_id } if *request_id == 2 && writer_id == "writer-1")));
         let payload = writer_payload(FileSaveMode::NativePicker as u32, "report.txt", None);
-        super::__fui_on_file_finish_result(
-            2,
-            FILE_STATUS_SUCCESS,
-            44,
-            payload.as_ptr(),
-            payload.len() as u32,
-        );
+        unsafe {
+            super::__fui_on_file_finish_result(
+                2,
+                FILE_STATUS_SUCCESS,
+                44,
+                payload.as_ptr(),
+                payload.len() as u32,
+            );
+        }
         let finished = finished.borrow().clone().expect("finish");
         assert_eq!(finished.file_name, "report.txt");
         assert_eq!(finished.written_bytes, 44);
@@ -1657,18 +1682,22 @@ mod tests {
         let calls = ffi::test::take_calls();
         assert!(calls.iter().any(|call| matches!(call, Call::FileProcessWorkerStart { request_id, worker_wasm_path, worker_entry_name, file_id, suggested_name, chunk_bytes, save_to_picked_file } if *request_id == 1 && worker_wasm_path == "./workers/file_worker.wasm" && worker_entry_name == "entry" && file_id == "picked-1" && suggested_name == "copy.bin" && *chunk_bytes == 64 * 1024 && *save_to_picked_file)));
 
-        super::__fui_on_file_worker_process_progress(1, 20, 100, b"copy.bin".as_ptr(), 8);
+        unsafe {
+            super::__fui_on_file_worker_process_progress(1, 20, 100, b"copy.bin".as_ptr(), 8);
+        }
         let progress = progress.borrow().clone().expect("progress");
         assert_eq!(progress.processed_bytes, 20);
         assert_eq!(progress.output_file_name, Some("copy.bin".to_string()));
 
         let payload = b"copy.bin\0sha256".to_vec();
-        super::__fui_on_file_worker_process_complete(
-            1,
-            100,
-            payload.as_ptr(),
-            payload.len() as u32,
-        );
+        unsafe {
+            super::__fui_on_file_worker_process_complete(
+                1,
+                100,
+                payload.as_ptr(),
+                payload.len() as u32,
+            );
+        }
         let result = result.borrow().clone().expect("result");
         assert_eq!(result.processed_bytes, 100);
         assert_eq!(result.output_file_name, Some("copy.bin".to_string()));

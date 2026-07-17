@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::ffi;
 use crate::image_sampling::ImageSampling;
 use crate::logger::error;
@@ -76,6 +78,12 @@ impl Drop for PathResource {
 #[derive(Clone)]
 pub struct Path {
     resource: Rc<PathResource>,
+}
+
+impl Default for Path {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Path {

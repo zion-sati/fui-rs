@@ -1,5 +1,5 @@
-use fui::prelude::*;
 use fui::ffi::{self, Call};
+use fui::prelude::*;
 
 #[test]
 fn queued_draw_path_retains_resource_until_batch_flush() {

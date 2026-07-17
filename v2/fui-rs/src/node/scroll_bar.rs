@@ -12,6 +12,91 @@ const DEFAULT_TRACK_THICKNESS: f32 = 8.0;
 const DEFAULT_THUMB_THICKNESS: f32 = 8.0;
 const DEFAULT_MIN_THUMB_SIZE: f32 = 18.0;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScrollBarStyle {
+    track_width: f32,
+    thumb_width: f32,
+    thumb_min_height: f32,
+    track_corner_radius: f32,
+    thumb_corner_radius: f32,
+    track_color: Option<u32>,
+    thumb_color: Option<u32>,
+}
+
+impl ScrollBarStyle {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn track_width(mut self, value: f32) -> Self {
+        self.track_width = value;
+        self
+    }
+
+    pub fn thumb_width(mut self, value: f32) -> Self {
+        self.thumb_width = value;
+        self
+    }
+
+    pub fn thumb_min_height(mut self, value: f32) -> Self {
+        self.thumb_min_height = value;
+        self
+    }
+
+    pub fn track_corner_radius(mut self, value: f32) -> Self {
+        self.track_corner_radius = value;
+        self
+    }
+
+    pub fn thumb_corner_radius(mut self, value: f32) -> Self {
+        self.thumb_corner_radius = value;
+        self
+    }
+
+    pub fn track_color(mut self, value: u32) -> Self {
+        self.track_color = Some(value);
+        self
+    }
+
+    pub fn thumb_color(mut self, value: u32) -> Self {
+        self.thumb_color = Some(value);
+        self
+    }
+
+    pub(crate) fn apply_to(self, scroll_bar: &ScrollBar) {
+        scroll_bar
+            .track_width(self.track_width)
+            .thumb_width(self.thumb_width)
+            .thumb_min_height(self.thumb_min_height)
+            .track_corner_radius(self.track_corner_radius)
+            .thumb_corner_radius(self.thumb_corner_radius);
+        if let Some(color) = self.track_color {
+            scroll_bar.track_color(color);
+        } else {
+            scroll_bar.clear_track_color();
+        }
+        if let Some(color) = self.thumb_color {
+            scroll_bar.thumb_color(color);
+        } else {
+            scroll_bar.clear_thumb_color();
+        }
+    }
+}
+
+impl Default for ScrollBarStyle {
+    fn default() -> Self {
+        Self {
+            track_width: DEFAULT_TRACK_THICKNESS,
+            thumb_width: DEFAULT_THUMB_THICKNESS,
+            thumb_min_height: DEFAULT_MIN_THUMB_SIZE,
+            track_corner_radius: 0.0,
+            thumb_corner_radius: 0.0,
+            track_color: None,
+            thumb_color: None,
+        }
+    }
+}
+
 fn clamp(value: f32, min: f32, max: f32) -> f32 {
     if value < min {
         return min;
@@ -237,11 +322,27 @@ impl ScrollBar {
         self
     }
 
+    fn clear_track_color(&self) {
+        self.inner.track_color_overridden.set(false);
+        self.inner
+            .track_color
+            .set(current_theme().colors.scrollbar_track);
+        self.apply_color_style();
+    }
+
     pub fn thumb_color(&self, color: u32) -> &Self {
         self.inner.thumb_color_overridden.set(true);
         self.inner.thumb_color.set(color);
         self.apply_color_style();
         self
+    }
+
+    fn clear_thumb_color(&self) {
+        self.inner.thumb_color_overridden.set(false);
+        self.inner
+            .thumb_color
+            .set(current_theme().colors.scrollbar_thumb);
+        self.apply_color_style();
     }
 
     pub fn bind_scroll_handle(&self, handle: u64) {

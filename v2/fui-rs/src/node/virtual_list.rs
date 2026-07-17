@@ -4,6 +4,7 @@ use crate::controls::selection_area;
 use crate::controls::SelectionArea;
 use crate::frame_scheduler::mark_needs_commit;
 use crate::signal::Subscription;
+use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -11,9 +12,9 @@ const FULL_SIZE: f32 = 100.0;
 const DEFAULT_MAX_VISIBLE_ITEMS: i32 = 20;
 const POOL_OVERSCAN_ITEMS: i32 = 2;
 const MISSING_BIND_ITEM_MESSAGE: &str =
-    "VirtualList: item renderer not configured. Call .onBindItem() after construction.";
+    "VirtualList: item renderer not configured. Call .on_bind_item() after construction.";
 
-type VirtualListBinder = Rc<dyn Fn(&FlexBox, i32)>;
+type VirtualListBinder = Rc<dyn Fn(usize, i32)>;
 
 struct VirtualListInner {
     root: FlexBox,
@@ -27,18 +28,28 @@ struct VirtualListInner {
     pool_size: i32,
     pool_rows: Vec<SelectionArea>,
     pool_containers: Vec<FlexBox>,
+    row_state_owner: RefCell<Option<Rc<dyn Any>>>,
     pool_item_index_by_row: RefCell<Vec<i32>>,
     subscriptions: RefCell<Vec<Subscription>>,
     current_first_visible_index: Cell<i32>,
     current_last_visible_index: Cell<i32>,
 }
 
-#[derive(Clone)]
-pub struct VirtualList {
+pub struct VirtualList<T = FlexBox> {
     inner: Rc<VirtualListInner>,
+    row_states: Rc<Vec<T>>,
 }
 
-impl VirtualList {
+impl<T> Clone for VirtualList<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            row_states: self.row_states.clone(),
+        }
+    }
+}
+
+impl VirtualList<FlexBox> {
     pub fn new(total_items: i32, item_height: f32) -> Self {
         Self::with_max_visible(total_items, item_height, DEFAULT_MAX_VISIBLE_ITEMS)
     }
@@ -105,13 +116,43 @@ impl VirtualList {
             bottom_spacer,
             pool_size,
             pool_rows,
-            pool_containers,
+            pool_containers: pool_containers.clone(),
+            row_state_owner: RefCell::new(None),
             pool_item_index_by_row: RefCell::new(pool_item_index_by_row),
             subscriptions: RefCell::new(Vec::new()),
             current_first_visible_index: Cell::new(-1),
             current_last_visible_index: Cell::new(-1),
         });
-        let list = Self { inner };
+        let row_states = Rc::new(pool_containers);
+        inner
+            .row_state_owner
+            .replace(Some(row_states.clone() as Rc<dyn Any>));
+        let list = Self { inner, row_states };
+        list.attach_listeners();
+        list
+    }
+}
+
+impl<T: 'static> VirtualList<T> {
+    pub fn item_template<U: 'static>(self, template: impl Fn(&FlexBox) -> U) -> VirtualList<U> {
+        let row_states = Rc::new(
+            self.inner
+                .pool_containers
+                .iter()
+                .map(template)
+                .collect::<Vec<_>>(),
+        );
+        self.inner
+            .row_state_owner
+            .replace(Some(row_states.clone() as Rc<dyn Any>));
+        *self.inner.bind_item.borrow_mut() = Rc::new(|_, _| panic!("{MISSING_BIND_ITEM_MESSAGE}"));
+        self.inner.current_first_visible_index.set(-1);
+        self.inner.current_last_visible_index.set(-1);
+        self.inner.subscriptions.borrow_mut().clear();
+        let list = VirtualList {
+            inner: self.inner,
+            row_states,
+        };
         list.attach_listeners();
         list
     }
@@ -181,17 +222,15 @@ impl VirtualList {
         self
     }
 
-    pub fn on_bind_item(&self, renderer: impl Fn(&FlexBox, i32) + 'static) -> &Self {
-        *self.inner.bind_item.borrow_mut() = Rc::new(renderer);
+    pub fn on_bind_item(&self, renderer: impl Fn(&T, i32) + 'static) -> &Self {
+        let row_states = self.row_states.clone();
+        *self.inner.bind_item.borrow_mut() = Rc::new(move |pool_index, item_index| {
+            renderer(&row_states[pool_index], item_index);
+        });
         self.inner.current_first_visible_index.set(-1);
         self.inner.current_last_visible_index.set(-1);
         self.rebuild_visible_range(true);
         self
-    }
-
-    #[allow(non_snake_case)]
-    pub fn onBindItem(&self, renderer: impl Fn(&FlexBox, i32) + 'static) -> &Self {
-        self.on_bind_item(renderer)
     }
 
     pub fn update_item_count(&self, next: i32) {
@@ -217,27 +256,33 @@ impl VirtualList {
 
     fn attach_listeners(&self) {
         let weak = Rc::downgrade(&self.inner);
+        let weak_row_states = Rc::downgrade(&self.row_states);
         self.inner
             .subscriptions
             .borrow_mut()
             .push(self.inner.scroll_state.subscribe_offset_y(move || {
-                if let Some(inner) = weak.upgrade() {
-                    VirtualList { inner }.handle_scroll_offset_changed();
+                if let (Some(inner), Some(row_states)) = (weak.upgrade(), weak_row_states.upgrade())
+                {
+                    VirtualList { inner, row_states }.handle_scroll_offset_changed();
                 }
             }));
         let weak = Rc::downgrade(&self.inner);
+        let weak_row_states = Rc::downgrade(&self.row_states);
         self.inner.subscriptions.borrow_mut().push(
             self.inner.scroll_state.subscribe_viewport_height(move || {
-                if let Some(inner) = weak.upgrade() {
-                    VirtualList { inner }.handle_metrics_changed();
+                if let (Some(inner), Some(row_states)) = (weak.upgrade(), weak_row_states.upgrade())
+                {
+                    VirtualList { inner, row_states }.handle_metrics_changed();
                 }
             }),
         );
         let weak = Rc::downgrade(&self.inner);
+        let weak_row_states = Rc::downgrade(&self.row_states);
         self.inner.subscriptions.borrow_mut().push(
             self.inner.scroll_state.subscribe_content_height(move || {
-                if let Some(inner) = weak.upgrade() {
-                    VirtualList { inner }.handle_metrics_changed();
+                if let (Some(inner), Some(row_states)) = (weak.upgrade(), weak_row_states.upgrade())
+                {
+                    VirtualList { inner, row_states }.handle_metrics_changed();
                 }
             }),
         );
@@ -325,8 +370,12 @@ impl VirtualList {
         let previous_item_index_by_row = self.inner.pool_item_index_by_row.borrow().clone();
         let visible_items = (last_visible_index - first_visible_index) as usize;
 
-        for pool_index in 0..self.inner.pool_size as usize {
-            let previous_item_index = previous_item_index_by_row[pool_index];
+        for (pool_index, previous_item_index) in previous_item_index_by_row
+            .iter()
+            .copied()
+            .enumerate()
+            .take(self.inner.pool_size as usize)
+        {
             if previous_item_index != -1
                 && (previous_item_index < first_visible_index
                     || previous_item_index >= last_visible_index)
@@ -340,8 +389,7 @@ impl VirtualList {
             if pool_index < visible_items {
                 let next_item_index = first_visible_index + pool_index as i32;
                 row_area.height(self.inner.item_height, Unit::Pixel);
-                let container = &self.inner.pool_containers[pool_index];
-                self.render_item(container, next_item_index);
+                self.render_item(pool_index, next_item_index);
                 self.inner.pool_item_index_by_row.borrow_mut()[pool_index] = next_item_index;
             } else {
                 self.hide_pool_item(pool_index);
@@ -450,9 +498,9 @@ impl VirtualList {
         mark_needs_commit();
     }
 
-    fn render_item(&self, container: &FlexBox, index: i32) {
+    fn render_item(&self, pool_index: usize, index: i32) {
         let binder = self.inner.bind_item.borrow().clone();
-        binder(container, index);
+        binder(pool_index, index);
     }
 
     fn max_offset_for_current_viewport(&self) -> f32 {
@@ -478,7 +526,7 @@ impl VirtualList {
     }
 }
 
-impl Node for VirtualList {
+impl<T: 'static> Node for VirtualList<T> {
     fn retained_node_ref(&self) -> NodeRef {
         let list = self.clone();
         self.inner
@@ -507,22 +555,24 @@ impl Node for VirtualList {
     }
 }
 
-impl HasFlexBoxRoot for VirtualList {
+impl<T: 'static> HasFlexBoxRoot for VirtualList<T> {
     fn flex_box_root(&self) -> &FlexBox {
         &self.inner.root
     }
 }
 
-impl ThemeBindable for VirtualList {
+impl<T: 'static> ThemeBindable for VirtualList<T> {
     fn theme_binding_node(&self) -> NodeRef {
         self.inner.root.retained_node_ref()
     }
 
     fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
         let weak = Rc::downgrade(&self.inner);
+        let weak_row_states = Rc::downgrade(&self.row_states);
         Box::new(move || {
             Some(VirtualList {
                 inner: weak.upgrade()?,
+                row_states: weak_row_states.upgrade()?,
             })
         })
     }
@@ -583,7 +633,7 @@ mod tests {
         let list = VirtualList::new(10_000, 20.0);
         let captured_indices = rendered_indices.clone();
         let captured_labels = labels.clone();
-        list.onBindItem(move |container, index| {
+        list.on_bind_item(move |container, index| {
             tracked_bind_virtual_list_item(&captured_indices, &captured_labels, container, index);
         });
         list.width(180.0, Unit::Pixel);
@@ -608,7 +658,7 @@ mod tests {
         let list = VirtualList::new(10_000, 20.0);
         let captured_indices = rendered_indices.clone();
         let captured_labels = labels.clone();
-        list.onBindItem(move |container, index| {
+        list.on_bind_item(move |container, index| {
             tracked_bind_virtual_list_item(&captured_indices, &captured_labels, container, index);
         });
         list.width(180.0, Unit::Pixel);
@@ -653,7 +703,7 @@ mod tests {
         let labels = Rc::new(RefCell::new(HashMap::new()));
         let list = VirtualList::new(10_000, 24.0);
         let captured_labels = labels.clone();
-        list.onBindItem(move |container, index| {
+        list.on_bind_item(move |container, index| {
             static_bind_virtual_list_item(&captured_labels, container, index);
         });
         list.height(120.0, Unit::Pixel);
@@ -676,7 +726,7 @@ mod tests {
         let list = VirtualList::new(10_000, 20.0);
         let captured_indices = rendered_indices.clone();
         let captured_labels = labels.clone();
-        list.onBindItem(move |container, index| {
+        list.on_bind_item(move |container, index| {
             tracked_bind_virtual_list_item(&captured_indices, &captured_labels, container, index);
         });
         list.width(180.0, Unit::Pixel);
@@ -689,5 +739,42 @@ mod tests {
         assert_eq!(rendered[0], 0);
         assert_eq!(rendered[rendered.len() - 1], 5);
         list.dispose();
+    }
+
+    #[test]
+    fn typed_item_template_creates_one_retained_state_per_pool_row_and_rebinds_it() {
+        #[derive(Clone)]
+        struct Row {
+            label: TextNode,
+        }
+
+        ffi::test::reset();
+        let template_count = Rc::new(Cell::new(0));
+        let captured_template_count = template_count.clone();
+        let list = VirtualList::with_max_visible(10_000, 20.0, 4).item_template(move |container| {
+            captured_template_count.set(captured_template_count.get() + 1);
+            let label = text("");
+            container.child(&label);
+            Row { label }
+        });
+        let bound_indices = Rc::new(RefCell::new(Vec::new()));
+        let captured_indices = bound_indices.clone();
+        list.on_bind_item(move |row, index| {
+            captured_indices.borrow_mut().push(index);
+            row.label.text(format!("typed item {index}"));
+        });
+        list.height(60.0, Unit::Pixel);
+        Application::mount(list.clone());
+
+        assert_eq!(template_count.get(), 6);
+        bound_indices.borrow_mut().clear();
+        ffi::test::reset();
+        list.scroll_state().set_offset_y(40.0);
+
+        assert_eq!(&*bound_indices.borrow(), &[2, 3, 4, 5]);
+        assert!(!ffi::test::take_calls()
+            .iter()
+            .any(|call| matches!(call, Call::CreateNode { .. } | Call::DeleteNode { .. })));
+        Application::unmount();
     }
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::ffi;
 use crate::ffi::{GridUnit, ImageSamplingKind};
 
