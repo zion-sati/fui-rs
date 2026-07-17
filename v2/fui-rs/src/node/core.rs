@@ -513,6 +513,26 @@ impl NodeRef {
         self.inner.borrow().handle
     }
 
+    pub(crate) fn set_semantic_checked(
+        &self,
+        state: SemanticCheckedState,
+        announce: bool,
+    ) {
+        let handle = {
+            let mut core = self.inner.borrow_mut();
+            core.behavior.semantic_checked = Some(state);
+            core.handle
+        };
+        if handle == NodeHandle::INVALID {
+            return;
+        }
+        ui::set_semantic_checked(handle.raw(), state as u32);
+        if announce {
+            ui::request_semantic_announcement(handle.raw());
+        }
+        crate::frame_scheduler::mark_needs_commit();
+    }
+
     pub(crate) fn ptr_eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.inner, &other.inner)
     }

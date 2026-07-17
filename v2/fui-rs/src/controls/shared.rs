@@ -59,10 +59,7 @@ pub(crate) fn update_semantic_checked(
     state: SemanticCheckedState,
     announce: bool,
 ) {
-    if let Some(handle) = upgraded_handle(weak_root) {
-        ui::set_semantic_checked(handle.raw(), state as u32);
-        if announce {
-            ui::request_semantic_announcement(handle.raw());
-        }
+    if let Some(root) = weak_root.upgrade() {
+        root.set_semantic_checked(state, announce);
     }
 }

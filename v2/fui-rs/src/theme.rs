@@ -1,12 +1,15 @@
 use crate::generated::framework_host_services;
+use crate::color::{
+    color_alpha, color_blue, color_green, color_red, mix_color, rgb, rgba, with_alpha,
+};
 use crate::signal::{Callback, Signal, SubscriptionGuard};
 use crate::typography::{FontFamily, FontStack};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-const DEFAULT_ACCENT_COLOR: u32 = 0x2563EBFF;
-const WHITE: u32 = 0xFFFFFFFF;
-const BLACK: u32 = 0x000000FF;
+const DEFAULT_ACCENT_COLOR: u32 = rgb(0x25, 0x63, 0xeb);
+const WHITE: u32 = rgb(0xff, 0xff, 0xff);
+const BLACK: u32 = rgb(0x00, 0x00, 0x00);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Colors {
@@ -164,49 +167,6 @@ fn default_fonts() -> Fonts {
         size_heading: 24.0,
         size_mono: 15.0,
     }
-}
-
-const fn rgba(r: u32, g: u32, b: u32, a: u32) -> u32 {
-    (r << 24) | (g << 16) | (b << 8) | a
-}
-
-fn color_red(color: u32) -> u32 {
-    (color >> 24) & 0xff
-}
-fn color_green(color: u32) -> u32 {
-    (color >> 16) & 0xff
-}
-fn color_blue(color: u32) -> u32 {
-    (color >> 8) & 0xff
-}
-fn color_alpha(color: u32) -> u32 {
-    color & 0xff
-}
-fn clamp_unit(value: f32) -> f32 {
-    value.clamp(0.0, 1.0)
-}
-
-fn mix_channel(from: u32, to: u32, amount: f32) -> u32 {
-    let weight = clamp_unit(amount);
-    (from as f32 + ((to as f32 - from as f32) * weight)).round() as u32
-}
-
-fn mix_color(from: u32, to: u32, amount: f32) -> u32 {
-    rgba(
-        mix_channel(color_red(from), color_red(to), amount),
-        mix_channel(color_green(from), color_green(to), amount),
-        mix_channel(color_blue(from), color_blue(to), amount),
-        mix_channel(color_alpha(from), color_alpha(to), amount),
-    )
-}
-
-fn with_alpha(color: u32, alpha: u32) -> u32 {
-    rgba(
-        color_red(color),
-        color_green(color),
-        color_blue(color),
-        alpha,
-    )
 }
 
 fn normalize_accent_color(color: u32) -> u32 {

@@ -4,6 +4,7 @@ pub mod assets;
 #[doc(hidden)]
 pub mod bindings;
 pub mod bitmap;
+pub mod color;
 #[doc(hidden)]
 pub mod bridge_callbacks;
 pub(crate) mod context_menu_manager;
@@ -408,6 +409,7 @@ pub mod prelude {
     pub use crate::app::{Application, ApplicationRegistration, ManagedApplication};
     pub use crate::bitmap::{Bitmap, BitmapTextReadyEventArgs};
     pub use crate::bridge_callbacks::current_route;
+    pub use crate::color::{hsl_to_color, mix_color, rgb, rgba, with_alpha};
     pub use crate::controls::{
         anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
         create_default_button_presenter, create_default_checkbox_indicator_presenter,
@@ -534,6 +536,7 @@ pub use app::{Application, ApplicationRegistration, ManagedApplication};
 pub use assets::*;
 pub use bitmap::{Bitmap, BitmapTextReadyEventArgs};
 pub use bridge_callbacks::current_route;
+pub use color::{hsl_to_color, mix_color, rgb, rgba, with_alpha};
 pub use controls::{
     anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
     create_default_button_presenter, create_default_checkbox_indicator_presenter,

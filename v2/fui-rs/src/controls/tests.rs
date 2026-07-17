@@ -2928,6 +2928,23 @@ fn checkbox_user_activation_emits_changed_and_semantic_announcement() {
 }
 
 #[test]
+fn checkbox_prebuild_state_is_retained_into_semantic_build_state() {
+    ffi::test::reset();
+    let checkbox = checkbox("Agree");
+    checkbox.check(true);
+
+    Application::mount(checkbox.clone());
+    let handle = checkbox.retained_node_ref().handle().raw();
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetSemanticChecked { handle: checked_handle, checked_state_enum }
+            if *checked_handle == handle && *checked_state_enum == SemanticCheckedState::True as u32
+    )));
+    Application::unmount();
+}
+
+#[test]
 fn radio_and_switch_programmatic_changes_emit_without_semantic_announcement() {
     ffi::test::reset();
     let radio_changes = Rc::new(Cell::new(0));

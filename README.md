@@ -43,10 +43,10 @@ npm install
 npm run dev
 ```
 
-For a routed MVC-style app with one separately built WASM per route:
+For a routed app with one separately built WASM per route:
 
 ```bash
-npx @effindomv2/create-fui-rs-app my-routed-app -- --template mvc
+npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
 cd my-routed-app
 npm install
 npm run dev

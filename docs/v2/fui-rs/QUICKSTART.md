@@ -44,17 +44,18 @@ npm install
 npm run dev
 ```
 
-For the routed MVC starter:
+For the routed starter:
 
 ```bash
-npx @effindomv2/create-fui-rs-app my-routed-app -- --template mvc
+npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
 cd my-routed-app
 npm install
 npm run dev
 ```
 
-The MVC template builds one WASM per route so route pages can be shipped as
-separate micro-frontends.
+The routed template builds one WASM per route so route pages can be shipped as
+separate micro-frontends. Route crates use retained components and explicit
+presentation state rather than an object-oriented MVC ownership graph.
 
 ## Build the repo demo
 
