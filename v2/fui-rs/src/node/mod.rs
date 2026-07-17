@@ -100,6 +100,85 @@ impl ThemeBindable for FlexBox {
     }
 }
 
+pub trait HasTextNode {
+    fn text_node(&self) -> &TextNode;
+}
+
+pub trait TextLayoutSurface: HasTextNode {
+    fn width(&self, width: f32, unit: Unit) -> &Self {
+        self.text_node().width(width, unit);
+        self
+    }
+
+    fn height(&self, height: f32, unit: Unit) -> &Self {
+        self.text_node().height(height, unit);
+        self
+    }
+
+    fn fill_width(&self) -> &Self {
+        self.text_node().fill_width();
+        self
+    }
+
+    fn fill_height(&self) -> &Self {
+        self.text_node().fill_height();
+        self
+    }
+
+    fn fill_size(&self) -> &Self {
+        self.text_node().fill_size();
+        self
+    }
+
+    fn line_height(&self, line_height: f32) -> &Self {
+        self.text_node().line_height(line_height);
+        self
+    }
+
+    fn text_align(&self, align: TextAlign) -> &Self {
+        self.text_node().text_align(align);
+        self
+    }
+
+    fn text_vertical_align(&self, align: TextVerticalAlign) -> &Self {
+        self.text_node().text_vertical_align(align);
+        self
+    }
+
+    fn text_limits(&self, max_chars: i32, max_lines: i32) -> &Self {
+        self.text_node().text_limits(max_chars, max_lines);
+        self
+    }
+
+    fn max_lines(&self, max_lines: i32) -> &Self {
+        self.text_node().max_lines(max_lines);
+        self
+    }
+
+    fn wrapping(&self, wrap: bool) -> &Self {
+        self.text_node().wrapping(wrap);
+        self
+    }
+
+    fn text_overflow(&self, overflow: TextOverflow) -> &Self {
+        self.text_node().text_overflow(overflow);
+        self
+    }
+
+    fn text_overflow_fade(&self, horizontal: bool, vertical: bool) -> &Self {
+        self.text_node().text_overflow_fade(horizontal, vertical);
+        self
+    }
+}
+
+impl<T: HasTextNode> TextLayoutSurface for T {}
+
+impl HasTextNode for TextNode {
+    fn text_node(&self) -> &TextNode {
+        self
+    }
+}
+
 pub trait FlexBoxSurface: HasFlexBoxRoot {
     fn width(&self, width: f32, unit: Unit) -> &Self {
         self.flex_box_root().width(width, unit);

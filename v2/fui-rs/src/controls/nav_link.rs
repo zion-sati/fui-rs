@@ -59,6 +59,8 @@ impl NavLink {
         label_node
             .font_family(theme.fonts.body_family.clone())
             .font_size(15.0)
+            .text_color(theme.colors.accent)
+            .selectable(false)
             .cursor(CursorStyle::Pointer);
         root.justify_content(JustifyContent::Start)
             .align_items(AlignItems::Center)
@@ -440,10 +442,7 @@ impl NavLinkEventTarget {
         let color = if self.hovered.get() {
             theme.colors.accent_hovered
         } else {
-            self.text_color_override
-                .get()
-                .or_else(|| self.label.configured_text_color())
-                .unwrap_or(theme.colors.accent)
+            self.text_color_override.get().unwrap_or(theme.colors.accent)
         };
         if self.label.handle() != NodeHandle::INVALID {
             ui::set_text_color(self.label.handle().raw(), color);

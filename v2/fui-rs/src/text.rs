@@ -3,7 +3,7 @@ use crate::bindings::ui;
 use crate::ffi::{TextAlign, TextOverflow, TextVerticalAlign, Unit};
 use crate::frame_scheduler::on_loaded;
 use crate::logger::error;
-use crate::node::{Node, TextNode};
+use crate::node::{HasTextNode, Node, TextNode, ThemeBindable};
 use crate::theme;
 use crate::typography::{FontFamily, FontStack, FontStyle, FontWeight};
 use std::cell::RefCell;
@@ -244,6 +244,29 @@ impl Deref for RichText {
 
     fn deref(&self) -> &Self::Target {
         &self.node
+    }
+}
+
+impl HasTextNode for RichText {
+    fn text_node(&self) -> &TextNode {
+        &self.node
+    }
+}
+
+impl ThemeBindable for RichText {
+    fn theme_binding_node(&self) -> crate::node::NodeRef {
+        self.node.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_node = self.node.weak_theme_target();
+        let weak_state = Rc::downgrade(&self.state);
+        Box::new(move || {
+            Some(Self {
+                node: weak_node()?,
+                state: weak_state.upgrade()?,
+            })
+        })
     }
 }
 

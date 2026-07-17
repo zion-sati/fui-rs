@@ -164,10 +164,6 @@ impl TextNode {
         self
     }
 
-    pub(crate) fn configured_text_color(&self) -> Option<u32> {
-        self.props.borrow().text_color
-    }
-
     pub fn style_runs(&self, words: Vec<u32>) -> &Self {
         {
             let mut props = self.props.borrow_mut();

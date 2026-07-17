@@ -634,11 +634,13 @@ impl Stage4Showcase {
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
             .font_size(20.0)
-            .text_color(theme.colors.text_primary);
-        rich_text_container
+            .text_color(theme.colors.text_primary)
             .width(100.0, Unit::Percent)
             .line_height(28.0)
             .text_limits(-1, 1)
+            .bind_theme(|text, theme| {
+                text.text_color(theme.colors.text_primary);
+            })
             .semantic_label("Stage 4 rich text container font family sample");
         let rich_text_helpers = RichText::new(vec![
             span("Rich ").bold().text_color(theme.colors.text_primary),
@@ -656,11 +658,13 @@ impl Stage4Showcase {
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
             .font_size(18.0)
-            .text_color(theme.colors.text_primary);
-        rich_text_helpers
+            .text_color(theme.colors.text_primary)
             .width(100.0, Unit::Percent)
             .line_height(26.0)
             .text_limits(-1, 1)
+            .bind_theme(|text, theme| {
+                text.text_color(theme.colors.text_primary);
+            })
             .semantic_label("Stage 4 rich text helper span sample");
         let custom_font_status = ui! {
         demo_text("Custom font status: waiting", 14.0, 0x475569FF).semantic_label("Stage 4 custom font status waiting")

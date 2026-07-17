@@ -3308,12 +3308,16 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
     ffi::test::set_platform_family(1);
     let link = nav_link("https://example.com/docs");
     link.text("Example docs");
-    link.label_node().text_color(0x123456FF);
     Application::mount(link.clone());
     let mount_calls = ffi::test::take_calls();
     let label_handle = *created_handles_of_type(&mount_calls, NodeType::Text)
         .last()
         .expect("nav link label handle");
+    assert!(mount_calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextColor { handle, color }
+            if *handle == label_handle && *color == current_theme().colors.accent
+    )));
 
     let handle = link.handle().raw();
     pointer_event(PointerEventType::Enter, handle, 24.0, 36.0, 0, 0, 0);
@@ -3336,7 +3340,7 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetTextColor { handle, color }
-            if *handle == label_handle && *color == 0x123456FF
+            if *handle == label_handle && *color == current_theme().colors.accent
     )));
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Default as u32]);
 

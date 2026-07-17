@@ -488,10 +488,10 @@ pub mod prelude {
         auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row,
         scroll_box, scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border,
         Child, ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets,
-        FlexBox, FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode,
-        Length, Node, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility,
-        ScrollBox, ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextCore, TextNode,
-        ThemeBindable, VirtualList,
+        FlexBox, FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image,
+        ImageNode, Length, Node, PresenterHostStyle, ScrollBar, ScrollBarStyle,
+        ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow, Svg, SvgNode, Text,
+        TextCore, TextLayoutSurface, TextNode, ThemeBindable, VirtualList,
     };
     pub use crate::persisted;
     pub use crate::platform;
@@ -609,9 +609,10 @@ pub use node::{
     auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row, scroll_box,
     scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border, Child,
     ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets, FlexBox,
-    FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
-    PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox, ScrollState,
-    ScrollView, Shadow, Svg, SvgNode, Text, TextCore, TextNode, ThemeBindable, VirtualList,
+    FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image, ImageNode,
+    Length, Node, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox,
+    ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextCore, TextLayoutSurface, TextNode,
+    ThemeBindable, VirtualList,
 };
 pub use persisted::*;
 pub use platform::*;
