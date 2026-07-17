@@ -63,36 +63,45 @@ impl Paint {
     }
 }
 
-pub struct Path {
+struct PathResource {
     id: u32,
-    disposed: bool,
+}
+
+impl Drop for PathResource {
+    fn drop(&mut self) {
+        unsafe { ffi::fui_path_destroy(self.id) };
+    }
+}
+
+#[derive(Clone)]
+pub struct Path {
+    resource: Rc<PathResource>,
 }
 
 impl Path {
     pub fn new() -> Self {
         let id = unsafe { ffi::fui_path_create() };
         Self {
-            id,
-            disposed: false,
+            resource: Rc::new(PathResource { id }),
         }
     }
 
     pub fn id(&self) -> u32 {
-        self.id
+        self.resource.id
     }
 
     pub fn move_to(&mut self, x: f32, y: f32) -> &mut Self {
-        unsafe { ffi::fui_path_move_to(self.id, x, y) };
+        unsafe { ffi::fui_path_move_to(self.id(), x, y) };
         self
     }
 
     pub fn line_to(&mut self, x: f32, y: f32) -> &mut Self {
-        unsafe { ffi::fui_path_line_to(self.id, x, y) };
+        unsafe { ffi::fui_path_line_to(self.id(), x, y) };
         self
     }
 
     pub fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) -> &mut Self {
-        unsafe { ffi::fui_path_quad_to(self.id, cx, cy, x, y) };
+        unsafe { ffi::fui_path_quad_to(self.id(), cx, cy, x, y) };
         self
     }
 
@@ -105,32 +114,23 @@ impl Path {
         x: f32,
         y: f32,
     ) -> &mut Self {
-        unsafe { ffi::fui_path_cubic_to(self.id, cx1, cy1, cx2, cy2, x, y) };
+        unsafe { ffi::fui_path_cubic_to(self.id(), cx1, cy1, cx2, cy2, x, y) };
         self
     }
 
     pub fn close(&mut self) -> &mut Self {
-        unsafe { ffi::fui_path_close(self.id) };
+        unsafe { ffi::fui_path_close(self.id()) };
         self
     }
 
     pub fn add_rect(&mut self, x: f32, y: f32, w: f32, h: f32) -> &mut Self {
-        unsafe { ffi::fui_path_add_rect(self.id, x, y, w, h) };
+        unsafe { ffi::fui_path_add_rect(self.id(), x, y, w, h) };
         self
     }
 
     pub fn add_circle(&mut self, cx: f32, cy: f32, r: f32) -> &mut Self {
-        unsafe { ffi::fui_path_add_circle(self.id, cx, cy, r) };
+        unsafe { ffi::fui_path_add_circle(self.id(), cx, cy, r) };
         self
-    }
-}
-
-impl Drop for Path {
-    fn drop(&mut self) {
-        if !self.disposed {
-            unsafe { ffi::fui_path_destroy(self.id) };
-            self.disposed = true;
-        }
     }
 }
 
@@ -138,6 +138,7 @@ impl Drop for Path {
 struct DrawContextState {
     canvas_ptr: usize,
     words: Vec<u32>,
+    retained_paths: Vec<Path>,
 }
 
 #[derive(Clone, Default)]
@@ -151,6 +152,7 @@ impl DrawContext {
             inner: Rc::new(RefCell::new(DrawContextState {
                 canvas_ptr,
                 words: Vec::new(),
+                retained_paths: Vec::new(),
             })),
         }
     }
@@ -172,6 +174,7 @@ impl DrawContext {
             )
         };
         state.words.clear();
+        state.retained_paths.clear();
     }
 
     pub fn save(&self) {
@@ -289,6 +292,7 @@ impl DrawContext {
         state.words.push(paint.fill_color);
         state.words.push(paint.stroke_color);
         Self::push_float(&mut state.words, paint.stroke_width);
+        state.retained_paths.push(path.clone());
     }
 
     pub fn draw_text_node<T: Node>(&self, node: &T, x: f32, y: f32) {

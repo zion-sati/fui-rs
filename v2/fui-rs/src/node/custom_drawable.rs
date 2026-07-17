@@ -7,6 +7,19 @@ pub struct CustomDrawable {
     draw_callback: DrawCallback,
 }
 
+#[derive(Clone)]
+pub struct DrawableInvalidator {
+    base: WeakFlexBox,
+}
+
+impl DrawableInvalidator {
+    pub fn mark_dirty(&self) {
+        if let Some(base) = self.base.upgrade() {
+            mark_base_dirty(&base);
+        }
+    }
+}
+
 impl CustomDrawable {
     pub fn new(handler: impl Fn(&mut DrawContext) + 'static) -> Self {
         let base = FlexBox::default();
@@ -18,17 +31,27 @@ impl CustomDrawable {
     }
 
     pub fn mark_dirty(&self) {
-        let handle = self.handle();
-        if handle != NodeHandle::INVALID {
-            let Some(bounds) = ui::get_visible_bounds(handle.raw()) else {
-                return;
-            };
-            if bounds[2] <= 0.0 || bounds[3] <= 0.0 {
-                return;
-            }
-        }
-        crate::frame_scheduler::mark_needs_commit();
+        mark_base_dirty(&self.base);
     }
+
+    pub fn invalidator(&self) -> DrawableInvalidator {
+        DrawableInvalidator {
+            base: self.base.downgrade(),
+        }
+    }
+}
+
+fn mark_base_dirty(base: &FlexBox) {
+    let handle = base.handle();
+    if handle != NodeHandle::INVALID {
+        let Some(bounds) = ui::get_visible_bounds(handle.raw()) else {
+            return;
+        };
+        if bounds[2] <= 0.0 || bounds[3] <= 0.0 {
+            return;
+        }
+    }
+    crate::frame_scheduler::mark_needs_commit();
 }
 
 impl Node for CustomDrawable {
@@ -117,5 +140,9 @@ mod tests {
             .corner_radius(12.0)
             .bg_color(0x112233FF)
             .clip_to_bounds(true);
+
+        let invalidator = drawable.invalidator();
+        drop(drawable);
+        invalidator.mark_dirty();
     }
 }

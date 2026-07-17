@@ -37,7 +37,7 @@ mod virtual_list;
 pub use core::NodeRef;
 pub use core::{ContextMenuEventArgs, Node, NodeHandle};
 pub(crate) use core::{WeakFlexBox, WeakNodeRef};
-pub use custom_drawable::CustomDrawable;
+pub use custom_drawable::{CustomDrawable, DrawableInvalidator};
 pub use flex_box::{Border, FlexBox, GradientStop};
 pub use grid::{Grid, GridTrack};
 pub(crate) use helpers::*;

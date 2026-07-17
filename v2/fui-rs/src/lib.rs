@@ -441,8 +441,8 @@ pub mod prelude {
     pub use crate::node::{
         auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row,
         scroll_box, scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border,
-        Child, ContextMenuEventArgs, Corners, CustomDrawable, EdgeInsets, FlexBox, FlexBoxSurface,
-        GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
+        Child, ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets,
+        FlexBox, FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
         PresenterHostStyle, ScrollBar, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView,
         Shadow, Svg, SvgNode, Text, TextCore, TextNode, ThemeBindable, VirtualList,
     };
@@ -559,8 +559,8 @@ pub use navigation::*;
 pub use node::{
     auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row, scroll_box,
     scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border, Child,
-    ContextMenuEventArgs, Corners, CustomDrawable, EdgeInsets, FlexBox, FlexBoxSurface,
-    GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
+    ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets, FlexBox,
+    FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, Image, ImageNode, Length, Node,
     PresenterHostStyle, ScrollBar, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow,
     Svg, SvgNode, Text, TextCore, TextNode, ThemeBindable, VirtualList,
 };
