@@ -2,7 +2,7 @@ use crate::ffi;
 use crate::image_sampling::ImageSampling;
 use crate::logger::error;
 use crate::node::Node;
-use crate::text::TextLayout;
+use crate::text::{DynamicTextLayout, TextLayout};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -317,6 +317,18 @@ impl DrawContext {
         self.draw_text_node(&node, x, y);
     }
 
+    pub fn draw_dynamic_text_layout(&self, layout: &DynamicTextLayout, x: f32, y: f32) {
+        if !layout.is_ready() {
+            error(
+                "DynamicTextLayout",
+                "DrawContext.draw_dynamic_text_layout() called before the DynamicTextLayout was ready; register on_ready and draw after the callback.",
+            );
+            return;
+        }
+        let node = layout.draw_node();
+        self.draw_text_node(&node, x, y);
+    }
+
     pub fn draw_image(&self, texture_id: u32, x: f32, y: f32, w: f32, h: f32) {
         self.draw_image_sampling(texture_id, x, y, w, h, ImageSampling::linear());
     }
@@ -355,8 +367,13 @@ impl DrawContext {
 #[cfg(test)]
 mod tests {
     use super::{DrawContext, Paint, Path};
+    use crate::assets;
     use crate::ffi::{self, Call};
+    use crate::frame_scheduler;
     use crate::image_sampling::ImageSampling;
+    use crate::text::DynamicTextLayout;
+    use crate::typography::FontStack;
+    use crate::Unit;
 
     #[test]
     fn path_and_draw_context_emit_batched_host_calls() {
@@ -384,6 +401,35 @@ mod tests {
         assert!(calls.iter().any(|call| matches!(
             call,
             Call::CanvasDrawBatch { canvas_ptr: 77, words } if !words.is_empty()
+        )));
+    }
+
+    #[test]
+    fn draw_dynamic_text_layout_emits_text_command_without_exposing_draw_node() {
+        ffi::test::reset();
+        frame_scheduler::reset_commit_state();
+        assets::test_reset();
+
+        let layout = DynamicTextLayout::fixed_charset("0123456789");
+        layout
+            .font_stack(FontStack::from_id(1), 14.0)
+            .width(72.0, Unit::Pixel)
+            .height(20.0, Unit::Pixel)
+            .set_text("42");
+        layout.on_ready(|_| {});
+        frame_scheduler::fire_loaded_callbacks();
+        assert!(layout.is_ready());
+        ffi::test::take_calls();
+
+        let ctx = DrawContext::new(88);
+        ctx.draw_dynamic_text_layout(&layout, 5.0, 7.0);
+        ctx.flush();
+
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::CanvasDrawBatch { canvas_ptr: 88, words }
+                if words.first() == Some(&super::OP_DRAW_TEXT_NODE)
         )));
     }
 }

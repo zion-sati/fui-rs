@@ -1577,6 +1577,11 @@ pub trait Node: Clone {
     #[doc(hidden)]
     fn build_self(&self);
 
+    #[doc(hidden)]
+    fn required_font_ids_for_preparation(&self) -> Vec<u32> {
+        Vec::new()
+    }
+
     fn node_id(&self, node_id: impl Into<String>) -> &Self
     where
         Self: Sized,

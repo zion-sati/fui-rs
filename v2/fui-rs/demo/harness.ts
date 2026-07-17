@@ -46,7 +46,7 @@ interface DemoExports extends HarnessExports {
 }
 
 interface DemoRoute extends RoutedHarnessRoute {
-  readonly key: 'home' | 'workbench' | 'stage4' | 'stage5';
+  readonly key: 'home' | 'workbench' | 'stage4' | 'stage5' | 'immediate-drawing';
 }
 
 interface DemoRouteManifest {
@@ -54,7 +54,7 @@ interface DemoRouteManifest {
 }
 
 interface DemoRouteManifestEntry {
-  readonly key: 'home' | 'workbench' | 'stage4' | 'stage5';
+  readonly key: 'home' | 'workbench' | 'stage4' | 'stage5' | 'immediate-drawing';
   readonly routePath: string;
   readonly matchPath?: string;
   readonly wasmPath: string;
@@ -125,7 +125,8 @@ function isManifestEntry(value: unknown): value is DemoRouteManifestEntry {
     (record.key === 'home' ||
       record.key === 'workbench' ||
       record.key === 'stage4' ||
-      record.key === 'stage5') &&
+      record.key === 'stage5' ||
+      record.key === 'immediate-drawing') &&
     typeof record.routePath === 'string' &&
     (record.matchPath === undefined || typeof record.matchPath === 'string') &&
     typeof record.wasmPath === 'string' &&

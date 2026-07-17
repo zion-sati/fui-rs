@@ -255,6 +255,10 @@ impl Node for RichText {
     fn build_self(&self) {
         self.node.build_self();
     }
+
+    fn required_font_ids_for_preparation(&self) -> Vec<u32> {
+        self.node.required_font_ids()
+    }
 }
 
 fn compile_rich_text_state(state: &RichTextState) -> CompiledRichText {
@@ -781,6 +785,8 @@ impl DynamicTextLayout {
         layout.set_text(value);
         if was_ready {
             layout.prepare_or_wait();
+        } else {
+            layout.schedule_ready();
         }
         true
     }
@@ -853,12 +859,15 @@ impl DynamicTextLayout {
         value.chars().all(|ch| charset.contains(ch))
     }
 
-    fn include_in_charset(state: &mut DynamicTextLayoutState, value: &str) {
+    fn include_in_charset(state: &mut DynamicTextLayoutState, value: &str) -> bool {
+        let mut changed = false;
         for ch in value.chars() {
             if !state.charset.contains(ch) {
                 state.charset.push(ch);
+                changed = true;
             }
         }
+        changed
     }
 
     fn refresh_numeric_text(&self) {
@@ -880,12 +889,14 @@ impl DynamicTextLayout {
         let mut state = self.inner.borrow_mut();
         let prefix = state.numeric_prefix.clone();
         let suffix = state.numeric_suffix.clone();
-        Self::include_in_charset(&mut state, &prefix);
-        Self::include_in_charset(&mut state, &suffix);
+        let charset_changed = Self::include_in_charset(&mut state, &prefix)
+            | Self::include_in_charset(&mut state, &suffix);
         let charset = state.charset.clone();
         let layout = state.layout.clone();
         drop(state);
-        layout.set_dynamic_charset_internal(charset);
+        if charset_changed {
+            layout.set_dynamic_charset_internal(charset);
+        }
         format!("{prefix}{}{suffix}", self.format_numeric_value(value))
     }
 
@@ -1076,5 +1087,31 @@ mod tests {
         assert!(calls
             .iter()
             .any(|call| matches!(call, Call::SetDynamicTextCharset { charset, .. } if charset == "0123456789")));
+    }
+
+    #[test]
+    fn numeric_dynamic_text_layout_stays_ready_across_value_updates() {
+        ffi::test::reset();
+        frame_scheduler::reset_commit_state();
+        assets::test_reset();
+
+        let layout = DynamicTextLayout::numeric();
+        layout
+            .precision(0)
+            .font_stack(crate::typography::FontStack::from_id(1), 16.0)
+            .width(120.0, Unit::Pixel)
+            .height(24.0, Unit::Pixel)
+            .on_ready(|_| {});
+        frame_scheduler::fire_loaded_callbacks();
+        assert!(layout.is_ready());
+        ffi::test::take_calls();
+
+        assert!(layout.set_value(42.0));
+        assert!(layout.is_ready());
+        assert_eq!(layout.current_text(), "42");
+        let calls = ffi::test::take_calls();
+        assert!(calls
+            .iter()
+            .any(|call| matches!(call, Call::PrepareNode { .. })));
     }
 }

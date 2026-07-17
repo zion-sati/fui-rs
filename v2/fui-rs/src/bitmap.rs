@@ -5,6 +5,7 @@ use crate::frame_scheduler::on_loaded;
 use crate::logger::error;
 use crate::node::Node;
 use crate::text::TextLayout;
+use crate::typography::FontFace;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -136,6 +137,7 @@ impl Bitmap {
     }
 
     pub fn prepare_text<T: Node>(node: &T) {
+        node.build();
         crate::bindings::ui::prepare_node(node.handle().raw());
     }
 
@@ -145,9 +147,17 @@ impl Bitmap {
         callback: impl FnOnce(BitmapTextReadyEventArgs) + 'static,
     ) -> &Self {
         let node = node.clone();
-        on_loaded(move |_| {
-            Self::prepare_text(&node);
-            callback(BitmapTextReadyEventArgs::EMPTY);
+        let required_font_ids = node.required_font_ids_for_preparation();
+        let callback = Rc::new(RefCell::new(Some(callback)));
+        FontFace::when_fonts_loaded(&required_font_ids, move |_| {
+            let node = node.clone();
+            let callback = callback.clone();
+            on_loaded(move |_| {
+                Self::prepare_text(&node);
+                if let Some(callback) = callback.borrow_mut().take() {
+                    callback(BitmapTextReadyEventArgs::EMPTY);
+                }
+            });
         });
         self
     }
@@ -255,6 +265,10 @@ mod tests {
     use super::Bitmap;
     use crate::drawing::Paint;
     use crate::ffi::{self, Call};
+    use crate::frame_scheduler;
+    use crate::node::{Node, TextNode};
+    use std::cell::Cell;
+    use std::rc::Rc;
 
     #[test]
     fn bitmap_canvas_commit_flushes_offscreen_and_marks_asset_ready() {
@@ -313,5 +327,27 @@ mod tests {
                 ..
             }
         )));
+    }
+
+    #[test]
+    fn bitmap_text_ready_builds_detached_text_before_preparing_it() {
+        ffi::test::reset();
+        frame_scheduler::reset_commit_state();
+        let bitmap = Bitmap::new(64, 32);
+        let text = TextNode::new("Detached bitmap text");
+        let fired = Rc::new(Cell::new(false));
+        bitmap.on_text_ready(&text, {
+            let fired = fired.clone();
+            move |_| fired.set(true)
+        });
+
+        frame_scheduler::fire_loaded_callbacks();
+
+        assert!(fired.get());
+        assert!(text.has_built_handle());
+        let calls = ffi::test::take_calls();
+        assert!(calls
+            .iter()
+            .any(|call| matches!(call, Call::PrepareNode { .. })));
     }
 }

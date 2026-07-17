@@ -584,9 +584,44 @@ test('routes the fui-rs demo scaffold through the shared routed harness', async 
       const routes = manifest.routes ?? [];
       return routes.some(route => route.routePath === '/' && route.wasmPath === '/home.wasm')
         && routes.some(route => route.routePath === '/workbench/' && route.wasmPath === '/workbench.wasm')
-        && routes.some(route => route.routePath === '/stage4/' && route.wasmPath === '/stage4.wasm');
+        && routes.some(route => route.routePath === '/stage4/' && route.wasmPath === '/stage4.wasm')
+        && routes.some(route => route.routePath === '/immediate-drawing/' && route.wasmPath === '/immediate-drawing.wasm');
     });
   }).toBe(true);
+
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/immediate-drawing/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+  await expect.poll(async () => {
+    return await page.evaluate(() => window.__fuiManagerState?.routePath ?? '');
+  }).toBe('/v2/fui-rs/demo/immediate-drawing/');
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      if (window.__fuiError !== undefined) {
+        return `error:${window.__fuiError}`;
+      }
+      const text = document.body.innerText;
+      const labels = (window as Window & {
+        __bridgeSemanticTree?: readonly { readonly label: string; }[];
+      }).__bridgeSemanticTree?.map(node => node.label) ?? [];
+      return text.includes('FUI-RS Immediate Drawing')
+        && labels.includes('Animated gauge drawing sample')
+        && labels.includes('Animated bar chart drawing sample');
+    });
+  }, { timeout: 10000 }).toBe(true);
+  await page.mouse.move(640, 600);
+  await page.mouse.wheel(0, 1400);
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const labels = (window as Window & {
+        __bridgeSemanticTree?: readonly { readonly label: string; }[];
+      }).__bridgeSemanticTree?.map(node => node.label) ?? [];
+      return labels.includes('Dancing yarn interactive noise panel')
+        && labels.includes('Paint canvas - drag to draw');
+    });
+  }, { timeout: 10000 }).toBe(true);
+
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
 
   await expect(page).toHaveURL(/\/v2\/fui-rs\/demo\/index\.html$/);
   await expect.poll(async () => {

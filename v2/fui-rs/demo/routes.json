@@ -26,6 +26,12 @@
       "title": "Stage 5.1 dropdown"
     },
     {
+      "key": "immediate-drawing",
+      "routePath": "/v2/fui-rs/demo/immediate-drawing/",
+      "wasmPath": "/v2/fui-rs/demo/immediate-drawing.wasm",
+      "title": "Immediate Drawing"
+    },
+    {
       "key": "home",
       "routePath": "/",
       "wasmPath": "/home.wasm",
@@ -48,6 +54,12 @@
       "routePath": "/stage5/",
       "wasmPath": "/stage5.wasm",
       "title": "Stage 5.1 dropdown"
+    },
+    {
+      "key": "immediate-drawing",
+      "routePath": "/immediate-drawing/",
+      "wasmPath": "/immediate-drawing.wasm",
+      "title": "Immediate Drawing"
     }
   ]
 }

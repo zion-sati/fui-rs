@@ -30,10 +30,12 @@ const SOURCE_HOME_ROUTE: &str = "/v2/fui-rs/demo/index.html";
 const SOURCE_WORKBENCH_ROUTE: &str = "/v2/fui-rs/demo/workbench/";
 const SOURCE_STAGE4_ROUTE: &str = "/v2/fui-rs/demo/stage4/";
 const SOURCE_STAGE5_ROUTE: &str = "/v2/fui-rs/demo/stage5/";
+const SOURCE_IMMEDIATE_DRAWING_ROUTE: &str = "/v2/fui-rs/demo/immediate-drawing/";
 const PUBLISHED_HOME_ROUTE: &str = "/";
 const PUBLISHED_WORKBENCH_ROUTE: &str = "/workbench/";
 const PUBLISHED_STAGE4_ROUTE: &str = "/stage4/";
 const PUBLISHED_STAGE5_ROUTE: &str = "/stage5/";
+const PUBLISHED_IMMEDIATE_DRAWING_ROUTE: &str = "/immediate-drawing/";
 const JSON_PLACEHOLDER_GET_URL: &str = "https://jsonplaceholder.typicode.com/posts/1";
 const JSON_PLACEHOLDER_POST_URL: &str = "https://jsonplaceholder.typicode.com/posts";
 const JSON_PLACEHOLDER_POST_BODY: &str =
@@ -127,6 +129,15 @@ fn demo_stage5_route() -> &'static str {
         SOURCE_STAGE5_ROUTE
     } else {
         PUBLISHED_STAGE5_ROUTE
+    }
+}
+
+fn demo_immediate_drawing_route() -> &'static str {
+    let route = current_route();
+    if is_source_demo_route(&route) {
+        SOURCE_IMMEDIATE_DRAWING_ROUTE
+    } else {
+        PUBLISHED_IMMEDIATE_DRAWING_ROUTE
     }
 }
 
@@ -2283,10 +2294,17 @@ pub fn demo_page_root(title: &str) -> FlexBox {
         title.contains("Stage 5") || title.contains("stage 5"),
     );
     stage5_link.margin(10.0, 0.0, 0.0, 0.0);
+    let immediate_drawing_link = demo_route_nav_link(
+        demo_immediate_drawing_route(),
+        "Immediate Drawing",
+        title.contains("Immediate Drawing"),
+    );
+    immediate_drawing_link.margin(10.0, 0.0, 0.0, 0.0);
     nav.child(&dashboard_link)
         .child(&workbench_link)
         .child(&stage4_link)
-        .child(&stage5_link);
+        .child(&stage5_link)
+        .child(&immediate_drawing_link);
     root.child(&nav);
 
     let title_node = ui! {

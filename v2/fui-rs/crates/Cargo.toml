@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "demo-home",
+  "demo-immediate-drawing",
   "demo-shared",
   "demo-stage4",
   "demo-stage5",

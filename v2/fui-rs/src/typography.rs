@@ -158,7 +158,7 @@ impl FontFace {
     }
 
     pub(crate) fn is_font_loaded(font_id: u32) -> bool {
-        font_id == 0 || assets::is_font_loaded(font_id)
+        font_id == 0 || (1..=6).contains(&font_id) || assets::is_font_loaded(font_id)
     }
 
     pub fn on_loaded(&self, callback: impl Fn(FontFaceLoadedEventArgs) + 'static) -> Self {
@@ -500,6 +500,14 @@ mod tests {
         assets::on_font_loaded(1024);
         notify_font_loaded(1024);
         assert_eq!(fired.get(), 1);
+    }
+
+    #[test]
+    fn built_in_font_faces_are_preloaded_like_fui_as() {
+        assets::test_reset();
+        for font_id in 1..=6 {
+            assert!(FontFace::new(font_id).is_loaded());
+        }
     }
 
     #[test]

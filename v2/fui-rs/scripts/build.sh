@@ -15,7 +15,7 @@ HOST_EVENT_GENERATOR_BUILD="${PACKAGE_DIR}/build/generate-host-events.mjs"
 WORKER_BOOTSTRAP_BUILD="${PACKAGE_DIR}/build/worker-bootstrap.js"
 WORKER_BOOTSTRAP_MAP_BUILD="${PACKAGE_DIR}/build/worker-bootstrap.js.map"
 
-mkdir -p "${PACKAGE_DIR}/build" "${OUT_DIR}" "${DEMO_OUT_DIR}" "${DEMO_OUT_DIR}/workbench" "${DEMO_OUT_DIR}/stage4" "${DEMO_OUT_DIR}/stage5"
+mkdir -p "${PACKAGE_DIR}/build" "${OUT_DIR}" "${DEMO_OUT_DIR}" "${DEMO_OUT_DIR}/workbench" "${DEMO_OUT_DIR}/stage4" "${DEMO_OUT_DIR}/stage5" "${DEMO_OUT_DIR}/immediate-drawing"
 
 cd "${PACKAGE_DIR}"
 if ! command -v cargo >/dev/null 2>&1 && [ -f "${HOME}/.cargo/env" ]; then
@@ -127,6 +127,7 @@ generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-hom
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-workbench/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-stage4/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-stage5/src/generated/host_events.rs"
+generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-immediate-drawing/src/generated/host_events.rs"
 generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-shared/src/generated/worker_host_services.rs" "fui::host_services" "fui_host_service"
 generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-worker/src/generated/worker_host_services.rs" "" "fui_host_service"
 generate_host_services "scripts/framework-host-services.ts" "frameworkHostServices" "src/generated/framework_host_services.rs" "crate::host_services" "fui_host"
@@ -147,10 +148,12 @@ build_demo_route "fui-rs-demo-home" "fui_rs_demo_home" "${DEMO_OUT_DIR}/home.was
 build_demo_route "fui-rs-demo-workbench" "fui_rs_demo_workbench" "${DEMO_OUT_DIR}/workbench.wasm"
 build_demo_route "fui-rs-demo-stage4" "fui_rs_demo_stage4" "${DEMO_OUT_DIR}/stage4.wasm"
 build_demo_route "fui-rs-demo-stage5" "fui_rs_demo_stage5" "${DEMO_OUT_DIR}/stage5.wasm"
+build_demo_route "fui-rs-demo-immediate-drawing" "fui_rs_demo_immediate_drawing" "${DEMO_OUT_DIR}/immediate-drawing.wasm"
 build_demo_route "fui-rs-demo-worker" "fui_rs_demo_worker" "${DEMO_OUT_DIR}/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/workbench/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/stage4/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/stage5/workers.wasm"
+cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/immediate-drawing/workers.wasm"
 
 npx esbuild "${PACKAGE_DIR}/demo/harness.ts" \
   --bundle \
@@ -187,6 +190,7 @@ cp "${PACKAGE_DIR}/demo/index.html" "${DEMO_OUT_DIR}/index.html"
 cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/workbench/index.html"
 cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage4/index.html"
 cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage5/index.html"
+cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/immediate-drawing/index.html"
 cp "${PACKAGE_DIR}/demo/routes.json" "${DEMO_OUT_DIR}/routes.json"
 rm -f "${DEMO_OUT_DIR}/worker-manifest.json"
 if [ -f "${SHARED_DEMO_TEXTURE}" ]; then
@@ -195,6 +199,7 @@ if [ -f "${SHARED_DEMO_TEXTURE}" ]; then
   cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/workbench/demo-texture.png"
   cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/stage4/demo-texture.png"
   cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/stage5/demo-texture.png"
+  cp "${SHARED_DEMO_TEXTURE}" "${DEMO_OUT_DIR}/immediate-drawing/demo-texture.png"
 fi
 RUNTIME_SET_HASH="$(node -e 'const fs=require("fs"); const value=JSON.parse(fs.readFileSync(process.argv[1], "utf8")).runtime_set_hash; if (typeof value !== "string" || value.length === 0) process.exit(1); process.stdout.write(value);' "${RUNTIME_DIST_DIR}/effindom.v2.manifest.json")"
 cat > "${OUT_DIR}/effindom-runtime-config.js" << RUNTIMECFG

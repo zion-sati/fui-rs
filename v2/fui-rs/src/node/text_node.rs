@@ -655,6 +655,10 @@ impl Node for TextNode {
             self.core.borrow().behavior.clone(),
         );
     }
+
+    fn required_font_ids_for_preparation(&self) -> Vec<u32> {
+        self.required_font_ids()
+    }
 }
 
 impl super::ThemeBindable for TextNode {
