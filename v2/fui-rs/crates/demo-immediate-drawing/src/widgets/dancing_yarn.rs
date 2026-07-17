@@ -52,6 +52,7 @@ impl DancingYarn {
             let state = state.clone();
             let invalidator = node.invalidator();
             move |event| {
+                event.capture_pointer();
                 let mut state = state.borrow_mut();
                 state.dragging = true;
                 state.pointer_x = event.x;
@@ -84,9 +85,15 @@ impl DancingYarn {
         };
         node.on_pointer_up({
             let end_drag = end_drag.clone();
-            move |_| end_drag()
+            move |event| {
+                end_drag();
+                event.release_pointer_capture();
+            }
         });
-        node.on_pointer_leave(move |_| end_drag());
+        node.on_pointer_cancel(move |event| {
+            end_drag();
+            event.release_pointer_capture();
+        });
         wake_for_layout(&node, &title);
         Self { node, state }
     }

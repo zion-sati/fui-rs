@@ -41,6 +41,7 @@ impl PaintCanvas {
             let state = state.clone();
             let invalidator = node.invalidator();
             move |event| {
+                event.capture_pointer();
                 let mut state = state.borrow_mut();
                 state.painting = true;
                 brush_at_logical(&mut state, event.x, event.y, 8.0, NEEDLE);
@@ -63,7 +64,17 @@ impl PaintCanvas {
         });
         node.on_pointer_up({
             let state = state.clone();
-            move |_| state.borrow_mut().painting = false
+            move |event| {
+                state.borrow_mut().painting = false;
+                event.release_pointer_capture();
+            }
+        });
+        node.on_pointer_cancel({
+            let state = state.clone();
+            move |event| {
+                state.borrow_mut().painting = false;
+                event.release_pointer_capture();
+            }
         });
 
         let hint = RichText::new(vec![

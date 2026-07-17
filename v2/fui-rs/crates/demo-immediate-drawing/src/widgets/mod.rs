@@ -39,22 +39,29 @@ impl DrawingGallery {
         let scatter_plot = ScatterPlot::new(&theme);
         let dancing_yarn = DancingYarn::new(&theme);
         let paint_canvas = PaintCanvas::new(&theme);
+        let widgets = [
+            gauge.node(),
+            bar_chart.node(),
+            waveform.node(),
+            sparkline.node(),
+            pie_chart.node(),
+            scatter_plot.node(),
+            dancing_yarn.node(),
+            paint_canvas.node(),
+        ];
+        for (index, widget) in widgets.iter().enumerate() {
+            let right = if index + 1 < widgets.len() { 16.0 } else { 0.0 };
+            widget.margin(0.0, 0.0, right, 16.0);
+        }
         let root = ui! {
             row().fill_width().flex_wrap(FlexWrap::Wrap) {
                 gauge.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 bar_chart.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 waveform.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 sparkline.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 pie_chart.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 scatter_plot.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 dancing_yarn.node().clone(),
-                flex_box().width(16.0, Unit::Pixel).height(1.0, Unit::Pixel),
                 paint_canvas.node().clone(),
             }
         };
