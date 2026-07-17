@@ -433,6 +433,7 @@ pub mod prelude {
         FileWorkerProcessResult, FileWriteProgress,
     };
     pub use crate::focus_visibility::show_keyboard_focus_for_key_event;
+    pub use crate::frame_scheduler::{mark_needs_commit, on_loaded, LoadedEventArgs};
     pub use crate::fui_component;
     pub use crate::image_sampling::{ImageSampling, ImageSamplingMode};
     pub use crate::logger;

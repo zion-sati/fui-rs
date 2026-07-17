@@ -17,82 +17,6 @@ impl CustomDrawable {
         }
     }
 
-    pub fn width(&self, width: f32, unit: Unit) -> &Self {
-        self.base.width(width, unit);
-        self
-    }
-
-    pub fn width_len(&self, length: Length) -> &Self {
-        self.base.width_len(length);
-        self
-    }
-
-    pub fn height(&self, height: f32, unit: Unit) -> &Self {
-        self.base.height(height, unit);
-        self
-    }
-
-    pub fn height_len(&self, length: Length) -> &Self {
-        self.base.height_len(length);
-        self
-    }
-
-    pub fn bg_color(&self, color: u32) -> &Self {
-        self.base.bg_color(color);
-        self
-    }
-
-    pub fn corner_radius(&self, radius: f32) -> &Self {
-        self.base.corner_radius(radius);
-        self
-    }
-
-    pub fn border(&self, width: f32, color: u32) -> &Self {
-        self.base.border(width, color);
-        self
-    }
-
-    pub fn border_config(&self, border: Border) -> &Self {
-        self.base.border_config(border);
-        self
-    }
-
-    pub fn opacity(&self, value: f32) -> &Self {
-        self.base.opacity(value);
-        self
-    }
-
-    pub fn drop_shadow(
-        &self,
-        color: u32,
-        offset_x: f32,
-        offset_y: f32,
-        blur_sigma: f32,
-        spread: f32,
-    ) -> &Self {
-        self.base
-            .drop_shadow(color, offset_x, offset_y, blur_sigma, spread);
-        self
-    }
-
-    pub fn linear_gradient(
-        &self,
-        sx: f32,
-        sy: f32,
-        ex: f32,
-        ey: f32,
-        offsets: Vec<f32>,
-        colors: Vec<u32>,
-    ) -> &Self {
-        self.base.linear_gradient(sx, sy, ex, ey, offsets, colors);
-        self
-    }
-
-    pub fn child<T: Node>(&self, child: &T) -> &Self {
-        self.base.child(child);
-        self
-    }
-
     pub fn mark_dirty(&self) {
         let handle = self.handle();
         if handle != NodeHandle::INVALID {
@@ -145,5 +69,53 @@ impl Node for CustomDrawable {
             ctx.restore();
             ctx.flush();
         }));
+    }
+}
+
+impl HasFlexBoxRoot for CustomDrawable {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.base
+    }
+}
+
+impl ThemeBindable for CustomDrawable {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.base.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let weak_base = self.base.downgrade();
+        let draw_callback = self.draw_callback.clone();
+        Box::new(move || {
+            weak_base.upgrade().map(|base| Self {
+                base,
+                draw_callback: draw_callback.clone(),
+            })
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_flex_box_surface<T: FlexBoxSurface>() {}
+    fn assert_theme_bindable<T: ThemeBindable>() {}
+
+    #[test]
+    fn custom_drawable_exposes_generic_retained_visual_surfaces() {
+        assert_flex_box_surface::<CustomDrawable>();
+        assert_theme_bindable::<CustomDrawable>();
+
+        let drawable = CustomDrawable::new(|_| {});
+        drawable
+            .width(300.0, Unit::Pixel)
+            .height(200.0, Unit::Pixel)
+            .min_width(120.0, Unit::Pixel)
+            .margin(1.0, 2.0, 3.0, 4.0)
+            .padding(5.0, 6.0, 7.0, 8.0)
+            .corner_radius(12.0)
+            .bg_color(0x112233FF)
+            .clip_to_bounds(true);
     }
 }
