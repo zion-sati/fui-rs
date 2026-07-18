@@ -71,6 +71,12 @@ The Rust app WASM talks to the shared EffinDom browser bridge and retained C++
 UI runtime through generated ABI bindings. The public SDK keeps raw ABI details
 out of normal app code.
 
+## Community projects
+
+- [galaga-rs](https://github.com/jatm80/galaga-rs) by
+  [jatm80](https://github.com/jatm80) — a Galaga-style space shooter written in
+  Rust with FUI-RS, and the first known community-built FUI-RS project.
+
 ## Documentation
 
 - [SDK docs index](docs/v2/fui-rs/SDK_INDEX.md)
