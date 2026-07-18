@@ -1808,6 +1808,17 @@ pub trait Node: Clone {
         self
     }
 
+    fn focus_now(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        let handle = self.node_ref().handle();
+        if handle != NodeHandle::INVALID {
+            ui::request_focus(handle.raw());
+        }
+        self
+    }
+
     fn on_key_down(&self, handler: impl Fn(&mut KeyEventArgs) + 'static) -> &Self
     where
         Self: Sized,

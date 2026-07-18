@@ -121,6 +121,8 @@ impl ThemeBindable for CustomDrawable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::Application;
+    use crate::ffi::{self, Call};
 
     fn assert_flex_box_surface<T: FlexBoxSurface>() {}
     fn assert_theme_bindable<T: ThemeBindable>() {}
@@ -144,5 +146,23 @@ mod tests {
         let invalidator = drawable.invalidator();
         drop(drawable);
         invalidator.mark_dirty();
+    }
+
+    #[test]
+    fn custom_drawable_requests_focus_through_node_trait() {
+        ffi::test::reset();
+        let drawable = CustomDrawable::new(|_| {});
+        drawable.focusable(true, 0);
+        Application::mount(drawable.clone());
+        let handle = drawable.handle().raw();
+        ffi::test::take_calls();
+
+        drawable.focus_now();
+
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(
+            |call| matches!(call, Call::RequestFocus { handle: requested } if *requested == handle)
+        ));
+        Application::unmount();
     }
 }
