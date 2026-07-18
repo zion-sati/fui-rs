@@ -8,6 +8,8 @@ The SDK includes retained nodes, controls, themes, events, popups, dialogs,
 text input, selection, custom drawing, workers, host services, routed app
 helpers, and Rust-specific authoring macros.
 
+Demo: https://fui-rs-demo.effindom.dev/
+
 ## Quickstart
 
 Create an application with the published FUI-RS scaffolder:
