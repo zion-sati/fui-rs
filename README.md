@@ -76,6 +76,10 @@ out of normal app code.
 - [galaga-rs](https://github.com/jatm80/galaga-rs) by
   [jatm80](https://github.com/jatm80) — a Galaga-style space shooter written in
   Rust with FUI-RS, and the first known community-built FUI-RS project.
+  [Play the live demo](https://jatm80.github.io/galaga-rs/). Its repository also
+  includes a
+  [community-maintained FUI-RS skill](https://github.com/jatm80/galaga-rs/tree/main/.claude/skills/fui-rs)
+  with retained-mode guidance, API reference notes, and worked examples.
 
 ## Documentation
 
