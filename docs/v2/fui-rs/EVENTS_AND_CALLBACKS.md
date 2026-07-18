@@ -62,7 +62,7 @@ browser unless a focused control or user handler handles them.
 
 Common node event APIs:
 
-- `on_pointer_click(...)`
+- `on_click(...)`
 - `on_double_click(...)`
 - `on_triple_click(...)`
 - `on_pointer_down(...)`
@@ -75,9 +75,9 @@ Common node event APIs:
 - `on_key_down(...)`
 - `on_key_up(...)`
 - `on_focus_changed(...)`
-- `pan_gesture(...)`
-- `pinch_gesture(...)`
-- `long_press_gesture(...)`
+- `on_pan_gesture(...)`
+- `on_pinch_gesture(...)`
+- `on_long_press(...)`
 - `on_context_menu(...)`
 
 ## Pointer events
@@ -114,12 +114,12 @@ Gesture APIs are explicit opt-in for custom controls:
 
 ```rust
 custom_surface
-    .pan_gesture(|event| {
+    .on_pan_gesture(|event| {
         if event.phase == GestureEventPhase::Update {
             event.handled = true;
         }
     })
-    .pinch_gesture(|event| {
+    .on_pinch_gesture(|event| {
         if event.phase == GestureEventPhase::Update {
             event.handled = true;
         }

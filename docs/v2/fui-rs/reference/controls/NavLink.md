@@ -8,7 +8,8 @@ Route/link control integrated with browser navigation.
 
 ## Key APIs
 
-- `href_to`, `label`, `new_tab`, `on_navigate`, inherited node/text styling APIs.
+- `href_to`, `text`, `open_in_new_tab`, `on_navigate`, inherited node/text
+  styling APIs.
 
 ## Notes
 

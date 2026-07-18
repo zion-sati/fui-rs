@@ -10,40 +10,22 @@ helpers, and Rust-specific authoring macros.
 
 ## Quickstart
 
+Create an application with the published FUI-RS scaffolder:
+
 ```bash
-# Prerequisites: Rust + wasm32-unknown-unknown target + Binaryen
+# Install Rust and the WebAssembly target once
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
-brew install binaryen
 
-# Clone and build
-git clone https://github.com/zion-sati/fui-rs.git
-cd fui-rs
-npm ci
-npm run build
-npm run serve
-```
-
-Open:
-
-```text
-http://127.0.0.1:8080/v2/fui-rs/demo/index.html
-```
-
-Full quickstart: [docs/v2/fui-rs/QUICKSTART.md](docs/v2/fui-rs/QUICKSTART.md)
-
-## Create a new app
-
-For a single-page app:
-
-```bash
+# Create and run an app
 npx @effindomv2/create-fui-rs-app my-app
 cd my-app
 npm install
 npm run dev
 ```
 
-For a routed app with one separately built WASM per route:
+For a routed app with one separately built WASM module per route:
 
 ```bash
 npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
@@ -52,8 +34,10 @@ npm install
 npm run dev
 ```
 
-The generated app code uses `fui_app!` or `fui_managed_app!`; normal app code
-does not hand-write browser lifecycle exports.
+Binaryen is optional for application development and optimizes release WASM
+when `wasm-opt` is available. See the
+[FUI-RS developer quickstart](QUICKSTART.md) for setup and retained-mode
+guidance.
 
 ## Minimal app
 
@@ -97,6 +81,13 @@ out of normal app code.
 - [Forms and autofill](docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
 - [Theming and styles](docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
 
+## Contributing
+
+The quickstart above is for developers consuming the published SDK. To work on
+FUI-RS itself, follow the
+[FUI-RS contributor quickstart](docs/v2/fui-rs/CONTRIBUTOR_QUICKSTART.md).
+
 ## License
 
-AGPL-3.0-only, or commercial. See [COMMERCIAL.md](COMMERCIAL.md).
+AGPL-3.0-only, or commercial. See
+[the commercial licensing terms](COMMERCIAL.md).

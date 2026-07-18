@@ -7,27 +7,35 @@ macros for browser-hosted Rust WASM apps.
 
 ## Quickstart
 
+Create a FUI-RS application with the published scaffolder:
+
 ```bash
-# Prerequisites: Rust + wasm32-unknown-unknown target + Binaryen
+# Install Rust and the WebAssembly target once
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
-brew install binaryen
 
-# Clone and build
-git clone https://github.com/zion-sati/fui-rs.git
-cd fui-rs
-npm ci
-npm run build
-npm run serve
+# Create and run an app
+npx @effindomv2/create-fui-rs-app my-app
+cd my-app
+npm install
+npm run dev
 ```
 
-Open:
+For a routed application with one independently built WASM module per route:
 
-```text
-http://127.0.0.1:8080/v2/fui-rs/demo/index.html
+```bash
+npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
+cd my-routed-app
+npm install
+npm run dev
 ```
 
-Full quickstart: [docs/v2/fui-rs/QUICKSTART.md](../../docs/v2/fui-rs/QUICKSTART.md)
+Install [Binaryen](https://github.com/WebAssembly/binaryen) to make release
+builds run `wasm-opt`. Development builds do not require it.
+
+Application setup, retained-mode guidance, and entrypoint examples are covered
+in the [FUI-RS developer quickstart](../../docs/v2/fui-rs/QUICKSTART.md).
 
 ## Minimal app
 
@@ -46,6 +54,23 @@ fn build_page() -> FlexBox {
 fui_app!(FlexBox, build_page);
 ```
 
+## Rich text
+
+Use `rich_text!` to create retained rich text without manually constructing a
+span vector. String literals become spans, braced expressions provide dynamic
+text, and `span => expression` accepts an existing `RichTextSpan`:
+
+```rust
+let value = 42;
+let suffix = span("!").underline();
+let label = rich_text![
+    "Current value: ".italic(),
+    { format!("{value}") }.bold().text_color(rgb(0x3a, 0xc5, 0x6c)),
+    span => suffix,
+]
+.font_size(18.0);
+```
+
 ## SDK docs
 
 - [SDK docs index](../../docs/v2/fui-rs/SDK_INDEX.md)
@@ -55,6 +80,14 @@ fui_app!(FlexBox, build_page);
 - [Text input reference](../../docs/v2/fui-rs/TEXT_INPUT_REFERENCE.md)
 - [Forms and autofill](../../docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
 - [Theming and style matrix](../../docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
+
+## Contributing to FUI-RS
+
+The commands above are for developers building applications with the published
+FUI-RS SDK. Contributors working on the SDK, EffinDom runtime, browser bridge,
+or repository demos should follow the
+[FUI-RS contributor quickstart](../../docs/v2/fui-rs/CONTRIBUTOR_QUICKSTART.md).
+It covers the standalone repository toolchain, SDK build, lint, and test lanes.
 
 ## What is included
 

@@ -2,6 +2,10 @@
 
 This page documents theme defaults and explicit style override behavior.
 
+FUI-RS starts with the host system theme as the active theme. The application
+shell and built-in controls follow active theme changes automatically. App code
+does not need to call `bind_theme(...)` for standard built-in visuals.
+
 ## Theme APIs
 
 - `use_system_theme()` follows host dark/light mode and accent color where available.
@@ -29,6 +33,9 @@ Core theme structs:
 4. Theme updates re-apply only non-overridden fields.
 5. `clear_*` methods reveal the current presenter/theme value immediately.
 
+Use `bind_theme(...)` for custom surfaces, custom-drawn content, or deliberate
+style overrides that derive values from the active theme.
+
 ## Control style matrix
 
 | Control | Theme-driven defaults | Explicit override examples |
@@ -48,6 +55,7 @@ Core theme structs:
 
 | Node | Theme defaults | Explicit styling |
 |---|---|---|
+| Application shell | active theme background | app root may paint its own background above the shell |
 | `FlexBox`, `Grid`, `Portal` | none by default | background, border, radius, gradient, blur, shadow, opacity |
 | `Text` | default theme typography and selection color | font, color, alignment, `selectable(...)`, `selection_color(...)` |
 | `ScrollView`, `ScrollBox`, `VirtualList` | scrollbar chrome through `ScrollBar` | scrollbars and child surface styling |

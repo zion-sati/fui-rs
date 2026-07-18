@@ -332,6 +332,37 @@ fn handles_with_bg_color(calls: &[Call], expected_color: u32) -> Vec<u64> {
         .collect()
 }
 
+#[test]
+fn application_shell_tracks_the_active_theme_without_overriding_the_user_root() {
+    ffi::test::reset();
+    let previous_theme = current_theme();
+    let explicit_root_color = 0x123456FF;
+    let root = column();
+    root.bg_color(explicit_root_color);
+
+    Application::mount(root.clone());
+    let initial_calls = ffi::test::take_calls();
+    let shell_handle = parent_for_child(&initial_calls, root.handle().raw());
+    assert!(handles_with_bg_color(&initial_calls, previous_theme.colors.background)
+        .contains(&shell_handle));
+
+    let mut changed_theme = generate_theme(false, 0x2468ACFF);
+    changed_theme.colors.background = 0xF1F2F3FF;
+    use_custom_theme(changed_theme.clone());
+    let changed_calls = ffi::test::take_calls();
+
+    assert!(changed_calls.iter().any(|call| {
+        matches!(call, Call::SetBgColor { handle, color }
+            if *handle == shell_handle && *color == changed_theme.colors.background)
+    }));
+    assert!(!changed_calls.iter().any(|call| {
+        matches!(call, Call::SetBgColor { handle, .. } if *handle == root.handle().raw())
+    }));
+
+    Application::unmount();
+    use_custom_theme(previous_theme);
+}
+
 fn focus<T: Node>(node: &T) {
     event::__fui_on_focus_changed(node.handle().raw(), true);
 }

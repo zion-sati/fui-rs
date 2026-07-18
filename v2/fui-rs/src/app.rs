@@ -3,7 +3,7 @@ use crate::context_menu_manager;
 use crate::ffi::HandleValue;
 use crate::frame_scheduler;
 use crate::mobile_text_selection_toolbar;
-use crate::node::{flex_box, FlexBox, Node, NodeRef};
+use crate::node::{flex_box, FlexBox, Node, NodeRef, ThemeBindable};
 use crate::panic_hook;
 use crate::selection_handle_adorner;
 use crate::theme;
@@ -95,6 +95,9 @@ fn application_shell<T: Node>(root: &T) -> FlexBox {
         .child(&focus_adorner::create_default_host())
         .child(&tool_tip_manager::ToolTipManager::create_default_host())
         .child(&context_menu_manager::create_default_menu());
+    shell.bind_theme(|shell, theme| {
+        shell.bg_color(theme.colors.background);
+    });
     shell
 }
 

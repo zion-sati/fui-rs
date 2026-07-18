@@ -80,6 +80,7 @@ FUI-RS follows Rust conventions while keeping the UI model retained and explicit
 
 - Use `fui_app!` and `fui_managed_app!` so app authors do not write browser lifecycle exports manually.
 - Use `ui!` for static mixed child trees when Rust's concrete collection types would otherwise require noisy conversions.
+- Use `rich_text!` for typed fluent spans without manually constructing a span vector.
 - Fluent borrowed expressions can be placed directly in `ui!`; they preserve the original retained identity.
 - Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot` forwarding for retained wrappers. Declare `owner:` or `owners:` when weak callbacks or RAII guards depend on component-owned state.
 - Use ordinary Rust closure capture for event handlers and callbacks.
@@ -103,7 +104,7 @@ Constructors and helpers:
 - `custom_drawable(handler)`
 - `px(value)`, `pct(value)`, `auto()`, `fill()`
 - `viewport_width()`, `viewport_height()`
-- `children![...]`, `ui! { ... }`
+- `children![...]`, `ui! { ... }`, `rich_text![...]`
 - `fui_component!(Type => root)` for stateless wrappers
 - `fui_component!(Type => root, owner: state)` for one retained owner
 - `fui_component!(Type => root, owners: [state, subscriptions])` for multiple retained owners
@@ -196,6 +197,9 @@ for routed mutable event args to stop bubbling and suppress framework defaults.
 
 Theme APIs:
 
+- The active theme defaults to the host system theme. The application shell and built-in controls track it automatically.
+- Standard built-in visuals do not require an explicit `bind_theme(...)`; use it for custom surfaces and intentional overrides.
+
 - `use_system_theme()`
 - `use_custom_theme(theme)`
 - `set_accent_color(color)`
@@ -215,7 +219,7 @@ Typography and text layout APIs:
 - `FontFace`, `FontStack`, `FontFamily`
 - `FontStyle`, `FontWeight`
 - font loaded event args
-- `RichText`, `RichTextSpan`, `span(...)`
+- `RichText`, `RichTextSpan`, `span(...)`, `rich_text![...]`
 - `TextLayout`, `DynamicTextLayout`, `DynamicTextOverflow`, `TextMetrics`
 
 Font IDs are not the primary public authoring surface. Prefer `FontFace`,
@@ -314,15 +318,11 @@ such as scroll views, text inputs, and selection surfaces. Use high-level contro
 APIs such as `node_id(...)`, `persist_scroll(...)`, and relevant control state
 persistence methods before reaching for low-level adapters.
 
-## See also
-
-- [SDK docs index](./SDK_INDEX.md)
-- [Controls and nodes](./CONTROLS_AND_NODES.md)
-- [Events and callbacks](./EVENTS_AND_CALLBACKS.md)
 ## Rust construction helpers
 
 - `ui! { ... }` builds mixed retained child trees without `.into()` noise.
 - `children![...]` creates child vectors for APIs that accept child lists.
+- `rich_text![...]` creates `RichText` from fluent literal, dynamic, or prebuilt spans.
 - `Configure::configure(...)` lets retained controls receive multiple `&self`
   setters while still returning the owned handle:
 
@@ -341,3 +341,9 @@ grid()
     .columns([GridTrack::star(1.0), GridTrack::auto()])
     .rows([GridTrack::px(48.0), GridTrack::star(1.0)]);
 ```
+
+## See also
+
+- [SDK docs index](./SDK_INDEX.md)
+- [Controls and nodes](./CONTROLS_AND_NODES.md)
+- [Events and callbacks](./EVENTS_AND_CALLBACKS.md)

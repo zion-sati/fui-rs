@@ -446,6 +446,28 @@ fn rust_children_macro_builds_mixed_child_vectors() {
 }
 
 #[test]
+fn rich_text_macro_builds_literal_dynamic_and_prebuilt_spans() {
+    ffi::test::reset();
+
+    let dynamic = String::from("dynamic");
+    let punctuation = span("!").underline();
+    let node = rich_text![
+        "Literal ".italic(),
+        { dynamic }.bold().text_color(rgb(0x12, 0x34, 0x56)),
+        span => punctuation,
+    ];
+    node.build();
+
+    let calls = ffi::test::take_calls();
+    assert!(calls
+        .iter()
+        .any(|call| matches!(call, Call::SetText { text, .. } if text == "Literal dynamic!")));
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetTextStyleRuns { run_count: 3, .. })
+    ));
+}
+
+#[test]
 fn labeled_controls_share_fluent_text_styling_and_selection_properties_are_independent() {
     ffi::test::reset();
 

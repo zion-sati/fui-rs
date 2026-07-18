@@ -27,14 +27,10 @@ fn build_page() -> ImmediateDrawingPage {
     let root = ui! {
         scroll_box()
             .fill_size()
-            .persist_scroll(false)
-            .bg_color(theme.colors.background) {
+            .persist_scroll(false) {
                 page,
             }
     };
-    root.bind_theme(|root, theme| {
-        root.bg_color(theme.colors.background);
-    });
     ImmediateDrawingPage {
         root,
         _gallery: gallery,

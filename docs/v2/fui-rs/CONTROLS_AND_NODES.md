@@ -24,7 +24,7 @@ For the complete export list, see:
 | `ComboBox` | Editable filter/selection control | `items(...)`, `filter_mode(...)`, `commit_mode(...)`, `auto_complete(...)`, `on_changed(...)` |
 | `TextInput` | Single-line editable text | `text(...)`, `placeholder(...)`, `read_only(...)`, `password(...)`, `host_autofill(...)`, `on_changed(...)` |
 | `TextArea` | Multiline editable text | `text(...)`, `wrapping(...)`, scrollbar visibility, `accepts_tab(...)`, `on_changed(...)` |
-| `Form` | Default/cancel action and autofill grouping host | `form()`, `default_action(...)`, `cancel_action(...)`, child fields |
+| `Form` | Default/cancel action and autofill grouping host | `form()`, `default_btn(...)`, `cancel_btn(...)`, child fields |
 | `Dialog` | Modal overlay with actions | `dialog(title, body)`, `show()`, `hide()`, `on_accept(...)`, `on_cancel(...)`, `appearance(...)`, `clear_appearance()` |
 | `ContextMenu` / `MenuItem` | Retained context menu surface | `context_menu(items)`, `ContextMenu::new()`, `show(...)`, `hide()`, `appearance(...)`, `clear_appearance()` |
 
@@ -47,7 +47,7 @@ For the complete export list, see:
 | `FlexBox` | Base retained layout node | flex layout, sizing, padding, margin, border, radius, gradient, blur, shadow, child composition |
 | `Grid` | WPF-style retained grid layout | rows, columns, placements, shared-size scope/group helpers |
 | `Text` / `TextNode` | Retained text rendering node | `text(...)`, font family/size/weight/style, text color, selection, alignment |
-| `RichText` / `RichTextSpan` | Attributed inline rich text | `span(...)`, inline color/background/bold/italic styling |
+| `RichText` / `RichTextSpan` | Attributed inline rich text | `rich_text![...]`, `span(...)`, inline color/background/bold/italic styling |
 | `Bitmap` | Retained pixel buffer backed by GPU texture | direct pixel access and retained bitmap text rendering |
 | `TextLayout` | Immediate-mode formatted text resource | `TextLayout::text(...)`, `TextLayout::rich(...)`, drawing via `DrawContext` |
 | `DynamicTextLayout` | Immediate-mode short label resource | fixed charset text layout for frequently changing labels |

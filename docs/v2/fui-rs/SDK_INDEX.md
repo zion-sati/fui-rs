@@ -45,7 +45,7 @@ entrypoints and mixed child trees.
 - [Workers](./API_REFERENCE.md#workers)
 - [Timers](./API_REFERENCE.md#timers)
 - [Platform helpers](./API_REFERENCE.md#platform-and-shortcuts)
-- [DevTools DOM Mirror](../browser-bridge/DEVTOOLS_DOM_MIRROR.md)
+- [DevTools DOM Mirror](https://github.com/zion-sati/EffinDOM/blob/main/docs/v2/browser-bridge/DEVTOOLS_DOM_MIRROR.md)
 
 ## Theme
 
@@ -57,10 +57,11 @@ entrypoints and mixed child trees.
 
 - [Retained-mode app construction](./QUICKSTART.md#retained-mode-model)
 - [`ui!` mixed child tree macro](./QUICKSTART.md#mixed-child-trees-with-ui)
+- [`rich_text!` retained rich-text macro](./QUICKSTART.md#rich-text-with-rich_text)
 - [`fui_app!` and `fui_managed_app!`](./QUICKSTART.md#app-entrypoint-macros)
 - [Rust SDK conventions](./API_REFERENCE.md#rust-sdk-conventions)
 
-## See also
+## Contributing
 
-- [Top-level v2 quickstart](../../QUICKSTART.md)
-- [Browser bridge quickstart](../browser-bridge/QUICKSTART.md)
+- [FUI-RS contributor quickstart](./CONTRIBUTOR_QUICKSTART.md)
+- [EffinDom Browser Bridge documentation](https://github.com/zion-sati/EffinDOM/tree/main/docs/v2/browser-bridge)

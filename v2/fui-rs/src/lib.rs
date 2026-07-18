@@ -63,6 +63,45 @@ macro_rules! children {
     };
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __fui_rs_rich_text_spans {
+    (@collect [$($span:expr,)*]) => {
+        vec![$($span,)*]
+    };
+    (@collect [$($span:expr,)*] , $($rest:tt)*) => {
+        $crate::__fui_rs_rich_text_spans!(@collect [$($span,)*] $($rest)*)
+    };
+    (@collect [$($span:expr,)*] span => $value:expr, $($rest:tt)*) => {
+        $crate::__fui_rs_rich_text_spans!(@collect [$($span,)* $value,] $($rest)*)
+    };
+    (@collect [$($span:expr,)*] { $text:expr } $(.$method:ident($($argument:expr),* $(,)?))* , $($rest:tt)*) => {
+        $crate::__fui_rs_rich_text_spans!(@collect [
+            $($span,)*
+            $crate::text::span($text)$(.$method($($argument),*))*,
+        ] $($rest)*)
+    };
+    (@collect [$($span:expr,)*] $text:literal $(.$method:ident($($argument:expr),* $(,)?))* , $($rest:tt)*) => {
+        $crate::__fui_rs_rich_text_spans!(@collect [
+            $($span,)*
+            $crate::text::span($text)$(.$method($($argument),*))*,
+        ] $($rest)*)
+    };
+}
+
+/// Builds retained rich text with fluent span styling.
+///
+/// String literals become spans automatically. Wrap a dynamic text expression
+/// in braces, or use `span => expression` to provide a prebuilt span.
+#[macro_export]
+macro_rules! rich_text {
+    ($($span:tt)*) => {
+        $crate::text::RichText::new(
+            $crate::__fui_rs_rich_text_spans!(@collect [] $($span)* ,)
+        )
+    };
+}
+
 pub trait Configure: Sized {
     fn configure(self, configure: impl FnOnce(&Self)) -> Self {
         configure(&self);
@@ -525,7 +564,7 @@ pub mod prelude {
     pub use crate::worker_job::{WorkerJob, WorkerJobState};
     #[cfg(feature = "worker-runtime")]
     pub use crate::worker_runtime::{file_read_chunk, file_worker_write_chunk, WorkerRuntime};
-    pub use crate::{children, fui_app, fui_managed_app, ui, Configure};
+    pub use crate::{children, fui_app, fui_managed_app, rich_text, ui, Configure};
 }
 
 pub use animation::{

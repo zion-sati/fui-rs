@@ -8,32 +8,30 @@ for the full public docs map.
 
 ## Prerequisites
 
-Install the shared v2 toolchain first:
-
-- [Top-level v2 quickstart](../../QUICKSTART.md)
-
-Then install Rust/Cargo, the wasm target, and Binaryen:
+Application development requires Node.js 18 or newer, npm, stable Rust, and the
+`wasm32-unknown-unknown` target. Binaryen is optional and optimizes release
+builds when its `wasm-opt` executable is available.
 
 ### macOS
 
 ```bash
-brew install binaryen
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
+brew install binaryen # optional
 ```
 
 ### Linux (Debian / Ubuntu)
 
 ```bash
-sudo apt-get install -y binaryen
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
+sudo apt-get install -y binaryen # optional
 ```
 
-`binaryen` provides `wasm-opt`. FUI-RS builds run `wasm-opt -O3` when available,
-preserving speed-oriented output while eliminating additional dead code.
+The generated development workflow does not require Binaryen. Optimized release
+builds run `wasm-opt -O3` when available.
 
 ## Create a new app
 
@@ -57,19 +55,19 @@ The routed template builds one WASM per route so route pages can be shipped as
 separate micro-frontends. Route crates use retained components and explicit
 presentation state rather than an object-oriented MVC ownership graph.
 
-## Build the repo demo
+## Run and build your app
 
-From the repository root:
+The scaffolder prints the local URL after starting the development server.
+Changes to Rust source trigger fast debug WASM rebuilds:
 
 ```bash
-npm run build:v2:fui-rs
-npm run serve
+npm run dev
 ```
 
-Open:
+Create an optimized application build with:
 
-```text
-http://127.0.0.1:8080/v2/fui-rs/demo/index.html
+```bash
+npm run build
 ```
 
 ## Minimal app
@@ -175,6 +173,22 @@ directly and preserves the original retained identity.
 Stateful controls still need explicit variables when callbacks or later methods
 must mutate them.
 
+## Rich text with `rich_text!`
+
+`rich_text!` converts string literals into spans while retaining normal typed
+span methods. Braced expressions provide dynamic text, and `span => expression`
+accepts a prebuilt `RichTextSpan`:
+
+```rust
+let suffix = span("!").underline();
+let value = 42;
+let label = rich_text![
+    "Current value: ".italic(),
+    { format!("{value}") }.bold().text_color(rgb(0x3a, 0xc5, 0x6c)),
+    span => suffix,
+];
+```
+
 ## App entrypoint macros
 
 Use `fui_app!` for simple pages:
@@ -217,3 +231,4 @@ FFI modules in app code.
 - [API reference](./API_REFERENCE.md)
 - [Controls and nodes](./CONTROLS_AND_NODES.md)
 - [Events and callbacks](./EVENTS_AND_CALLBACKS.md)
+- [Contributor quickstart](./CONTRIBUTOR_QUICKSTART.md)

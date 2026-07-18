@@ -8,7 +8,8 @@ Form grouping host for default/cancel actions and autofill projection.
 
 ## Key APIs
 
-- `default_action`, `cancel_action`, child composition, inherited node/layout APIs.
+- `default_btn`, `cancel_btn`, `activate`, `deactivate`, child composition,
+  inherited node/layout APIs.
 
 ## Notes
 

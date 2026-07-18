@@ -1,13 +1,14 @@
 # Portal
 
-Overlay host node.
+Overlay-host configuration for a retained `FlexBox`.
 
 ## Constructor
 
-- `portal()`, `Portal`
+- `portal()` returns a `FlexBox` configured as a non-clipping portal.
 
 ## Key APIs
 
+- inherited `FlexBox` layout, child composition, styling, and event APIs.
 - detached overlay composition surface used by overlay controls and custom surfaces.
 
 ## Notes

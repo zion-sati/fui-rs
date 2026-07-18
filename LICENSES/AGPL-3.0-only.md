@@ -5,4 +5,9 @@ available at:
 
 - https://www.gnu.org/licenses/agpl-3.0.txt
 
-This repository uses the AGPL-3.0-only license for `@effindomv2/fui-as`.
+The FUI SDK repositories and packages use AGPL-3.0-only where their package
+metadata or accompanying license notice identifies it. This includes
+`@effindomv2/fui-as` and `@effindomv2/fui-rs`.
+
+The separately published EffinDom runtime is not licensed under this notice;
+its own package metadata and license files control its terms.

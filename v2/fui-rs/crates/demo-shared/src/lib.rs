@@ -620,16 +620,16 @@ impl Stage4Showcase {
             .font_size(18.0)
             .text_color(theme.colors.text_primary)
             .semantic_label("Stage 4 custom font bold family resolution text");
-        let rich_text_container = RichText::new(vec![
-            span("Base family ")
+        let rich_text_container = rich_text![
+            "Base family "
                 .underline()
                 .text_color(theme.colors.text_primary),
-            span("with ").text_color(theme.colors.text_primary),
-            span("MONO OVERRIDE")
+            "with ".text_color(theme.colors.text_primary),
+            "MONO OVERRIDE"
                 .font_family(proof_mono_family.clone())
                 .strikethrough()
                 .text_color(theme.colors.accent),
-        ]);
+        ];
         rich_text_container
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
@@ -642,18 +642,18 @@ impl Stage4Showcase {
                 text.text_color(theme.colors.text_primary);
             })
             .semantic_label("Stage 4 rich text container font family sample");
-        let rich_text_helpers = RichText::new(vec![
-            span("Rich ").bold().text_color(theme.colors.text_primary),
-            span("text ").italic().text_color(0x60A5FAFF),
-            span("underline ").underline().text_color(0xFBBF24FF),
-            span("strike ").strikethrough().text_color(0xF87171FF),
-            span("helpers")
+        let rich_text_helpers = rich_text![
+            "Rich ".bold().text_color(theme.colors.text_primary),
+            "text ".italic().text_color(0x60A5FAFF),
+            "underline ".underline().text_color(0xFBBF24FF),
+            "strike ".strikethrough().text_color(0xF87171FF),
+            "helpers"
                 .bold()
                 .italic()
                 .underline()
                 .strikethrough()
                 .text_color(0xCBD5E1FF),
-        ]);
+        ];
         rich_text_helpers
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
@@ -2028,7 +2028,6 @@ impl Stage4Showcase {
         root.bind_theme({
             let vertical_scrollbar = root.vertical_scrollbar();
             let horizontal_scrollbar = root.horizontal_scrollbar();
-            let page = page.clone();
             let accent_chip = accent_chip.clone();
             let theme_body = theme_body.clone();
             let theme_card = theme_card.clone();
@@ -2042,9 +2041,7 @@ impl Stage4Showcase {
             let custom_font_direct_stack = custom_font_direct_stack.clone();
             let custom_font_comparison = custom_font_comparison.clone();
             let on_theme_accent_changed = on_theme_accent_changed.clone();
-            move |root, theme| {
-                root.bg_color(theme.colors.background);
-                page.bg_color(theme.colors.background);
+            move |_root, theme| {
                 vertical_scrollbar
                     .track_color(theme.colors.scrollbar_track)
                     .thumb_color(theme.colors.scrollbar_thumb);
@@ -2270,7 +2267,6 @@ pub fn demo_page_root(title: &str) -> FlexBox {
         column().width_len(fill())
         .height_len(fill())
         .padding(32.0, 32.0, 32.0, 32.0)
-        .bg_color(theme.colors.background)
     };
 
     let nav = ui! {
@@ -2320,8 +2316,7 @@ pub fn demo_page_root(title: &str) -> FlexBox {
     root.child(&title_node);
     root.bind_theme({
         let title_node = title_node.clone();
-        move |root, theme| {
-            root.bg_color(theme.colors.background);
+        move |_root, theme| {
             title_node
                 .font_family(theme.fonts.heading_family.clone())
                 .font_size(28.0)

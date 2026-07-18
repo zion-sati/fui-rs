@@ -77,18 +77,19 @@ impl PaintCanvas {
             }
         });
 
-        let hint = RichText::new(vec![
-            span("Draw ").italic(),
-            span("here")
+        let hint = rich_text![
+            "Draw ".italic(),
+            "here"
                 .font_size(30.0)
-                .text_color(0x3AC56CFF)
+                .text_color(rgb(0x3a, 0xc5, 0x6c))
                 .font_family(theme.fonts.mono_family.clone())
                 .bold()
                 .underline(),
-            span(" on this canvas!").bold(),
-        ]);
+            " on this canvas!".bold(),
+        ];
         hint.font_family(theme.fonts.body_family.clone())
             .font_size(24.0)
+            .text_color(rgba(0xeb, 0xee, 0xf5, 0xd2))
             .width(268.0, Unit::Pixel)
             .height(268.0, Unit::Pixel);
         let weak_state = Rc::downgrade(&state);
