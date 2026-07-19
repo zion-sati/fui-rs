@@ -4,10 +4,10 @@ use crate::ffi::{
     AlignItems, FlexDirection, JustifyContent, PositionType, SemanticRole, TextOverflow, Unit,
     Visibility,
 };
-use crate::node::FlexBoxSurface;
 use crate::node::{
     flex_box, portal, text, FlexBox, Node, NodeHandle, NodeRef, ScrollBox, TextNode,
 };
+use crate::node::{ChildContainerSurface, LayoutSurface};
 use crate::theme::current_theme;
 use std::cell::RefCell;
 
@@ -121,7 +121,7 @@ impl ToolbarButton {
                 activate_toolbar_slot(slot);
                 event.handled = true;
             })
-            .on_click(move |_| activate_toolbar_slot(slot));
+            .on_pointer_click(move |_| activate_toolbar_slot(slot));
         append_child_ref(&root, &child_node);
         Self {
             root,

@@ -1,9 +1,9 @@
-use crate::controls::LabeledControlColors;
+use crate::controls::{ClickCallback, ClickEventArgs, LabeledControlColors};
 use crate::event::{FocusChangedEventArgs, KeyEventArgs, PointerEventArgs};
 use crate::ffi::{
     AlignItems, CursorStyle, FlexDirection, KeyEventType, PointerEventType, SemanticRole, Unit,
 };
-use crate::node::{flex_box, FlexBox, Node, TextCore, WeakFlexBox};
+use crate::node::{flex_box, FlexBox, Node, TextNode, WeakFlexBox};
 use crate::theme::{current_theme, subscribe};
 use crate::{focus_adorner, focus_visibility};
 use std::cell::{Cell, RefCell};
@@ -27,7 +27,7 @@ pub(crate) struct PressableLabeledControlState {
 pub(crate) struct PressableLabeledControl {
     root: FlexBox,
     indicator_root: Rc<RefCell<FlexBox>>,
-    label_node: TextCore,
+    label_node: TextNode,
     gap_node: FlexBox,
     label_host: FlexBox,
     hovered_state: Rc<Cell<bool>>,
@@ -41,6 +41,7 @@ pub(crate) struct PressableLabeledControl {
     label_text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     activation: Rc<RefCell<Option<ActivationCallback>>>,
+    click: Rc<RefCell<Option<ClickCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
     key_handler: Rc<RefCell<Option<KeyCallback>>>,
 }
@@ -49,7 +50,7 @@ impl PressableLabeledControl {
     pub fn new(role: SemanticRole, label: impl Into<String>, indicator_root: FlexBox) -> Self {
         let label = label.into();
         let root = flex_box();
-        let label_node = TextCore::new(&label);
+        let label_node = TextNode::new_core(&label);
         let gap_node = flex_box();
         let label_host = flex_box();
         label_host.child(&label_node);
@@ -82,6 +83,7 @@ impl PressableLabeledControl {
             label_text_color_override: Rc::new(Cell::new(None)),
             colors_value: Rc::new(Cell::new(None)),
             activation: Rc::new(RefCell::new(None)),
+            click: Rc::new(RefCell::new(None)),
             state_changed: Rc::new(RefCell::new(None)),
             key_handler: Rc::new(RefCell::new(None)),
         };
@@ -114,6 +116,7 @@ impl PressableLabeledControl {
             label_text_color_override: self.label_text_color_override.clone(),
             colors_value: self.colors_value.clone(),
             activation: self.activation.clone(),
+            click: self.click.clone(),
             state_changed: self.state_changed.clone(),
             key_handler: self.key_handler.clone(),
         }
@@ -131,6 +134,10 @@ impl PressableLabeledControl {
 
     pub(crate) fn set_activation(&self, callback: impl Fn(PressableLabeledControlState) + 'static) {
         *self.activation.borrow_mut() = Some(Rc::new(callback));
+    }
+
+    pub(crate) fn on_click(&self, callback: impl Fn(ClickEventArgs) + 'static) {
+        *self.click.borrow_mut() = Some(Rc::new(callback));
     }
 
     pub(crate) fn set_state_changed(
@@ -298,6 +305,7 @@ impl PressableLabeledControl {
             label_text_color_override: self.label_text_color_override.clone(),
             colors_value: self.colors_value.clone(),
             activation: self.activation.clone(),
+            click: self.click.clone(),
             state_changed: self.state_changed.clone(),
             key_handler: self.key_handler.clone(),
         }
@@ -329,7 +337,7 @@ impl PressableLabeledControl {
 pub(crate) struct WeakPressableLabeledControl {
     root: WeakFlexBox,
     indicator_root: Rc<RefCell<FlexBox>>,
-    label_node: TextCore,
+    label_node: TextNode,
     gap_node: FlexBox,
     label_host: FlexBox,
     hovered_state: Rc<Cell<bool>>,
@@ -343,6 +351,7 @@ pub(crate) struct WeakPressableLabeledControl {
     label_text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     activation: Rc<RefCell<Option<ActivationCallback>>>,
+    click: Rc<RefCell<Option<ClickCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
     key_handler: Rc<RefCell<Option<KeyCallback>>>,
 }
@@ -366,6 +375,7 @@ impl WeakPressableLabeledControl {
             label_text_color_override: self.label_text_color_override.clone(),
             colors_value: self.colors_value.clone(),
             activation: self.activation.clone(),
+            click: self.click.clone(),
             state_changed: self.state_changed.clone(),
             key_handler: self.key_handler.clone(),
         })
@@ -375,7 +385,7 @@ impl WeakPressableLabeledControl {
 #[allow(clippy::too_many_arguments)]
 fn sync_base_theme_parts(
     root: &FlexBox,
-    label_node: &TextCore,
+    label_node: &TextNode,
     gap_node: &FlexBox,
     label_font_size_override: f32,
     label_font_family_override: Option<crate::FontFamily>,
@@ -435,7 +445,7 @@ fn is_space_key(event: &KeyEventArgs) -> bool {
 #[derive(Clone)]
 struct PressableLabeledControlEventTarget {
     weak_root: WeakFlexBox,
-    label_node: TextCore,
+    label_node: TextNode,
     gap_node: FlexBox,
     hovered_state: Rc<Cell<bool>>,
     pressed_state: Rc<Cell<bool>>,
@@ -448,6 +458,7 @@ struct PressableLabeledControlEventTarget {
     label_text_color_override: Rc<Cell<Option<u32>>>,
     colors_value: Rc<Cell<Option<LabeledControlColors>>>,
     activation: Rc<RefCell<Option<ActivationCallback>>>,
+    click: Rc<RefCell<Option<ClickCallback>>>,
     state_changed: Rc<RefCell<Option<StateCallback>>>,
     key_handler: Rc<RefCell<Option<KeyCallback>>>,
 }
@@ -488,6 +499,9 @@ impl PressableLabeledControlEventTarget {
     fn activate(&self) {
         if let Some(callback) = self.activation.borrow().clone() {
             callback(self.snapshot_state());
+        }
+        if let Some(callback) = self.click.borrow().clone() {
+            callback(ClickEventArgs);
         }
     }
 

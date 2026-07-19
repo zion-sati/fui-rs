@@ -18,7 +18,7 @@ use crate::ffi::{AlignItems, CursorStyle, FlexDirection, KeyEventType, NodeType,
 use crate::focus_adorner;
 use crate::focus_visibility;
 use crate::logger;
-use crate::node::{row, FlexBox, FlexBoxSurface, HasFlexBoxRoot, Node, NodeRef, WeakFlexBox};
+use crate::node::{row, BoxStyleSurface, FlexBox, HasFlexBoxRoot, Node, NodeRef, WeakFlexBox};
 use crate::persisted::{persisted_value_adapter, PersistedInt32Codec};
 use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe};
@@ -243,7 +243,7 @@ impl Dropdown {
         *shared_slot.borrow_mut() = Some(Rc::downgrade(&shared));
         root.retained_node_ref().retain_attachment(shared.clone());
 
-        popup_list.popup_presenter.overlay_node().on_click({
+        popup_list.popup_presenter.overlay_node().on_pointer_click({
             let weak_shared = Rc::downgrade(&shared);
             move |_event| {
                 if let Some(shared) = weak_shared.upgrade() {

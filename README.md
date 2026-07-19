@@ -73,6 +73,19 @@ The Rust app WASM talks to the shared EffinDom browser bridge and retained C++
 UI runtime through generated ABI bindings. The public SDK keeps raw ABI details
 out of normal app code.
 
+FUI-RS maps retained inheritance to capability traits. `Node` supplies common
+retained state and raw events, while FlexBox-derived visuals expose layout,
+style, flex-layout, and child-container traits. `TextSurface` and
+`TextEditorSurface` provide the shared text contracts.
+
+Use `on_pointer_click(...)` for raw pointer input and `Button::on_click(...)`
+for high-level pointer/keyboard activation.
+
+Exact raw multi-click gestures use `on_pointer_double_click(...)` and
+`on_pointer_triple_click(...)`. `Checkbox`, `RadioButton`, and `Switch` also
+provide count-free `on_click(...)` semantic activation alongside their
+state-specific `on_changed(...)` events.
+
 ## Community projects
 
 - [galaga-rs](https://github.com/jatm80/galaga-rs) by

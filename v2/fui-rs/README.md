@@ -186,6 +186,18 @@ calls.
 Retained controls are cheap clone handles. Cloning a control gives another Rust
 handle to the same retained UI object.
 
+FUI-RS maps retained inheritance to capability traits. `Node` supplies the
+universal retained/event surface; FlexBox-derived visuals additionally expose
+`LayoutSurface`, `BoxStyleSurface`, `FlexLayoutSurface`, and
+`ChildContainerSurface`. `TextSurface` covers `Text` and `RichText`, while
+`TextEditorSurface` covers `TextInput` and `TextArea`.
+
+Use `on_pointer_click(...)` for raw routed pointer input. Use
+`on_pointer_double_click(...)` and `on_pointer_triple_click(...)` for exact raw
+multi-click gestures. `Button`, `Checkbox`, `RadioButton`, and `Switch` expose
+count-free `on_click(...)` semantic activation for supported pointer and
+keyboard input.
+
 ## License
 
 AGPL-3.0-only, or commercial license. See [COMMERCIAL.md](COMMERCIAL.md).

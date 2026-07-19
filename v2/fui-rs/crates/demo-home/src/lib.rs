@@ -232,6 +232,89 @@ fn build_dashboard_page() -> ScrollBox {
         },
         slider_status,
     ]);
+
+    let activation_card = ui! {
+        demo_card(
+            "Semantic activation and raw pointer gestures",
+            "The button's semantic action includes keyboard activation. Raw pointer click always fires for pointer activation, followed by an exact double/triple callback when applicable. The switch reports state changes separately from semantic clicks.",
+            0xDCFCE7FF,
+        ).margin(0.0, 0.0, 0.0, 16.0)
+    };
+    let activation_status = text("Button semantic: 0 | raw: none");
+    let semantic_count = Rc::new(Cell::new(0_u32));
+    let activation_button = button("Activate with pointer or keyboard").configure(|button| {
+        button.on_click({
+            let semantic_count = semantic_count.clone();
+            let activation_status = activation_status.clone();
+            move |_| {
+                semantic_count.set(semantic_count.get() + 1);
+                activation_status.text(format!(
+                    "Button semantic: {} | raw: unchanged by keyboard",
+                    semantic_count.get()
+                ));
+            }
+        })
+        .on_pointer_click({
+            let semantic_count = semantic_count.clone();
+            let activation_status = activation_status.clone();
+            move |event| {
+                activation_status.text(format!(
+                    "Button semantic: {} | raw click count {}",
+                    semantic_count.get(),
+                    event.click_count
+                ));
+            }
+        })
+        .on_pointer_double_click({
+            let activation_status = activation_status.clone();
+            move |_| {
+                activation_status.text("Exact raw double-click (after ordinary raw click)");
+            }
+        })
+        .on_pointer_triple_click({
+            let activation_status = activation_status.clone();
+            move |_| {
+                activation_status.text("Exact raw triple-click (after ordinary raw click)");
+            }
+        });
+    });
+    let switch_status = text("Switch changed: off | semantic clicks: 0");
+    let switch_value = Rc::new(Cell::new(false));
+    let switch_clicks = Rc::new(Cell::new(0_u32));
+    let activation_switch = switch("Separate changed from click").configure(|switch| {
+        switch.on_changed({
+            let switch_value = switch_value.clone();
+            let switch_clicks = switch_clicks.clone();
+            let switch_status = switch_status.clone();
+            move |event| {
+                switch_value.set(event.checked);
+                switch_status.text(format!(
+                    "Switch changed: {} | semantic clicks: {}",
+                    if event.checked { "on" } else { "off" },
+                    switch_clicks.get()
+                ));
+            }
+        })
+        .on_click({
+            let switch_value = switch_value.clone();
+            let switch_clicks = switch_clicks.clone();
+            let switch_status = switch_status.clone();
+            move |_| {
+                switch_clicks.set(switch_clicks.get() + 1);
+                switch_status.text(format!(
+                    "Switch changed: {} | semantic clicks: {}",
+                    if switch_value.get() { "on" } else { "off" },
+                    switch_clicks.get()
+                ));
+            }
+        });
+    });
+    activation_card.children(children![
+        activation_button,
+        activation_status,
+        activation_switch,
+        switch_status,
+    ]);
     root.children(children![
         ui! {
                 demo_card(
@@ -261,6 +344,7 @@ fn build_dashboard_page() -> ScrollBox {
         },
         virtual_list_card,
         slider_card,
+        activation_card,
         demo_card(
             "Next phase",
             "The routed demo now uses canvas-owned navigation, matching the FUI-AS demo shape.",

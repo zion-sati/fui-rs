@@ -36,8 +36,6 @@ impl ScrollView {
             props: Rc::new(RefCell::new(ScrollViewProps {
                 width: None,
                 height: None,
-                bg_color: None,
-                padding: None,
                 enable_scroll_x: true,
                 enable_scroll_y: true,
                 friction: None,
@@ -47,7 +45,7 @@ impl ScrollView {
                 persist_scroll: true,
                 transitions: None,
             })),
-            bound_scroll_state: Rc::new(RefCell::new(None)),
+            bound_scroll_state: Rc::new(RefCell::new(Some(ScrollState::new()))),
             active_animations: Rc::new(RefCell::new(ScrollViewAnimationState::default())),
         }
     }
@@ -76,12 +74,32 @@ impl ScrollView {
         self
     }
 
+    pub fn scroll_state(&self) -> ScrollState {
+        self.bound_scroll_state
+            .borrow()
+            .clone()
+            .expect("ScrollView always owns a scroll state")
+    }
+
+    pub fn is_vertical_scroll_enabled(&self) -> bool {
+        self.props.borrow().enable_scroll_y
+    }
+
+    pub fn is_horizontal_scroll_enabled(&self) -> bool {
+        self.props.borrow().enable_scroll_x
+    }
+
     pub fn width(&self, width: f32, unit: Unit) -> &Self {
         self.props.borrow_mut().width = Some((width, unit));
         self.set_viewport_width_if_pixel(width, unit);
         let mut core = self.core.borrow_mut();
         core.behavior.fill_width = false;
         core.behavior.fill_width_percent = None;
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_width(self.handle().raw(), width, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -96,6 +114,11 @@ impl ScrollView {
         let mut core = self.core.borrow_mut();
         core.behavior.fill_height = false;
         core.behavior.fill_height_percent = None;
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_height(self.handle().raw(), height, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -109,6 +132,11 @@ impl ScrollView {
         let mut core = self.core.borrow_mut();
         core.behavior.fill_width = true;
         core.behavior.fill_width_percent = None;
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_fill_width(self.handle().raw(), true);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -117,6 +145,11 @@ impl ScrollView {
         let mut core = self.core.borrow_mut();
         core.behavior.fill_height = true;
         core.behavior.fill_height_percent = None;
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_fill_height(self.handle().raw(), true);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -126,13 +159,74 @@ impl ScrollView {
         self
     }
 
-    pub fn bg_color(&self, color: u32) -> &Self {
-        self.props.borrow_mut().bg_color = Some(color);
+    pub fn fill_width_percent(&self, percent: f32) -> &Self {
+        self.props.borrow_mut().width = None;
+        let mut core = self.core.borrow_mut();
+        core.behavior.fill_width = false;
+        core.behavior.fill_width_percent = Some(percent);
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_fill_width_percent(self.handle().raw(), percent);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
-    pub fn padding(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
-        self.props.borrow_mut().padding = Some((left, top, right, bottom));
+    pub fn fill_height_percent(&self, percent: f32) -> &Self {
+        self.props.borrow_mut().height = None;
+        let mut core = self.core.borrow_mut();
+        core.behavior.fill_height = false;
+        core.behavior.fill_height_percent = Some(percent);
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_fill_height_percent(self.handle().raw(), percent);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn min_width(&self, value: f32, unit: Unit) -> &Self {
+        self.core.borrow_mut().behavior.min_width = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_min_width(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn max_width(&self, value: f32, unit: Unit) -> &Self {
+        self.core.borrow_mut().behavior.max_width = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_max_width(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn min_height(&self, value: f32, unit: Unit) -> &Self {
+        self.core.borrow_mut().behavior.min_height = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_min_height(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn max_height(&self, value: f32, unit: Unit) -> &Self {
+        self.core.borrow_mut().behavior.max_height = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_max_height(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn flex_basis(&self, value: f32) -> &Self {
+        self.core.borrow_mut().behavior.flex_basis = Some(value);
+        if self.has_built_handle() {
+            ui::set_flex_basis(self.handle().raw(), value);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -142,6 +236,10 @@ impl ScrollView {
         props.enable_scroll_y = enabled_y;
         self.retained_node_ref()
             .set_scroll_routing_enabled(enabled_x, enabled_y);
+        if self.has_built_handle() {
+            ui::set_scroll_enabled(self.handle().raw(), enabled_x, enabled_y);
+            self.notify_retained_mutation();
+        }
         self
     }
 
@@ -154,6 +252,10 @@ impl ScrollView {
             .unwrap_or(true);
         self.retained_node_ref()
             .set_scroll_routing_enabled(enabled, enabled_y);
+        if self.has_built_handle() {
+            ui::set_scroll_enabled(self.handle().raw(), enabled, enabled_y);
+            self.notify_retained_mutation();
+        }
         self
     }
 
@@ -166,11 +268,19 @@ impl ScrollView {
             .unwrap_or(true);
         self.retained_node_ref()
             .set_scroll_routing_enabled(enabled_x, enabled);
+        if self.has_built_handle() {
+            ui::set_scroll_enabled(self.handle().raw(), enabled_x, enabled);
+            self.notify_retained_mutation();
+        }
         self
     }
 
-    pub fn scroll_friction(&self, friction: f32) -> &Self {
+    pub fn friction(&self, friction: f32) -> &Self {
         self.props.borrow_mut().friction = Some(friction);
+        if self.has_built_handle() {
+            ui::set_scroll_friction(self.handle().raw(), friction);
+            self.notify_retained_mutation();
+        }
         self
     }
 
@@ -204,14 +314,14 @@ impl ScrollView {
         self
     }
 
-    pub fn content_size(&self, width: f32, height: f32) -> &Self {
+    pub fn scroll_content_size(&self, width: f32, height: f32) -> &Self {
         self.props.borrow_mut().content_size = Some((width, height));
         self.set_content_size_metrics(width, height);
+        if self.has_built_handle() {
+            ui::set_scroll_content_size(self.handle().raw(), width, height);
+            self.notify_retained_mutation();
+        }
         self
-    }
-
-    pub fn scroll_content_size(&self, width: f32, height: f32) -> &Self {
-        self.content_size(width, height)
     }
 
     pub fn persist_scroll(&self, persist: bool) -> &Self {
@@ -490,6 +600,27 @@ impl Node for ScrollView {
             &self.props.borrow(),
             self.core.borrow().behavior.clone(),
         );
+    }
+}
+
+impl ThemeBindable for ScrollView {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let core = Rc::downgrade(&self.core);
+        let props = Rc::downgrade(&self.props);
+        let bound_scroll_state = Rc::downgrade(&self.bound_scroll_state);
+        let active_animations = Rc::downgrade(&self.active_animations);
+        Box::new(move || {
+            Some(Self {
+                core: core.upgrade()?,
+                props: props.upgrade()?,
+                bound_scroll_state: bound_scroll_state.upgrade()?,
+                active_animations: active_animations.upgrade()?,
+            })
+        })
     }
 }
 

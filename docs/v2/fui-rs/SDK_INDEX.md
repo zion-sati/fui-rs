@@ -56,6 +56,8 @@ entrypoints and mixed child trees.
 ## Rust-specific DX
 
 - [Retained-mode app construction](./QUICKSTART.md#retained-mode-model)
+- [Public capability traits](./CONTROLS_AND_NODES.md#capability-traits)
+- [Raw pointer click vs control activation](./EVENTS_AND_CALLBACKS.md#node-level-events)
 - [`ui!` mixed child tree macro](./QUICKSTART.md#mixed-child-trees-with-ui)
 - [`rich_text!` retained rich-text macro](./QUICKSTART.md#rich-text-with-rich_text)
 - [`fui_app!` and `fui_managed_app!`](./QUICKSTART.md#app-entrypoint-macros)

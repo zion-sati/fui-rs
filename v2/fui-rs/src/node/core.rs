@@ -84,6 +84,8 @@ impl NodeKind {
 #[derive(Clone, Default)]
 pub(crate) struct EventHandlers {
     pub(crate) pointer_click: Option<PointerCallback>,
+    pub(crate) pointer_double_click: Option<PointerCallback>,
+    pub(crate) pointer_triple_click: Option<PointerCallback>,
     pub(crate) pointer_down: Option<PointerCallback>,
     pub(crate) pointer_move: Option<PointerCallback>,
     pub(crate) pointer_up: Option<PointerCallback>,
@@ -114,6 +116,29 @@ impl EventHandlers {
             ..Self::default()
         }
     }
+
+    fn has_pointer_click_handler(&self) -> bool {
+        self.pointer_click.is_some()
+            || self.pointer_double_click.is_some()
+            || self.pointer_triple_click.is_some()
+    }
+
+    fn dispatch_pointer_click(&self, event: &mut PointerEventArgs, click_count: i32) {
+        let click_count = click_count.max(1);
+        event.click_count = click_count;
+        if let Some(handler) = self.pointer_click.as_ref() {
+            handler(event);
+        }
+        if click_count == 2 {
+            if let Some(handler) = self.pointer_double_click.as_ref() {
+                handler(event);
+            }
+        } else if click_count == 3 {
+            if let Some(handler) = self.pointer_triple_click.as_ref() {
+                handler(event);
+            }
+        }
+    }
 }
 #[derive(Clone)]
 pub(crate) struct NodeBehavior {
@@ -130,6 +155,7 @@ pub(crate) struct NodeBehavior {
     pub(crate) semantic_disabled: Option<bool>,
     pub(crate) semantic_checked: Option<SemanticCheckedState>,
     pub(crate) semantic_selected: Option<bool>,
+    pub(crate) semantic_expanded: Option<bool>,
     pub(crate) semantic_value_range: Option<(f32, f32, f32)>,
     pub(crate) semantic_orientation: Option<Orientation>,
     pub(crate) selectable_text: bool,
@@ -143,7 +169,6 @@ pub(crate) struct NodeBehavior {
     pub(crate) context_menu_handler: Option<ContextMenuCallback>,
     pub(crate) tool_tip: Option<ToolTip>,
     pub(crate) track_semantic_disabled_from_enabled: bool,
-    pub(crate) request_semantic_announcement: bool,
     pub(crate) visibility: Option<Visibility>,
     pub(crate) is_portal: bool,
     pub(crate) fill_width: bool,
@@ -188,6 +213,7 @@ impl Default for NodeBehavior {
             semantic_disabled: None,
             semantic_checked: None,
             semantic_selected: None,
+            semantic_expanded: None,
             semantic_value_range: None,
             semantic_orientation: None,
             selectable_text: false,
@@ -201,7 +227,6 @@ impl Default for NodeBehavior {
             context_menu_handler: None,
             tool_tip: None,
             track_semantic_disabled_from_enabled: false,
-            request_semantic_announcement: false,
             visibility: None,
             is_portal: false,
             fill_width: false,
@@ -266,6 +291,10 @@ pub(crate) struct LinearGradient {
 pub(crate) struct FlexBoxProps {
     pub(crate) width: Option<(f32, Unit)>,
     pub(crate) height: Option<(f32, Unit)>,
+    pub(crate) min_width: Option<(f32, Unit)>,
+    pub(crate) max_width: Option<(f32, Unit)>,
+    pub(crate) min_height: Option<(f32, Unit)>,
+    pub(crate) max_height: Option<(f32, Unit)>,
     pub(crate) bg_color: Option<u32>,
     pub(crate) padding: Option<(f32, f32, f32, f32)>,
     pub(crate) flex_direction: Option<FlexDirection>,
@@ -283,6 +312,10 @@ pub(crate) struct TextProps {
     pub(crate) content: String,
     pub(crate) width: Option<(f32, Unit)>,
     pub(crate) height: Option<(f32, Unit)>,
+    pub(crate) min_width: Option<(f32, Unit)>,
+    pub(crate) max_width: Option<(f32, Unit)>,
+    pub(crate) min_height: Option<(f32, Unit)>,
+    pub(crate) max_height: Option<(f32, Unit)>,
     pub(crate) font_id: u32,
     pub(crate) font_size: f32,
     pub(crate) has_font: bool,
@@ -307,14 +340,13 @@ pub(crate) struct TextProps {
     pub(crate) editor_accepts_tab: Option<bool>,
     pub(crate) obscured: Option<bool>,
     pub(crate) caret_color: Option<u32>,
+    pub(crate) selection_range_bytes: Option<(u32, u32)>,
+    pub(crate) selection_start: u32,
+    pub(crate) selection_end: u32,
 }
 
 #[derive(Clone, Default)]
 pub(crate) struct GridProps {
-    pub(crate) width: Option<(f32, Unit)>,
-    pub(crate) height: Option<(f32, Unit)>,
-    pub(crate) bg_color: Option<u32>,
-    pub(crate) padding: Option<(f32, f32, f32, f32)>,
     pub(crate) columns: Vec<f32>,
     pub(crate) column_types: Vec<GridUnit>,
     pub(crate) rows: Vec<f32>,
@@ -324,8 +356,6 @@ pub(crate) struct GridProps {
 }
 #[derive(Clone)]
 pub(crate) struct ImageProps {
-    pub(crate) width: Option<(f32, Unit)>,
-    pub(crate) height: Option<(f32, Unit)>,
     pub(crate) texture_id: u32,
     pub(crate) source_url: Option<String>,
     pub(crate) object_fit: ObjectFit,
@@ -336,22 +366,17 @@ pub(crate) struct ImageProps {
 
 #[derive(Clone)]
 pub(crate) struct SvgProps {
-    pub(crate) width: Option<(f32, Unit)>,
-    pub(crate) height: Option<(f32, Unit)>,
     pub(crate) svg_id: u32,
     pub(crate) source_url: Option<String>,
     pub(crate) tint_color: u32,
     pub(crate) sampling_kind: ImageSamplingKind,
     pub(crate) max_aniso: u32,
-    pub(crate) opacity: Option<f32>,
 }
 
 #[derive(Clone)]
 pub(crate) struct ScrollViewProps {
     pub(crate) width: Option<(f32, Unit)>,
     pub(crate) height: Option<(f32, Unit)>,
-    pub(crate) bg_color: Option<u32>,
-    pub(crate) padding: Option<(f32, f32, f32, f32)>,
     pub(crate) enable_scroll_x: bool,
     pub(crate) enable_scroll_y: bool,
     pub(crate) friction: Option<f32>,
@@ -490,6 +515,18 @@ impl WeakFlexBox {
 }
 
 impl NodeRef {
+    pub(crate) fn set_shared_size_scope(&self, enabled: bool) {
+        let handle = {
+            let mut core = self.inner.borrow_mut();
+            core.behavior.is_shared_size_scope = enabled;
+            core.handle
+        };
+        if handle != NodeHandle::INVALID {
+            ui::set_is_shared_size_scope(handle.raw(), enabled);
+            crate::frame_scheduler::mark_needs_commit();
+        }
+    }
+
     pub(crate) fn from_core(inner: Rc<RefCell<NodeCore>>) -> Self {
         Self {
             inner,
@@ -580,6 +617,7 @@ impl NodeRef {
         self.inner.borrow_mut().children.push(child.clone());
         self.inner.borrow_mut().children_built = false;
         child.set_inherited_enabled(self.is_enabled_for_routing());
+        child.refresh_effective_visibility();
         if self.handle() != NodeHandle::INVALID {
             child.build();
             ui::add_child(self.handle().raw(), child.handle().raw());
@@ -628,6 +666,7 @@ impl NodeRef {
         };
         removed.inner.borrow_mut().parent = Weak::new();
         removed.set_inherited_enabled(true);
+        removed.refresh_effective_visibility();
         parent.inner.borrow_mut().children_built = false;
         if parent.handle() != NodeHandle::INVALID && self.handle() != NodeHandle::INVALID {
             ui::remove_child(parent.handle().raw(), self.handle().raw());
@@ -644,14 +683,27 @@ impl NodeRef {
     }
 
     pub(crate) fn is_effectively_visible_for_routing(&self) -> bool {
+        self.effective_visibility_for_routing() == Visibility::Normal
+    }
+
+    fn effective_visibility_for_routing(&self) -> Visibility {
+        let mut result = Visibility::Normal;
         let mut node = Some(self.clone());
         while let Some(current) = node {
-            if !current.is_visible_for_routing() {
-                return false;
+            match current
+                .inner
+                .borrow()
+                .behavior
+                .visibility
+                .unwrap_or(Visibility::Normal)
+            {
+                Visibility::Collapsed => return Visibility::Collapsed,
+                Visibility::Hidden => result = Visibility::Hidden,
+                Visibility::Normal => {}
             }
             node = current.parent();
         }
-        true
+        result
     }
 
     pub(crate) fn is_enabled_for_routing(&self) -> bool {
@@ -681,6 +733,20 @@ impl NodeRef {
         self.apply_enabled_changed();
     }
 
+    pub(crate) fn set_own_visibility(&self, visibility: Visibility) {
+        {
+            let mut core = self.inner.borrow_mut();
+            if core.behavior.visibility == Some(visibility) {
+                return;
+            }
+            core.behavior.visibility = Some(visibility);
+        }
+        if visibility != Visibility::Normal {
+            self.cancel_drag_state();
+        }
+        self.refresh_effective_visibility();
+    }
+
     pub(crate) fn set_inherited_enabled(&self, enabled: bool) {
         {
             let mut core = self.inner.borrow_mut();
@@ -700,6 +766,7 @@ impl NodeRef {
     }
 
     fn apply_enabled_changed(&self) {
+        let effectively_visible = self.is_effectively_visible_for_routing();
         let (
             effective,
             handle,
@@ -721,10 +788,7 @@ impl NodeRef {
                 core.handle,
                 core.behavior.interactive,
                 core.behavior.focusable,
-                !matches!(
-                    core.behavior.visibility,
-                    Some(Visibility::Hidden | Visibility::Collapsed)
-                ),
+                effectively_visible,
                 core.behavior.track_semantic_disabled_from_enabled,
                 core.effective_enabled_changed_callbacks.clone(),
                 core.children.clone(),
@@ -765,15 +829,52 @@ impl NodeRef {
             .unwrap_or(CursorStyle::Default)
     }
 
+    fn refresh_effective_visibility(&self) {
+        let effective_visibility = self.effective_visibility_for_routing();
+        let effective_visible = effective_visibility == Visibility::Normal;
+        let (handle, visibility, enabled, interactive, focusable, children) = {
+            let core = self.inner.borrow();
+            (
+                core.handle,
+                effective_visibility,
+                core.behavior.enabled && core.behavior.inherited_enabled,
+                core.behavior.interactive,
+                core.behavior.focusable,
+                core.children.clone(),
+            )
+        };
+        if handle != NodeHandle::INVALID {
+            ui::set_visibility(handle.raw(), visibility as u32);
+            ui::set_interactive(handle.raw(), enabled && effective_visible && interactive);
+            if let Some((focusable, tab_index)) = focusable {
+                ui::set_focusable(
+                    handle.raw(),
+                    enabled && effective_visible && focusable,
+                    tab_index,
+                );
+            }
+            crate::frame_scheduler::mark_needs_commit();
+        }
+        for child in children {
+            child.refresh_effective_visibility();
+        }
+    }
+
     pub(crate) fn require_interactive(&self) {
-        let (handle, enabled, changed) = {
+        let visible = self.is_effectively_visible_for_routing();
+        let (handle, enabled, visible, changed) = {
             let mut inner = self.inner.borrow_mut();
             let changed = !inner.behavior.interactive;
             inner.behavior.interactive = true;
-            (inner.handle, inner.behavior.enabled, changed)
+            (
+                inner.handle,
+                inner.behavior.enabled && inner.behavior.inherited_enabled,
+                visible,
+                changed,
+            )
         };
         if handle != NodeHandle::INVALID {
-            ui::set_interactive(handle.raw(), enabled);
+            ui::set_interactive(handle.raw(), enabled && visible);
             if changed {
                 crate::frame_scheduler::mark_needs_commit();
             }
@@ -1053,7 +1154,7 @@ impl NodeRef {
         match event.event_type {
             crate::ffi::PointerEventType::Down => {
                 crate::tool_tip_manager::ToolTipManager::handle_pointer_down(self);
-                if let Some(handler) = handlers.pointer_down {
+                if let Some(handler) = handlers.pointer_down.as_ref() {
                     handler(event);
                 }
                 if event.handled {
@@ -1074,7 +1175,7 @@ impl NodeRef {
                             matches!(event.pointer_type, PointerType::Touch | PointerType::Pen),
                         );
                         let mut core = self.inner.borrow_mut();
-                        core.drag_click_pending = handlers.pointer_click.is_some();
+                        core.drag_click_pending = handlers.has_pointer_click_handler();
                         core.drag_click_pending_count = event.click_count;
                         core.click_pending = false;
                         core.click_pending_count = 0;
@@ -1085,7 +1186,7 @@ impl NodeRef {
                 core.drag_click_pending = false;
                 core.drag_click_pending_count = 0;
                 core.click_pending =
-                    handlers.pointer_click.is_some() && is_primary_activation_pointer(event);
+                    handlers.has_pointer_click_handler() && is_primary_activation_pointer(event);
                 core.click_pending_count = event.click_count;
             }
             crate::ffi::PointerEventType::Move => {
@@ -1115,7 +1216,7 @@ impl NodeRef {
                 }
             }
             crate::ffi::PointerEventType::Up => {
-                if let Some(handler) = handlers.pointer_up {
+                if let Some(handler) = handlers.pointer_up.as_ref() {
                     handler(event);
                 }
                 if event.handled {
@@ -1156,21 +1257,11 @@ impl NodeRef {
                     }
                 }
                 if can_fire_click {
-                    if let Some(handler) = handlers.pointer_click.clone() {
-                        event.click_count = if click_count > 0 { click_count } else { 1 };
-                        handler(event);
-                    }
+                    handlers.dispatch_pointer_click(event, click_count);
                 }
                 self.clear_click_pending_state();
                 if can_fire_pending_click {
-                    if let Some(handler) = handlers.pointer_click {
-                        event.click_count = if pending_click_count > 0 {
-                            pending_click_count
-                        } else {
-                            1
-                        };
-                        handler(event);
-                    }
+                    handlers.dispatch_pointer_click(event, pending_click_count);
                 }
                 self.clear_drag_click_pending_state();
             }
@@ -1560,6 +1651,12 @@ impl NodeRef {
     }
 }
 
+/// Universal retained-node capabilities shared by every visual node and control.
+///
+/// Rust controls use composition rather than FUI-AS class inheritance, but this
+/// trait preserves the common retained identity, state, semantics, focus,
+/// routed-input, gesture, geometry, and child-inspection contract. Layout and
+/// appearance are exposed separately through the cohesive surface traits.
 pub trait Node: Clone {
     #[doc(hidden)]
     fn node_ref(&self) -> NodeRef {
@@ -1579,15 +1676,67 @@ pub trait Node: Clone {
         Vec::new()
     }
 
-    fn node_id(&self, node_id: impl Into<String>) -> &Self
-    where
-        Self: Sized,
-    {
+    #[doc(hidden)]
+    fn apply_node_id(&self, node_id: String) {
         let node_ref = self.node_ref();
         node_ref.set_node_id(node_id);
         if self.has_built_handle() {
             self.notify_retained_mutation();
         }
+    }
+
+    #[doc(hidden)]
+    fn apply_semantic_label(&self, label: String) {
+        let node_ref = self.node_ref();
+        node_ref.inner.borrow_mut().behavior.semantic_label = Some(label.clone());
+        let handle = node_ref.handle();
+        if handle != NodeHandle::INVALID {
+            ui::set_semantic_label(handle.raw(), &label);
+            self.notify_retained_mutation();
+        }
+    }
+
+    #[doc(hidden)]
+    fn apply_focusable(&self, enabled: bool, tab_index: i32) {
+        let node_ref = self.node_ref();
+        if enabled {
+            node_ref.require_interactive();
+        }
+        let visible = node_ref.is_effectively_visible_for_routing();
+        let mut core = node_ref.inner.borrow_mut();
+        core.behavior.focusable = Some((enabled, tab_index));
+        let interactive = core.behavior.enabled && core.behavior.inherited_enabled && visible;
+        let handle = core.handle;
+        drop(core);
+        if handle != NodeHandle::INVALID {
+            ui::set_focusable(handle.raw(), interactive && enabled, tab_index);
+            self.notify_retained_mutation();
+        }
+    }
+
+    #[doc(hidden)]
+    fn apply_focus_now(&self) {
+        let handle = self.node_ref().handle();
+        if handle != NodeHandle::INVALID {
+            ui::request_focus(handle.raw());
+        }
+    }
+
+    #[doc(hidden)]
+    fn apply_enabled(&self, enabled: bool) {
+        self.node_ref().set_own_enabled(enabled);
+    }
+
+    #[doc(hidden)]
+    fn apply_focus_changed_handler(&self, handler: Rc<dyn Fn(FocusChangedEventArgs)>) {
+        self.node_ref().inner.borrow_mut().handlers.focus_changed = Some(handler);
+    }
+
+    fn node_id(&self, node_id: impl Into<String>) -> &Self
+    where
+        Self: Sized,
+    {
+        self.apply_node_id(node_id.into());
         self
     }
 
@@ -1608,14 +1757,197 @@ pub trait Node: Clone {
     where
         Self: Sized,
     {
-        let label = label.into();
+        self.apply_semantic_label(label.into());
+        self
+    }
+
+    fn semantic_checked(&self, state: SemanticCheckedState) -> &Self
+    where
+        Self: Sized,
+    {
         let node_ref = self.node_ref();
-        node_ref.inner.borrow_mut().behavior.semantic_label = Some(label.clone());
+        node_ref.inner.borrow_mut().behavior.semantic_checked = Some(state);
         if self.has_built_handle() {
-            ui::set_semantic_label(self.handle().raw(), &label);
+            ui::set_semantic_checked(self.handle().raw(), state as u32);
             self.notify_retained_mutation();
         }
         self
+    }
+
+    fn semantic_disabled(&self, disabled: bool) -> &Self
+    where
+        Self: Sized,
+    {
+        let node_ref = self.node_ref();
+        let mut core = node_ref.inner.borrow_mut();
+        core.behavior.track_semantic_disabled_from_enabled = false;
+        core.behavior.semantic_disabled = Some(disabled);
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_semantic_disabled(self.handle().raw(), true, disabled);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn clear_semantic_disabled(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        let node_ref = self.node_ref();
+        let mut core = node_ref.inner.borrow_mut();
+        core.behavior.track_semantic_disabled_from_enabled = false;
+        core.behavior.semantic_disabled = None;
+        drop(core);
+        if self.has_built_handle() {
+            ui::set_semantic_disabled(self.handle().raw(), false, false);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn semantic_selected(&self, selected: bool) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_selected = Some(selected);
+        if self.has_built_handle() {
+            ui::set_semantic_selected(self.handle().raw(), true, selected);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn clear_semantic_selected(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_selected = None;
+        if self.has_built_handle() {
+            ui::set_semantic_selected(self.handle().raw(), false, false);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn semantic_expanded(&self, expanded: bool) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_expanded = Some(expanded);
+        if self.has_built_handle() {
+            ui::set_semantic_expanded(self.handle().raw(), true, expanded);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn clear_semantic_expanded(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_expanded = None;
+        if self.has_built_handle() {
+            ui::set_semantic_expanded(self.handle().raw(), false, false);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn semantic_value_range(&self, value_now: f32, value_min: f32, value_max: f32) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_value_range = Some((value_now, value_min, value_max));
+        if self.has_built_handle() {
+            ui::set_semantic_value_range(
+                self.handle().raw(),
+                true,
+                value_now,
+                value_min,
+                value_max,
+            );
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn clear_semantic_value_range(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_value_range = None;
+        if self.has_built_handle() {
+            ui::set_semantic_value_range(self.handle().raw(), false, 0.0, 0.0, 0.0);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn semantic_orientation(&self, orientation: Orientation) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref()
+            .inner
+            .borrow_mut()
+            .behavior
+            .semantic_orientation = Some(orientation);
+        if self.has_built_handle() {
+            ui::set_semantic_orientation(self.handle().raw(), orientation as u32);
+            self.notify_retained_mutation();
+        }
+        self
+    }
+
+    fn request_semantic_announcement(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        if self.has_built_handle() {
+            ui::request_semantic_announcement(self.handle().raw());
+        }
+        self
+    }
+
+    fn child_count(&self) -> usize {
+        self.node_ref().children().len()
+    }
+
+    fn is_enabled(&self) -> bool {
+        self.node_ref().is_enabled_for_routing()
+    }
+
+    fn is_visible(&self) -> bool {
+        self.node_ref().is_effectively_visible_for_routing()
+    }
+
+    fn cursor_style(&self) -> CursorStyle {
+        self.node_ref().cursor_style_for_routing()
     }
 
     fn persist_state(&self, adapter: Rc<dyn PersistedStateAdapter>) -> &Self
@@ -1670,12 +2002,38 @@ pub trait Node: Clone {
         self
     }
 
-    fn on_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self
+    /// Handles the low-level routed pointer-click event.
+    ///
+    /// This is not control activation. Use [`Button::on_click`](crate::Button::on_click)
+    /// for a button action that also supports keyboard activation.
+    fn on_pointer_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self
     where
         Self: Sized,
     {
         let node_ref = self.node_ref();
         node_ref.inner.borrow_mut().handlers.pointer_click = Some(Rc::new(handler));
+        node_ref.require_interactive();
+        self
+    }
+
+    /// Handles a low-level routed pointer double-click after the ordinary pointer-click callback.
+    fn on_pointer_double_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self
+    where
+        Self: Sized,
+    {
+        let node_ref = self.node_ref();
+        node_ref.inner.borrow_mut().handlers.pointer_double_click = Some(Rc::new(handler));
+        node_ref.require_interactive();
+        self
+    }
+
+    /// Handles a low-level routed pointer triple-click after the ordinary pointer-click callback.
+    fn on_pointer_triple_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self
+    where
+        Self: Sized,
+    {
+        let node_ref = self.node_ref();
+        node_ref.inner.borrow_mut().handlers.pointer_triple_click = Some(Rc::new(handler));
         node_ref.require_interactive();
         self
     }
@@ -1792,19 +2150,7 @@ pub trait Node: Clone {
     where
         Self: Sized,
     {
-        let node_ref = self.node_ref();
-        if enabled {
-            node_ref.require_interactive();
-        }
-        let mut core = node_ref.inner.borrow_mut();
-        core.behavior.focusable = Some((enabled, tab_index));
-        let interactive = core.behavior.enabled && core.behavior.inherited_enabled;
-        let handle = core.handle;
-        drop(core);
-        if handle != NodeHandle::INVALID {
-            ui::set_focusable(handle.raw(), interactive && enabled, tab_index);
-            self.notify_retained_mutation();
-        }
+        self.apply_focusable(enabled, tab_index);
         self
     }
 
@@ -1812,10 +2158,44 @@ pub trait Node: Clone {
     where
         Self: Sized,
     {
-        let handle = self.node_ref().handle();
-        if handle != NodeHandle::INVALID {
-            ui::request_focus(handle.raw());
+        self.apply_focus_now();
+        self
+    }
+
+    fn enabled(&self, enabled: bool) -> &Self
+    where
+        Self: Sized,
+    {
+        self.apply_enabled(enabled);
+        self
+    }
+
+    fn visibility(&self, visibility: Visibility) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref().set_own_visibility(visibility);
+        if self.has_built_handle() {
+            self.notify_retained_layout_mutation();
         }
+        self
+    }
+
+    fn cursor(&self, style: CursorStyle) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref().inner.borrow_mut().behavior.cursor = Some(style);
+        crate::event::handle_cursor_style_changed(self.handle());
+        self
+    }
+
+    fn clear_cursor(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self.node_ref().inner.borrow_mut().behavior.cursor = None;
+        crate::event::handle_cursor_style_changed(self.handle());
         self
     }
 
@@ -1839,7 +2219,7 @@ pub trait Node: Clone {
     where
         Self: Sized,
     {
-        self.node_ref().inner.borrow_mut().handlers.focus_changed = Some(Rc::new(handler));
+        self.apply_focus_changed_handler(Rc::new(handler));
         self
     }
 

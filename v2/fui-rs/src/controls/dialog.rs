@@ -1,11 +1,14 @@
 use super::DialogAppearance;
-use super::{Button, Form};
+use super::{Button, Clickable, Form};
 use crate::app;
 use crate::bindings::ui;
 use crate::ffi::{
     AlignItems, BorderStyle, FlexDirection, JustifyContent, PositionType, SemanticRole, Unit,
 };
-use crate::node::{flex_box, portal, Border, FlexBox, Node, NodeRef, TextNode, WeakFlexBox};
+use crate::node::{
+    flex_box, portal, Border, ChildContainerSurface, FlexBox, Node, NodeRef, TextNode,
+    ThemeBindable, WeakFlexBox,
+};
 use crate::theme::{current_theme, subscribe, Theme};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -363,7 +366,7 @@ impl Dialog {
         });
 
         let event_target = self.event_target();
-        self.overlay.on_click(move |event| {
+        self.overlay.on_pointer_click(move |event| {
             event_target.handle_backdrop_click(event);
         });
 
@@ -431,6 +434,41 @@ impl Node for Dialog {
 impl crate::node::HasFlexBoxRoot for Dialog {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+}
+
+impl ThemeBindable for Dialog {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let root = self.root.downgrade();
+        let title_node = self.title_node.clone();
+        let body_node = self.body_node.clone();
+        let content_host = self.content_host.clone();
+        let accept_button = self.accept_button.clone();
+        let cancel_button = self.cancel_button.clone();
+        let buttons_row = self._buttons_row.clone();
+        let form = self.form.clone();
+        let card = self.card.clone();
+        let overlay = self.overlay.clone();
+        let state = self.state.clone();
+        Box::new(move || {
+            Some(Self {
+                root: root.upgrade()?,
+                title_node: title_node.clone(),
+                body_node: body_node.clone(),
+                content_host: content_host.clone(),
+                accept_button: accept_button.clone(),
+                cancel_button: cancel_button.clone(),
+                _buttons_row: buttons_row.clone(),
+                form: form.clone(),
+                card: card.clone(),
+                overlay: overlay.clone(),
+                state: state.clone(),
+            })
+        })
     }
 }
 

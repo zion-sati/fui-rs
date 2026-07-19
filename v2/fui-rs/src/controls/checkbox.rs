@@ -289,6 +289,13 @@ impl Checkbox {
     }
 }
 
+impl Clickable for Checkbox {
+    fn on_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self {
+        self.base.on_click(handler);
+        self
+    }
+}
+
 impl LabeledControlTextStyle for Checkbox {
     fn set_label_font_family(&self, family: crate::FontFamily) {
         self.base.font_family(family);

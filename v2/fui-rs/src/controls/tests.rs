@@ -8,26 +8,28 @@ use crate::ffi::{
 use crate::focus_visibility;
 use crate::generated::ffi::NodeType;
 use crate::node::Node;
-use crate::node::{column, text, Child, FlexBoxSurface};
+use crate::node::{
+    column, text, BoxStyleSurface, Child, ChildContainerSurface, FlexLayoutSurface, LayoutSurface,
+};
 use crate::theme::{current_theme, generate_theme, use_custom_theme, use_system_theme};
 use crate::Application;
 use crate::Border;
 use crate::PointerType;
 use crate::ScrollBarVisibility;
-use crate::TextCore;
+use crate::TextNode;
 use std::cell::Cell;
 use std::rc::Rc;
 
 #[derive(Clone)]
 struct TestButtonPresenter {
     content_root: FlexBox,
-    label: TextCore,
+    label: TextNode,
     border_color: u32,
 }
 
 impl TestButtonPresenter {
     fn new(border_color: u32) -> Self {
-        let label = TextCore::new("");
+        let label = TextNode::new_core("");
         let content_root = flex_box();
         content_root.child(&label);
         Self {
@@ -43,7 +45,7 @@ impl ButtonPresenter for TestButtonPresenter {
         self.content_root.clone()
     }
 
-    fn label_node(&self) -> TextCore {
+    fn label_node(&self) -> TextNode {
         self.label.clone()
     }
 
@@ -76,7 +78,7 @@ struct TestTextInputPresenter {
 }
 
 impl TextInputPresenter for TestTextInputPresenter {
-    fn bind(&self, _editor_host: TextCore, _placeholder_host: FlexBox) {}
+    fn bind(&self, _editor_host: TextNode, _placeholder_host: FlexBox) {}
 
     fn present(
         &self,
@@ -1331,6 +1333,114 @@ fn flex_box_backed_controls_preserve_concrete_bind_theme_dx() {
 }
 
 #[test]
+fn newly_covered_composed_controls_keep_one_theme_callback_after_wrapper_drop() {
+    ffi::test::reset();
+    let previous_theme = current_theme();
+    let invocations = Rc::new(Cell::new(0));
+    let invoked_controls = Rc::new(Cell::new(0u32));
+    let root = column();
+
+    let form = form();
+    form.bind_theme({
+        let invocations = invocations.clone();
+        let invoked_controls = invoked_controls.clone();
+        move |control, theme| {
+            invocations.set(invocations.get() + 1);
+            invoked_controls.set(invoked_controls.get() | 1);
+            control.bg_color(theme.colors.surface);
+        }
+    });
+    let group = radio_group();
+    group.bind_theme({
+        let invocations = invocations.clone();
+        let invoked_controls = invoked_controls.clone();
+        move |control, theme| {
+            invocations.set(invocations.get() + 1);
+            invoked_controls.set(invoked_controls.get() | 2);
+            control.bg_color(theme.colors.surface);
+        }
+    });
+    let popup = popup();
+    popup.bind_theme({
+        let invocations = invocations.clone();
+        let invoked_controls = invoked_controls.clone();
+        move |control, theme| {
+            invocations.set(invocations.get() + 1);
+            invoked_controls.set(invoked_controls.get() | 4);
+            control.surface().bg_color(theme.colors.surface);
+        }
+    });
+    let dialog = dialog("Theme", "Dialog");
+    dialog.bind_theme({
+        let invocations = invocations.clone();
+        let invoked_controls = invoked_controls.clone();
+        move |control, _theme| {
+            invocations.set(invocations.get() + 1);
+            invoked_controls.set(invoked_controls.get() | 8);
+            control.content("Theme", "Dialog");
+        }
+    });
+    let menu = ContextMenu::new();
+    menu.bind_theme({
+        let invocations = invocations.clone();
+        let invoked_controls = invoked_controls.clone();
+        move |control, theme| {
+            invocations.set(invocations.get() + 1);
+            invoked_controls.set(invoked_controls.get() | 16);
+            control.appearance(
+                ContextMenuAppearance::new()
+                    .panel(SurfaceAppearance::new().background(theme.colors.surface)),
+            );
+        }
+    });
+
+    assert_eq!(invocations.get(), 5);
+    assert_eq!(invoked_controls.replace(0), 31);
+    root.child(&form)
+        .child(&group)
+        .child(&popup)
+        .child(&dialog)
+        .child(&menu);
+    Application::mount(root);
+    drop(form);
+    drop(group);
+    drop(popup);
+    drop(dialog);
+    drop(menu);
+
+    use_custom_theme(generate_theme(false, 0x2A6F97FF));
+    assert_eq!(
+        invoked_controls.get(),
+        31,
+        "missing retained theme callback bit; form=1 group=2 popup=4 dialog=8 menu=16"
+    );
+    assert_eq!(invocations.get(), 10);
+    use_custom_theme(previous_theme);
+    Application::unmount();
+}
+
+#[test]
+fn composed_theme_subscription_stops_after_unmount_and_releases_retained_root() {
+    let previous_theme = current_theme();
+    let invocations = Rc::new(Cell::new(0));
+    let form = form();
+    let weak_root = form.flex_box_root().downgrade();
+    form.bind_theme({
+        let invocations = invocations.clone();
+        move |_control, _theme| invocations.set(invocations.get() + 1)
+    });
+    Application::mount(form.clone());
+    assert_eq!(invocations.get(), 1);
+
+    Application::unmount();
+    drop(form);
+    use_custom_theme(generate_theme(false, 0x314159FF));
+    assert_eq!(invocations.get(), 1);
+    assert!(weak_root.upgrade().is_none());
+    use_custom_theme(previous_theme);
+}
+
+#[test]
 fn retained_pressable_and_slider_keep_theme_subscriptions_after_wrappers_drop() {
     ffi::test::reset();
     let root = column();
@@ -1676,10 +1786,15 @@ fn button_local_template_replaces_presenter_tree_and_retains_label_updates() {
 fn pressable_labeled_enabled_forwarding_blocks_activation() {
     ffi::test::reset();
     let checkbox_changes = Rc::new(Cell::new(0));
+    let checkbox_clicks = Rc::new(Cell::new(0));
     let checkbox_changes_clone = checkbox_changes.clone();
+    let checkbox_clicks_clone = checkbox_clicks.clone();
     let checkbox = checkbox("Agree");
     checkbox.on_changed(move |_event| {
         checkbox_changes_clone.set(checkbox_changes_clone.get() + 1);
+    });
+    checkbox.on_click(move |_event| {
+        checkbox_clicks_clone.set(checkbox_clicks_clone.get() + 1);
     });
     checkbox.enabled(false);
     Application::mount(checkbox.clone());
@@ -1698,13 +1813,19 @@ fn pressable_labeled_enabled_forwarding_blocks_activation() {
     key_event(KeyEventType::Down, "Space", 0);
     key_event(KeyEventType::Up, "Space", 0);
     assert_eq!(checkbox_changes.get(), 0);
+    assert_eq!(checkbox_clicks.get(), 0);
 
     ffi::test::reset();
     let radio_changes = Rc::new(Cell::new(0));
+    let radio_clicks = Rc::new(Cell::new(0));
     let radio_changes_clone = radio_changes.clone();
+    let radio_clicks_clone = radio_clicks.clone();
     let radio = radio_button("Option");
     radio.on_changed(move |_event| {
         radio_changes_clone.set(radio_changes_clone.get() + 1);
+    });
+    radio.on_click(move |_event| {
+        radio_clicks_clone.set(radio_clicks_clone.get() + 1);
     });
     radio.enabled(false);
     Application::mount(radio.clone());
@@ -1715,13 +1836,19 @@ fn pressable_labeled_enabled_forwarding_blocks_activation() {
     key_event(KeyEventType::Down, "Space", 0);
     key_event(KeyEventType::Up, "Space", 0);
     assert_eq!(radio_changes.get(), 0);
+    assert_eq!(radio_clicks.get(), 0);
 
     ffi::test::reset();
     let switch_changes = Rc::new(Cell::new(0));
+    let switch_clicks = Rc::new(Cell::new(0));
     let switch_changes_clone = switch_changes.clone();
+    let switch_clicks_clone = switch_clicks.clone();
     let switch = switch("Toggle");
     switch.on_changed(move |_event| {
         switch_changes_clone.set(switch_changes_clone.get() + 1);
+    });
+    switch.on_click(move |_event| {
+        switch_clicks_clone.set(switch_clicks_clone.get() + 1);
     });
     switch.enabled(false);
     Application::mount(switch.clone());
@@ -1732,6 +1859,7 @@ fn pressable_labeled_enabled_forwarding_blocks_activation() {
     key_event(KeyEventType::Down, "Space", 0);
     key_event(KeyEventType::Up, "Space", 0);
     assert_eq!(switch_changes.get(), 0);
+    assert_eq!(switch_clicks.get(), 0);
 }
 
 #[test]
@@ -2986,17 +3114,21 @@ fn checkbox_persisted_state_restores_and_emits_without_announcement() {
     )));
 
     let changes = Rc::new(Cell::new(0));
+    let clicks = Rc::new(Cell::new(0));
     let changes_clone = changes.clone();
+    let clicks_clone = clicks.clone();
     let restored = checkbox("Agree");
     restored.node_id("checkbox-persisted");
     restored.tri_state(true);
     restored.on_changed(move |_event| changes_clone.set(changes_clone.get() + 1));
+    restored.on_click(move |_event| clicks_clone.set(clicks_clone.get() + 1));
     Application::mount(restored.clone());
     let _ = ffi::test::take_calls();
     Application::restore_persisted_ui_state();
 
     assert_eq!(restored.checked_state(), CheckState::Mixed);
     assert_eq!(changes.get(), 1);
+    assert_eq!(clicks.get(), 0);
     let calls = ffi::test::take_calls();
     assert!(!calls
         .iter()
@@ -3023,16 +3155,20 @@ fn switch_persisted_state_restores_and_emits_without_announcement() {
     )));
 
     let changes = Rc::new(Cell::new(0));
+    let clicks = Rc::new(Cell::new(0));
     let changes_clone = changes.clone();
+    let clicks_clone = clicks.clone();
     let restored = switch("Toggle");
     restored.node_id("switch-persisted");
     restored.on_changed(move |_event| changes_clone.set(changes_clone.get() + 1));
+    restored.on_click(move |_event| clicks_clone.set(clicks_clone.get() + 1));
     Application::mount(restored.clone());
     let _ = ffi::test::take_calls();
     Application::restore_persisted_ui_state();
 
     assert!(restored.is_checked());
     assert_eq!(changes.get(), 1);
+    assert_eq!(clicks.get(), 0);
     let calls = ffi::test::take_calls();
     assert!(!calls
         .iter()
@@ -4237,6 +4373,94 @@ fn text_input_text_replaced_event_updates_value_and_emits_changed() {
 
     assert_eq!(input.value(), "hello");
     assert_eq!(&*last_text.borrow(), "hello");
+    Application::unmount();
+}
+
+#[test]
+fn editable_controls_implement_the_shared_text_editor_surface() {
+    fn require<T: TextEditorSurface + Node + HasFlexBoxRoot + crate::ThemeBindable>() {}
+
+    require::<TextInput>();
+    require::<TextArea>();
+}
+
+#[test]
+fn editable_node_metadata_and_focus_route_to_editor_while_layout_routes_to_shell() {
+    ffi::test::reset();
+    let input = text_input();
+    let focused = Rc::new(Cell::new(false));
+    input
+        .width(320.0, Unit::Pixel)
+        .node_id("routed-editor")
+        .semantic_label("Explicit editor label")
+        .focusable(true, 4)
+        .on_focus_changed({
+            let focused = focused.clone();
+            move |event| focused.set(event.focused)
+        });
+
+    Application::mount(input.clone());
+    let calls = ffi::test::take_calls();
+    let root_handle = input.retained_node_ref().handle().raw();
+    let editor_handle = calls
+        .iter()
+        .find_map(|call| match call {
+            Call::SetNodeId { handle, node_id } if node_id == "routed-editor" => Some(*handle),
+            _ => None,
+        })
+        .expect("expected editor node id");
+
+    assert_ne!(root_handle, editor_handle);
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetWidth { handle, value, unit_enum }
+            if *handle == root_handle && *value == 320.0 && *unit_enum == Unit::Pixel as u32
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetSemanticLabel { handle, label }
+            if *handle == editor_handle && label == "Explicit editor label"
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetFocusable { handle, focusable, tab_index }
+            if *handle == editor_handle && *focusable && *tab_index == 4
+    )));
+
+    event::__fui_on_focus_changed(editor_handle, true);
+    assert!(focused.get());
+    input.focus_now();
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::RequestFocus { handle } if *handle == editor_handle
+    )));
+    Application::unmount();
+}
+
+#[test]
+fn text_area_prebuild_utf8_selection_replays_scalar_range_as_runtime_bytes() {
+    ffi::test::reset();
+    let input = text_area();
+    input
+        .node_id("prebuild-utf8-area")
+        .text("a😄b")
+        .selection_range(1, 2);
+    Application::mount(input.clone());
+    let calls = ffi::test::take_calls();
+    let editor_handle = calls
+        .iter()
+        .find_map(|call| match call {
+            Call::SetNodeId { handle, node_id } if node_id == "prebuild-utf8-area" => Some(*handle),
+            _ => None,
+        })
+        .expect("expected text area editor node id");
+
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetTextSelectionRange { handle, start, end }
+            if *handle == editor_handle && *start == 1 && *end == 5
+    )));
     Application::unmount();
 }
 

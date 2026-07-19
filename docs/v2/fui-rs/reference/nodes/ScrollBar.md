@@ -1,10 +1,11 @@
 # ScrollBar
 
-Retained scrollbar chrome.
+Helper that composes retained scrollbar chrome.
 
 ## Constructor
 
 - constructed by scroll surfaces or directly where needed
+- `render()` returns the retained `FlexBox` chrome to attach
 
 ## Key APIs
 
@@ -12,7 +13,9 @@ Retained scrollbar chrome.
 
 ## Notes
 
-- This is retained SDK state or a retained runtime resource.
+- `ScrollBar` itself is not a `Node`; its rendered `FlexBox` is retained UI.
+- It follows the active theme internally. Bind a deliberate per-instance theme
+  override to the rendered `FlexBox` when needed.
 - Prefer public constructors/helpers from `fui::prelude::*`.
 - Avoid raw runtime handles in app code; use public node/resource APIs.
 

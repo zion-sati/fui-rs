@@ -193,6 +193,33 @@ Event args and enums:
 Event handlers generally receive typed EventArgs structs. Set `event.handled = true`
 for routed mutable event args to stop bubbling and suppress framework defaults.
 
+The universal Node click event is `on_pointer_click(...)`; it reports only raw
+pointer input through mutable `PointerEventArgs`. Exact raw multi-click gestures
+use `on_pointer_double_click(...)` and `on_pointer_triple_click(...)`.
+`Button`, `Checkbox`, `RadioButton`, and `Switch` expose a separate count-free
+`on_click(...)` semantic activation API covering supported pointer and keyboard
+activation, while `NavLink` uses `on_navigate(...)`.
+
+## Public capability traits
+
+- `Node`: universal retained identity, state, semantics, focus, routed input,
+  gestures, context menus, geometry, and child inspection/removal.
+- `LayoutSurface`: retained sizing, fill, constraints, margin, and positioning.
+- `BoxStyleSurface`: box appearance, clipping, gradients, blur, shadow, opacity,
+  transitions, and padding.
+- `FlexLayoutSurface`: flex direction, wrapping, basis, justification, and
+  alignment.
+- `ChildContainerSurface`: fluent retained child composition.
+- `FlexBoxSurface`: the complete composite FlexBox capability bound.
+- `TextSurface`: retained text layout, content, typography, selection, editing,
+  and text events for `Text` and `RichText`.
+- `TextEditorSurface`: shared editable-control contract for `TextInput` and
+  `TextArea`.
+- `ThemeBindable`: cycle-safe retained theme subscription for visual types.
+
+See [Controls and nodes](./CONTROLS_AND_NODES.md#capability-traits) for the type
+matrix and the deliberate `ScrollView` boundary.
+
 ## Theme
 
 Theme APIs:

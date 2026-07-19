@@ -83,6 +83,13 @@ fui_app!(FlexBox, build_page);
 FUI-RS is retained mode. Construct controls once and mutate retained controls
 from callbacks; do not recreate the UI tree in a recurring render loop.
 
+`Button::on_click(...)` is the normal high-level action API and includes
+supported keyboard activation. Use `on_pointer_click(...)` only when a Node
+handler needs raw routed pointer data.
+Use `on_pointer_double_click(...)` and `on_pointer_triple_click(...)` for exact
+raw multi-click gestures. Toggle controls expose both semantic `on_click(...)`
+and state-specific `on_changed(...)`; programmatic changes emit only the latter.
+
 Use `ui!` for mixed retained child trees and `rich_text!` for fluent attributed
 text:
 

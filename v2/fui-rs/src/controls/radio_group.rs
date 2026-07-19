@@ -286,4 +286,21 @@ impl crate::node::HasFlexBoxRoot for RadioGroup {
     }
 }
 
+impl crate::node::ThemeBindable for RadioGroup {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let root = self.root.downgrade();
+        let event_target = Rc::downgrade(&self.event_target);
+        Box::new(move || {
+            Some(Self {
+                root: root.upgrade()?,
+                event_target: event_target.upgrade()?,
+            })
+        })
+    }
+}
+
 pub(crate) type WeakRadioGroupEventTarget = Weak<RadioGroupEventTarget>;

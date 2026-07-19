@@ -5,8 +5,7 @@ use crate::ffi::{
     SemanticCheckedState, SemanticRole, Unit,
 };
 use crate::node::{
-    flex_box, row, Child, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, ThemeBindable,
-    WeakNodeRef,
+    flex_box, row, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, ThemeBindable, WeakNodeRef,
 };
 use crate::theme::{current_theme, subscribe};
 use std::cell::{Cell, RefCell};
@@ -19,8 +18,14 @@ use radio_group::WeakRadioGroupEventTarget;
 pub(crate) use shared::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ClickEventArgs {
-    pub click_count: i32,
+pub struct ClickEventArgs;
+
+/// Semantic click activation for controls whose primary action can be invoked
+/// by pointer, keyboard, or another supported activation source.
+///
+/// Use [`Node::on_pointer_click`] when raw routed pointer data is required.
+pub trait Clickable: Sized {
+    fn on_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,6 +134,7 @@ pub mod templating;
 #[cfg(test)]
 mod tests;
 pub mod text_area;
+mod text_editor_surface;
 pub mod text_input;
 
 pub use anti_selection_area::AntiSelectionArea;
@@ -185,6 +191,7 @@ pub use templating::{
     DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
 };
 pub use text_area::TextArea;
+pub use text_editor_surface::TextEditorSurface;
 pub use text_input::TextInput;
 
 pub fn button(label: impl Into<String>) -> Button {

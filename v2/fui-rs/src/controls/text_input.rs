@@ -1,9 +1,7 @@
 use super::internal::text_input_core::TextInputCore;
-use super::internal::text_input_presenter::TextInputTemplate;
-use super::TextInputColors;
-use crate::event::{FocusChangedEventArgs, SelectionChangedEventArgs, TextChangedEventArgs};
-use crate::node::{FlexBox, HasFlexBoxRoot, Node, NodeRef, TextCore};
-use crate::FontFamily;
+use super::text_editor_surface::impl_text_editor_surface;
+use crate::event::FocusChangedEventArgs;
+use crate::node::{FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode};
 use std::any::Any;
 use std::rc::Rc;
 
@@ -25,51 +23,6 @@ impl TextInput {
         Self { core }
     }
 
-    pub fn text(&self, value: impl Into<String>) -> &Self {
-        self.core.text(value);
-        self
-    }
-
-    pub fn value(&self) -> String {
-        self.core.value()
-    }
-
-    pub fn selection_start(&self) -> u32 {
-        self.core.selection_start()
-    }
-
-    pub fn selection_end(&self) -> u32 {
-        self.core.selection_end()
-    }
-
-    pub fn selection_start_byte_offset(&self) -> u32 {
-        self.core.selection_start_byte_offset()
-    }
-
-    pub fn selection_end_byte_offset(&self) -> u32 {
-        self.core.selection_end_byte_offset()
-    }
-
-    pub fn placeholder(&self, value: impl Into<String>) -> &Self {
-        self.core.placeholder(value);
-        self
-    }
-
-    pub fn max_chars(&self, limit: i32) -> &Self {
-        self.core.max_chars(limit);
-        self
-    }
-
-    pub fn read_only(&self, flag: bool) -> &Self {
-        self.core.read_only(flag);
-        self
-    }
-
-    pub fn accepts_tab(&self, flag: bool) -> &Self {
-        self.core.accepts_tab(flag);
-        self
-    }
-
     pub fn password(&self, flag: bool) -> &Self {
         self.core.password(flag);
         self
@@ -85,103 +38,12 @@ impl TextInput {
         self
     }
 
-    pub fn selection_range(&self, start: u32, end: u32) -> &Self {
-        self.core.selection_range(start, end);
-        self
-    }
-
-    pub fn caret(&self, position: u32) -> &Self {
-        self.core.caret(position);
-        self
-    }
-
-    pub fn caret_to_end(&self) -> &Self {
-        self.core.caret_to_end();
-        self
-    }
-
-    pub fn colors(&self, colors: TextInputColors) -> &Self {
-        self.core.colors(colors);
-        self
-    }
-
-    pub fn clear_colors(&self) -> &Self {
-        self.core.clear_colors();
-        self
-    }
-
-    pub fn template(&self, template: Rc<dyn TextInputTemplate>) -> &Self {
-        self.core.template(template);
-        self
-    }
-
-    pub fn clear_template(&self) -> &Self {
-        self.core.clear_template();
-        self
-    }
-
-    pub fn enabled(&self, enabled: bool) -> &Self {
-        self.core.enabled(enabled);
-        self
-    }
-
-    pub fn focusable(&self, enabled: bool, tab_index: i32) -> &Self {
-        self.core.focusable(enabled, tab_index);
-        self
-    }
-
-    pub fn node_id(&self, id: impl Into<String>) -> &Self {
-        self.core.node_id(id);
-        self
-    }
-
-    pub fn line_height(&self, value: f32) -> &Self {
-        self.core.line_height(value);
-        self
-    }
-
-    pub fn font_family(&self, family: FontFamily) -> &Self {
-        self.core.font_family(family);
-        self
-    }
-
-    pub fn font_size(&self, size: f32) -> &Self {
-        self.core.font_size(size);
-        self
-    }
-
-    pub fn on_changed(&self, handler: impl Fn(TextChangedEventArgs) + 'static) -> &Self {
-        self.core.on_changed(handler);
-        self
-    }
-
-    pub fn on_text_changed(&self, handler: impl Fn(TextChangedEventArgs) + 'static) -> &Self {
-        self.core.on_text_changed(handler);
-        self
-    }
-
-    pub fn on_selection_changed(
-        &self,
-        handler: impl Fn(SelectionChangedEventArgs) + 'static,
-    ) -> &Self {
-        self.core.on_selection_changed(handler);
-        self
-    }
-
-    pub fn on_focus_changed(&self, handler: impl Fn(FocusChangedEventArgs) + 'static) -> &Self {
-        self.core.on_focus_changed(handler);
-        self
-    }
-
-    pub fn focus_now(&self) -> &Self {
-        self.core.focus_now();
-        self
-    }
-
-    pub(crate) fn editor_node(&self) -> TextCore {
+    pub(crate) fn editor_node(&self) -> TextNode {
         self.core.editor_node()
     }
 }
+
+impl_text_editor_surface!(TextInput);
 
 impl HasFlexBoxRoot for TextInput {
     fn flex_box_root(&self) -> &FlexBox {
@@ -205,6 +67,30 @@ impl crate::ThemeBindable for TextInput {
 }
 
 impl Node for TextInput {
+    fn apply_node_id(&self, node_id: String) {
+        self.core.node_id(node_id);
+    }
+
+    fn apply_semantic_label(&self, label: String) {
+        self.core.semantic_label(label);
+    }
+
+    fn apply_focusable(&self, enabled: bool, tab_index: i32) {
+        self.core.focusable(enabled, tab_index);
+    }
+
+    fn apply_focus_now(&self) {
+        self.core.focus_now();
+    }
+
+    fn apply_enabled(&self, enabled: bool) {
+        self.core.enabled(enabled);
+    }
+
+    fn apply_focus_changed_handler(&self, handler: Rc<dyn Fn(FocusChangedEventArgs)>) {
+        self.core.set_focus_changed_callback(handler);
+    }
+
     fn retained_node_ref(&self) -> NodeRef {
         let core = self.core.clone();
         self.core

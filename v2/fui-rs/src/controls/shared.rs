@@ -20,24 +20,9 @@ pub(crate) fn is_activation_key(event: &KeyEventArgs) -> bool {
     event.key == "Enter" || event.key == " " || event.key == "Space" || event.key == "Spacebar"
 }
 
-pub(crate) fn fire_click_callbacks(
-    click: &Rc<RefCell<Option<ClickCallback>>>,
-    double_click: &Rc<RefCell<Option<ClickCallback>>>,
-    triple_click: &Rc<RefCell<Option<ClickCallback>>>,
-    click_count: i32,
-) {
-    let args = ClickEventArgs { click_count };
+pub(crate) fn fire_click_callback(click: &Rc<RefCell<Option<ClickCallback>>>) {
     if let Some(callback) = click.borrow().clone() {
-        callback(args);
-    }
-    if click_count == 3 {
-        if let Some(callback) = triple_click.borrow().clone() {
-            callback(args);
-        }
-    } else if click_count == 2 {
-        if let Some(callback) = double_click.borrow().clone() {
-            callback(args);
-        }
+        callback(ClickEventArgs);
     }
 }
 

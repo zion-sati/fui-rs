@@ -124,27 +124,6 @@ impl ScrollBox {
         self.inner.horizontal_scrollbar.clone()
     }
 
-    pub fn child<T: Node>(&self, node: &T) -> &Self {
-        self.inner.viewport.child(node);
-        self.bind_content_scroll_proxy_targets();
-        self
-    }
-
-    pub fn children<I, C>(&self, nodes: I) -> &Self
-    where
-        I: IntoIterator<Item = C>,
-        C: Into<Child>,
-    {
-        for node in nodes {
-            self.inner
-                .viewport
-                .retained_node_ref()
-                .append_child_ref(&node.into().node_ref);
-        }
-        self.bind_content_scroll_proxy_targets();
-        self
-    }
-
     pub fn scroll_enabled_x(&self, enabled: bool) -> &Self {
         self.inner.horizontal_scroll_enabled.set(enabled);
         self.inner.viewport.scroll_enabled_x(enabled);
@@ -517,6 +496,14 @@ impl Node for ScrollBox {
 impl HasFlexBoxRoot for ScrollBox {
     fn flex_box_root(&self) -> &FlexBox {
         &self.inner.root
+    }
+
+    fn append_flex_box_surface_child(&self, child: NodeRef) {
+        self.inner
+            .viewport
+            .retained_node_ref()
+            .append_child_ref(&child);
+        self.bind_content_scroll_proxy_targets();
     }
 }
 

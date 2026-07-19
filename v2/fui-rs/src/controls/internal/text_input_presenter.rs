@@ -1,6 +1,6 @@
 use crate::controls::TextInputColors;
 use crate::ffi::{CursorStyle, Unit};
-use crate::node::{Border, Corners, EdgeInsets, FlexBox, PresenterHostStyle, TextCore};
+use crate::node::{Border, Corners, EdgeInsets, FlexBox, PresenterHostStyle, TextNode};
 use crate::theme::Theme;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,7 +13,7 @@ pub struct TextInputVisualState {
 }
 
 pub trait TextInputPresenter {
-    fn bind(&self, editor_host: TextCore, placeholder_host: FlexBox);
+    fn bind(&self, editor_host: TextNode, placeholder_host: FlexBox);
     fn present(
         &self,
         theme: Theme,
@@ -28,7 +28,7 @@ pub trait TextInputTemplate {
 
 #[derive(Clone, Default)]
 pub struct DefaultTextInputPresenter {
-    editor_host: RefCell<Option<TextCore>>,
+    editor_host: RefCell<Option<TextNode>>,
     placeholder_host: RefCell<Option<FlexBox>>,
 }
 
@@ -39,7 +39,7 @@ impl DefaultTextInputPresenter {
 }
 
 impl TextInputPresenter for DefaultTextInputPresenter {
-    fn bind(&self, editor_host: TextCore, placeholder_host: FlexBox) {
+    fn bind(&self, editor_host: TextNode, placeholder_host: FlexBox) {
         *self.editor_host.borrow_mut() = Some(editor_host);
         *self.placeholder_host.borrow_mut() = Some(placeholder_host);
     }

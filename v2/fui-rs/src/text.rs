@@ -251,6 +251,34 @@ impl HasTextNode for RichText {
     fn text_node(&self) -> &TextNode {
         &self.node
     }
+
+    fn set_text_surface_content(&self, content: String) {
+        self.text(content);
+    }
+
+    fn set_text_surface_font_stack(&self, stack: FontStack, size: f32) {
+        self.font_stack(stack, size);
+    }
+
+    fn set_text_surface_font_family(&self, family: FontFamily) {
+        self.font_family(family);
+    }
+
+    fn set_text_surface_font_weight(&self, weight: FontWeight) {
+        self.font_weight(weight);
+    }
+
+    fn set_text_surface_font_style(&self, style: FontStyle) {
+        self.font_style(style);
+    }
+
+    fn set_text_surface_font_size(&self, size: f32) {
+        self.font_size(size);
+    }
+
+    fn set_text_surface_color(&self, color: u32) {
+        self.text_color(color);
+    }
 }
 
 impl ThemeBindable for RichText {
@@ -1008,6 +1036,37 @@ mod tests {
                 max_lines,
                 ..
             } if *max_chars == i32::MAX && *max_lines == 1
+        )));
+    }
+
+    #[test]
+    fn rich_text_shared_surface_preserves_spans_and_rebuilds_base_typography() {
+        ffi::test::reset();
+        let node = RichText::new(vec![span("Bold").bold(), span(" plain")]);
+        crate::node::TextTypographySurface::font_size(&node, 23.0);
+        crate::node::TextLayoutSurface::wrapping(&node, true);
+        crate::node::TextSelectionSurface::selection_range(&node, 1, 4);
+        node.build();
+
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetText { text, .. } if text == "Bold plain"
+        )));
+        assert!(calls
+            .iter()
+            .any(|call| matches!(call, Call::SetTextStyleRuns { run_count: 2, .. })));
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetFont { size, .. } if (*size - 23.0).abs() < f32::EPSILON
+        )));
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetTextSelectionRange {
+                start: 1,
+                end: 4,
+                ..
+            }
         )));
     }
 

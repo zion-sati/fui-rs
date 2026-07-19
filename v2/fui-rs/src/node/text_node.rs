@@ -1,44 +1,20 @@
 use super::core::*;
 use super::*;
 use crate::event::{SelectionChangedEventArgs, TextChangedEventArgs};
+use crate::text_indices::{byte_to_scalar, scalar_count, scalar_to_byte};
 use crate::{FontFamily, FontStack, FontStyle, FontWeight};
-use std::ops::Deref;
 
-#[derive(Clone)]
-pub struct TextCore {
-    inner: TextNode,
-}
-
-impl TextCore {
-    pub fn new(content: impl Into<String>) -> Self {
-        Self {
-            inner: TextNode::new_core(content),
-        }
-    }
-}
-
-impl Deref for TextCore {
-    type Target = TextNode;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl Node for TextCore {
-    fn retained_node_ref(&self) -> NodeRef {
-        self.inner.retained_node_ref()
-    }
-
-    fn build_self(&self) {
-        self.inner.build_self();
-    }
-}
+type TextChangedCallback = Rc<dyn Fn(TextChangedEventArgs)>;
+type TextReplacedCallback = Rc<dyn Fn(u32, u32, String)>;
+type SelectionChangedCallback = Rc<dyn Fn(SelectionChangedEventArgs)>;
 
 #[derive(Clone)]
 pub struct TextNode {
     core: Rc<RefCell<NodeCore>>,
     props: Rc<RefCell<TextProps>>,
+    text_changed_callback: Rc<RefCell<Option<TextChangedCallback>>>,
+    text_replaced_callback: Rc<RefCell<Option<TextReplacedCallback>>>,
+    selection_changed_callback: Rc<RefCell<Option<SelectionChangedCallback>>>,
 }
 
 impl TextNode {
@@ -46,7 +22,7 @@ impl TextNode {
         Self::new_with_defaults(content, true)
     }
 
-    fn new_core(content: impl Into<String>) -> Self {
+    pub(crate) fn new_core(content: impl Into<String>) -> Self {
         Self::new_with_defaults(content, false)
     }
 
@@ -72,7 +48,11 @@ impl TextNode {
                 uses_theme_selection_color: selectable_by_default,
                 ..TextProps::default()
             })),
+            text_changed_callback: Rc::new(RefCell::new(None)),
+            text_replaced_callback: Rc::new(RefCell::new(None)),
+            selection_changed_callback: Rc::new(RefCell::new(None)),
         };
+        node.install_runtime_state_handlers();
         node.bind_theme_defaults();
         node
     }
@@ -143,11 +123,73 @@ impl TextNode {
         self
     }
 
+    pub fn fill_width_percent(&self, percent: f32) -> &Self {
+        self.props.borrow_mut().width = None;
+        {
+            let mut core = self.core.borrow_mut();
+            core.behavior.fill_width = false;
+            core.behavior.fill_width_percent = Some(percent);
+        }
+        if self.has_built_handle() {
+            ui::set_fill_width_percent(self.handle().raw(), percent);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn fill_height_percent(&self, percent: f32) -> &Self {
+        self.props.borrow_mut().height = None;
+        {
+            let mut core = self.core.borrow_mut();
+            core.behavior.fill_height = false;
+            core.behavior.fill_height_percent = Some(percent);
+        }
+        if self.has_built_handle() {
+            ui::set_fill_height_percent(self.handle().raw(), percent);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn min_width(&self, value: f32, unit: Unit) -> &Self {
+        self.props.borrow_mut().min_width = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_min_width(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn max_width(&self, value: f32, unit: Unit) -> &Self {
+        self.props.borrow_mut().max_width = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_max_width(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn min_height(&self, value: f32, unit: Unit) -> &Self {
+        self.props.borrow_mut().min_height = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_min_height(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
+    pub fn max_height(&self, value: f32, unit: Unit) -> &Self {
+        self.props.borrow_mut().max_height = Some((value, unit));
+        if self.has_built_handle() {
+            ui::set_max_height(self.handle().raw(), value, unit as u32);
+            self.notify_retained_layout_mutation();
+        }
+        self
+    }
+
     pub fn text(&self, content: impl Into<String>) -> &Self {
         let content = content.into();
-        self.props.borrow_mut().content = content.clone();
-        self.retained_node_ref()
-            .set_text_content_for_routing(Some(content.clone()));
+        Self::sync_content_state(&self.core, &self.props, content.clone());
         if self.has_built_handle() {
             ui::set_text(self.handle().raw(), &content);
             self.notify_retained_layout_mutation();
@@ -245,11 +287,19 @@ impl TextNode {
 
     pub fn text_align(&self, align: TextAlign) -> &Self {
         self.props.borrow_mut().text_align = Some(align);
+        if self.has_built_handle() {
+            ui::set_text_align(self.handle().raw(), align as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
     pub fn text_vertical_align(&self, align: TextVerticalAlign) -> &Self {
         self.props.borrow_mut().text_vertical_align = Some(align);
+        if self.has_built_handle() {
+            ui::set_text_vertical_align(self.handle().raw(), align as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -277,11 +327,19 @@ impl TextNode {
 
     pub fn text_overflow(&self, overflow: TextOverflow) -> &Self {
         self.props.borrow_mut().overflow = Some(overflow);
+        if self.has_built_handle() {
+            ui::set_text_overflow(self.handle().raw(), overflow as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
     pub fn text_overflow_fade(&self, horizontal: bool, vertical: bool) -> &Self {
         self.props.borrow_mut().overflow_fade = Some((horizontal, vertical));
+        if self.has_built_handle() {
+            ui::set_text_overflow_fade(self.handle().raw(), horizontal, vertical);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -293,7 +351,16 @@ impl TextNode {
             .unwrap_or_else(|| theme::current_theme().colors.selection);
         props.selectable = Some((selectable, resolved_selection_color));
         drop(props);
-        self.core.borrow_mut().behavior.selectable_text = selectable;
+        {
+            let mut core = self.core.borrow_mut();
+            core.behavior.selectable_text = selectable;
+            if selectable {
+                core.behavior.cursor = Some(CursorStyle::Text);
+            } else if core.behavior.cursor == Some(CursorStyle::Text) {
+                core.behavior.cursor = Some(CursorStyle::Default);
+            }
+        }
+        crate::event::handle_cursor_style_changed(self.handle());
         if self.has_built_handle() {
             ui::set_selectable(self.handle().raw(), selectable, resolved_selection_color);
             self.notify_retained_mutation();
@@ -315,7 +382,7 @@ impl TextNode {
     }
 
     pub fn editable(&self, editable: bool) -> &Self {
-        if editable {
+        if editable && self.props.borrow().selectable.is_none() {
             let selection_color = self
                 .props
                 .borrow()
@@ -371,8 +438,17 @@ impl TextNode {
     }
 
     pub fn selection_range(&self, start: u32, end: u32) -> &Self {
+        let mut props = self.props.borrow_mut();
+        let start = start.min(scalar_count(&props.content));
+        let end = end.min(scalar_count(&props.content));
+        let start_byte = scalar_to_byte(&props.content, start);
+        let end_byte = scalar_to_byte(&props.content, end);
+        props.selection_start = start;
+        props.selection_end = end;
+        props.selection_range_bytes = Some((start_byte, end_byte));
+        drop(props);
         if self.has_built_handle() {
-            ui::set_text_selection_range(self.handle().raw(), start, end);
+            ui::set_text_selection_range(self.handle().raw(), start_byte, end_byte);
             self.notify_retained_mutation();
         }
         self
@@ -437,7 +513,7 @@ impl TextNode {
         self
     }
 
-    pub fn on_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self {
+    pub fn on_pointer_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self {
         self.core.borrow_mut().handlers.pointer_click = Some(Rc::new(handler));
         self.retained_node_ref().require_interactive();
         self
@@ -461,20 +537,12 @@ impl TextNode {
     }
 
     pub fn on_text_changed(&self, handler: impl Fn(TextChangedEventArgs) + 'static) -> &Self {
-        let node = self.clone();
-        self.core.borrow_mut().handlers.text_changed = Some(Rc::new(move |event| {
-            node.sync_text_from_runtime(event.text.clone());
-            handler(event);
-        }));
+        *self.text_changed_callback.borrow_mut() = Some(Rc::new(handler));
         self
     }
 
     pub(crate) fn on_text_replaced(&self, handler: impl Fn(u32, u32, String) + 'static) -> &Self {
-        let node = self.clone();
-        self.core.borrow_mut().handlers.text_replaced = Some(Rc::new(move |start, end, text| {
-            node.apply_text_replacement(start, end, &text);
-            handler(start, end, text);
-        }));
+        *self.text_replaced_callback.borrow_mut() = Some(Rc::new(handler));
         self
     }
 
@@ -482,12 +550,36 @@ impl TextNode {
         &self,
         handler: impl Fn(SelectionChangedEventArgs) + 'static,
     ) -> &Self {
-        self.core.borrow_mut().handlers.selection_changed = Some(Rc::new(handler));
+        *self.selection_changed_callback.borrow_mut() = Some(Rc::new(handler));
         self
     }
 
-    pub fn text_value(&self) -> String {
+    pub fn content(&self) -> String {
         self.props.borrow().content.clone()
+    }
+
+    pub fn uses_default_selection_behavior(&self) -> bool {
+        self.props.borrow().selectable.is_none()
+    }
+
+    pub fn is_editable_text(&self) -> bool {
+        self.props.borrow().editable.unwrap_or(false)
+    }
+
+    pub fn is_selectable_text(&self) -> bool {
+        self.props
+            .borrow()
+            .selectable
+            .map(|(selectable, _)| selectable)
+            .unwrap_or(false)
+    }
+
+    pub fn selection_start(&self) -> u32 {
+        self.props.borrow().selection_start
+    }
+
+    pub fn selection_end(&self) -> u32 {
+        self.props.borrow().selection_end
     }
 
     pub fn on_pan_gesture(&self, handler: impl Fn(&mut GestureEventArgs) + 'static) -> &Self {
@@ -510,6 +602,105 @@ impl TextNode {
     pub fn on_long_press(&self, handler: impl Fn(&mut LongPressEventArgs) + 'static) -> &Self {
         self.core.borrow_mut().handlers.long_press = Some(Rc::new(handler));
         self
+    }
+
+    fn install_runtime_state_handlers(&self) {
+        let weak_core = Rc::downgrade(&self.core);
+        let weak_props = Rc::downgrade(&self.props);
+        let weak_callback = Rc::downgrade(&self.text_changed_callback);
+        self.core.borrow_mut().handlers.text_changed = Some(Rc::new(move |event| {
+            let (Some(core), Some(props)) = (weak_core.upgrade(), weak_props.upgrade()) else {
+                return;
+            };
+            Self::sync_content_state(&core, &props, event.text.clone());
+            if let Some(callbacks) = weak_callback.upgrade() {
+                let callback = callbacks.borrow().clone();
+                if let Some(callback) = callback {
+                    callback(event);
+                }
+            }
+        }));
+
+        let weak_core = Rc::downgrade(&self.core);
+        let weak_props = Rc::downgrade(&self.props);
+        let weak_changed_callback = Rc::downgrade(&self.text_changed_callback);
+        let weak_replaced_callback = Rc::downgrade(&self.text_replaced_callback);
+        self.core.borrow_mut().handlers.text_replaced =
+            Some(Rc::new(move |start, end, replacement| {
+                let (Some(core), Some(props)) = (weak_core.upgrade(), weak_props.upgrade()) else {
+                    return;
+                };
+                let content = {
+                    let current = props.borrow().content.clone();
+                    let start_byte = scalar_to_byte(&current, byte_to_scalar(&current, start));
+                    let end_byte =
+                        scalar_to_byte(&current, byte_to_scalar(&current, start.max(end)));
+                    let mut updated = current;
+                    updated.replace_range(start_byte as usize..end_byte as usize, &replacement);
+                    updated
+                };
+                Self::sync_content_state(&core, &props, content.clone());
+                if let Some(callbacks) = weak_changed_callback.upgrade() {
+                    let callback = callbacks.borrow().clone();
+                    if let Some(callback) = callback {
+                        callback(TextChangedEventArgs {
+                            text: content.clone(),
+                        });
+                    }
+                }
+                if let Some(callbacks) = weak_replaced_callback.upgrade() {
+                    let callback = callbacks.borrow().clone();
+                    if let Some(callback) = callback {
+                        callback(start, end, replacement);
+                    }
+                }
+            }));
+
+        let weak_props = Rc::downgrade(&self.props);
+        let weak_callback = Rc::downgrade(&self.selection_changed_callback);
+        self.core.borrow_mut().handlers.selection_changed = Some(Rc::new(move |event| {
+            let Some(props) = weak_props.upgrade() else {
+                return;
+            };
+            let (start, end) = {
+                let mut props = props.borrow_mut();
+                let start = byte_to_scalar(&props.content, event.start);
+                let end = byte_to_scalar(&props.content, event.end);
+                let start_byte = scalar_to_byte(&props.content, start);
+                let end_byte = scalar_to_byte(&props.content, end);
+                props.selection_start = start;
+                props.selection_end = end;
+                props.selection_range_bytes = Some((start_byte, end_byte));
+                (start, end)
+            };
+            if let Some(callbacks) = weak_callback.upgrade() {
+                let callback = callbacks.borrow().clone();
+                if let Some(callback) = callback {
+                    callback(SelectionChangedEventArgs { start, end });
+                }
+            }
+        }));
+    }
+
+    fn sync_content_state(
+        core: &Rc<RefCell<NodeCore>>,
+        props: &Rc<RefCell<TextProps>>,
+        content: String,
+    ) {
+        {
+            let mut props = props.borrow_mut();
+            let length = scalar_count(&content);
+            props.selection_start = props.selection_start.min(length);
+            props.selection_end = props.selection_end.min(length);
+            if props.selection_range_bytes.is_some() {
+                props.selection_range_bytes = Some((
+                    scalar_to_byte(&content, props.selection_start),
+                    scalar_to_byte(&content, props.selection_end),
+                ));
+            }
+            props.content = content.clone();
+        }
+        core.borrow_mut().behavior.text_content = Some(content);
     }
 
     pub(crate) fn required_font_ids(&self) -> Vec<u32> {
@@ -612,28 +803,6 @@ impl TextNode {
         ui::set_font(self.handle().raw(), font_id, font_size);
         self.notify_retained_layout_mutation();
     }
-
-    fn sync_text_from_runtime(&self, content: String) {
-        self.props.borrow_mut().content = content.clone();
-        self.retained_node_ref()
-            .set_text_content_for_routing(Some(content));
-    }
-
-    fn apply_text_replacement(&self, start: u32, end: u32, replacement: &str) {
-        let mut props = self.props.borrow_mut();
-        let start = start.min(props.content.len() as u32) as usize;
-        let end = end.min(props.content.len() as u32) as usize;
-        if start <= end
-            && props.content.is_char_boundary(start)
-            && props.content.is_char_boundary(end)
-        {
-            props.content.replace_range(start..end, replacement);
-        }
-        let content = props.content.clone();
-        drop(props);
-        self.retained_node_ref()
-            .set_text_content_for_routing(Some(content));
-    }
 }
 
 impl Node for TextNode {
@@ -645,11 +814,10 @@ impl Node for TextNode {
         if self.props.borrow().has_font {
             self.resolve_font_id();
         }
-        apply_text_props(
-            self.handle(),
-            &self.props.borrow(),
-            self.core.borrow().behavior.clone(),
-        );
+        // Host setters may synchronously report text or selection state back into
+        // this retained node. Never hold a RefCell borrow across that boundary.
+        let props = self.props.borrow().clone();
+        apply_text_props(self.handle(), &props, self.core.borrow().behavior.clone());
     }
 
     fn required_font_ids_for_preparation(&self) -> Vec<u32> {
@@ -665,10 +833,16 @@ impl super::ThemeBindable for TextNode {
     fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
         let weak_core = Rc::downgrade(&self.core);
         let weak_props = Rc::downgrade(&self.props);
+        let weak_text_changed_callback = Rc::downgrade(&self.text_changed_callback);
+        let weak_text_replaced_callback = Rc::downgrade(&self.text_replaced_callback);
+        let weak_selection_changed_callback = Rc::downgrade(&self.selection_changed_callback);
         Box::new(move || {
             Some(TextNode {
                 core: weak_core.upgrade()?,
                 props: weak_props.upgrade()?,
+                text_changed_callback: weak_text_changed_callback.upgrade()?,
+                text_replaced_callback: weak_text_replaced_callback.upgrade()?,
+                selection_changed_callback: weak_selection_changed_callback.upgrade()?,
             })
         })
     }
@@ -684,7 +858,7 @@ mod tests {
     fn prebuild_font_family_weight_and_style_are_resolved_during_build() {
         ffi::test::reset();
         let theme = theme::current_theme();
-        let label = TextCore::new("Bold before build");
+        let label = TextNode::new_core("Bold before build");
         label
             .font_family(theme.fonts.body_family)
             .font_weight(FontWeight::Bold)
@@ -702,6 +876,111 @@ mod tests {
                 size,
             } if *call_handle == handle && (*size - 17.0).abs() < f32::EPSILON
         )));
+        Application::unmount();
+    }
+
+    #[test]
+    fn text_layout_surface_replays_before_build_and_mutates_after_build() {
+        ffi::test::reset();
+        let label = TextNode::new("Layout");
+        label
+            .fill_width_percent(75.0)
+            .fill_height_percent(50.0)
+            .min_width(12.0, Unit::Pixel)
+            .max_width(80.0, Unit::Percent)
+            .min_height(14.0, Unit::Pixel)
+            .max_height(90.0, Unit::Pixel)
+            .text_align(TextAlign::Center)
+            .text_vertical_align(TextVerticalAlign::Bottom)
+            .text_overflow(TextOverflow::Ellipsis)
+            .text_overflow_fade(true, false);
+
+        Application::mount(label.clone());
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(call, Call::SetFillWidthPercent { percent, .. } if (*percent - 75.0).abs() < f32::EPSILON)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetFillHeightPercent { percent, .. } if (*percent - 50.0).abs() < f32::EPSILON)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetMinWidth { value, unit_enum, .. } if (*value - 12.0).abs() < f32::EPSILON && *unit_enum == Unit::Pixel as u32)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetMaxWidth { value, unit_enum, .. } if (*value - 80.0).abs() < f32::EPSILON && *unit_enum == Unit::Percent as u32)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetMinHeight { value, .. } if (*value - 14.0).abs() < f32::EPSILON)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetMaxHeight { value, .. } if (*value - 90.0).abs() < f32::EPSILON)));
+
+        label
+            .text_align(TextAlign::Right)
+            .text_vertical_align(TextVerticalAlign::Center)
+            .text_overflow(TextOverflow::Clip)
+            .text_overflow_fade(false, true);
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(call, Call::SetTextAlign { align_enum, .. } if *align_enum == TextAlign::Right as u32)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetTextVerticalAlign { align_enum, .. } if *align_enum == TextVerticalAlign::Center as u32)));
+        assert!(calls.iter().any(|call| matches!(call, Call::SetTextOverflow { overflow_enum, .. } if *overflow_enum == TextOverflow::Clip as u32)));
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetTextOverflowFade {
+                horizontal: false,
+                vertical: true,
+                ..
+            }
+        )));
+        Application::unmount();
+    }
+
+    #[test]
+    fn public_selection_uses_scalar_indices_at_the_utf8_boundary() {
+        ffi::test::reset();
+        let label = TextNode::new("A你😀Z");
+        Application::mount(label.clone());
+        ffi::test::take_calls();
+
+        label.selection_range(2, 3);
+        assert_eq!(label.selection_start(), 2);
+        assert_eq!(label.selection_end(), 3);
+        assert!(ffi::test::take_calls().iter().any(|call| matches!(
+            call,
+            Call::SetTextSelectionRange {
+                start: 4,
+                end: 8,
+                ..
+            }
+        )));
+
+        let observed = Rc::new(RefCell::new(None));
+        label.on_selection_changed({
+            let observed = observed.clone();
+            move |event| *observed.borrow_mut() = Some((event.start, event.end))
+        });
+        crate::event::__fui_on_selection_changed(label.handle().raw(), 1, 8);
+        assert_eq!(label.selection_start(), 1);
+        assert_eq!(label.selection_end(), 3);
+        assert_eq!(*observed.borrow(), Some((1, 3)));
+        Application::unmount();
+    }
+
+    #[test]
+    fn runtime_text_state_stays_synchronized_without_user_callbacks() {
+        ffi::test::reset();
+        let label = TextNode::new("A你😀Z");
+        Application::mount(label.clone());
+        let replacement = "界";
+        unsafe {
+            crate::event::__fui_on_text_replaced(
+                label.handle().raw(),
+                1,
+                4,
+                replacement.as_ptr(),
+                replacement.len() as u32,
+            );
+        }
+        assert_eq!(label.content(), "A界😀Z");
+
+        let changed = "你好😀";
+        unsafe {
+            crate::event::__fui_on_text_changed(
+                label.handle().raw(),
+                changed.as_ptr(),
+                changed.len() as u32,
+            );
+        }
+        assert_eq!(label.content(), changed);
         Application::unmount();
     }
 }

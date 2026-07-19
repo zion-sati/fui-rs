@@ -3,7 +3,7 @@ use super::internal::button_presenter::{
 };
 use super::*;
 use crate::ffi::CursorStyle;
-use crate::node::{TextCore, WeakFlexBox};
+use crate::node::{TextNode, WeakFlexBox};
 use crate::theme::subscribe;
 use crate::{focus_adorner, focus_visibility};
 use std::rc::Rc;
@@ -12,12 +12,10 @@ use std::rc::Rc;
 pub struct Button {
     root: FlexBox,
     presenter: Rc<RefCell<Rc<dyn ButtonPresenter>>>,
-    label: Rc<RefCell<TextCore>>,
+    label: Rc<RefCell<TextNode>>,
     template: Rc<RefCell<Option<Rc<dyn ButtonTemplate>>>>,
     label_value: Rc<RefCell<String>>,
     click: Rc<RefCell<Option<ClickCallback>>>,
-    double_click: Rc<RefCell<Option<ClickCallback>>>,
-    triple_click: Rc<RefCell<Option<ClickCallback>>>,
     hovered_state: Rc<Cell<bool>>,
     pressed_state: Rc<Cell<bool>>,
     focused_state: Rc<Cell<bool>>,
@@ -49,8 +47,6 @@ impl Button {
             template: Rc::new(RefCell::new(None)),
             label_value: Rc::new(RefCell::new(label.clone())),
             click: Rc::new(RefCell::new(None)),
-            double_click: Rc::new(RefCell::new(None)),
-            triple_click: Rc::new(RefCell::new(None)),
             hovered_state: Rc::new(Cell::new(false)),
             pressed_state: Rc::new(Cell::new(false)),
             focused_state: Rc::new(Cell::new(false)),
@@ -94,13 +90,8 @@ impl Button {
         });
 
         let event_target = self.event_target();
-        self.root.on_click(move |event| {
-            fire_click_callbacks(
-                &event_target.click,
-                &event_target.double_click,
-                &event_target.triple_click,
-                event.click_count.max(1),
-            );
+        self.root.on_pointer_click(move |event| {
+            fire_click_callback(&event_target.click);
             event.handled = true;
         });
         let event_target = self.event_target();
@@ -126,12 +117,7 @@ impl Button {
             if armed.as_deref() == Some(event.key.as_str()) {
                 *event_target.keyboard_armed_key.borrow_mut() = None;
                 event_target.end_press();
-                fire_click_callbacks(
-                    &event_target.click,
-                    &event_target.double_click,
-                    &event_target.triple_click,
-                    1,
-                );
+                fire_click_callback(&event_target.click);
                 event.handled = true;
             }
         });
@@ -182,21 +168,6 @@ impl Button {
     fn set_colors(&self, colors: Option<ButtonColors>) -> &Self {
         self.colors_value.set(colors);
         self.sync_visual_state();
-        self
-    }
-
-    pub fn on_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self {
-        *self.click.borrow_mut() = Some(Rc::new(handler));
-        self
-    }
-
-    pub fn on_double_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self {
-        *self.double_click.borrow_mut() = Some(Rc::new(handler));
-        self
-    }
-
-    pub fn on_triple_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self {
-        *self.triple_click.borrow_mut() = Some(Rc::new(handler));
         self
     }
 
@@ -255,8 +226,6 @@ impl Button {
             template: self.template.clone(),
             label_value: self.label_value.clone(),
             click: self.click.clone(),
-            double_click: self.double_click.clone(),
-            triple_click: self.triple_click.clone(),
             hovered_state: self.hovered_state.clone(),
             pressed_state: self.pressed_state.clone(),
             focused_state: self.focused_state.clone(),
@@ -283,7 +252,7 @@ impl Button {
         self.sync_visual_state();
         self.sync_focus_chrome();
         if activate {
-            fire_click_callbacks(&self.click, &self.double_click, &self.triple_click, 1);
+            fire_click_callback(&self.click);
         }
     }
 
@@ -328,6 +297,13 @@ impl Button {
         self.presenter.replace(next_presenter);
         self.sync_visual_state();
         self.sync_focus_chrome();
+    }
+}
+
+impl Clickable for Button {
+    fn on_click(&self, handler: impl Fn(ClickEventArgs) + 'static) -> &Self {
+        *self.click.borrow_mut() = Some(Rc::new(handler));
+        self
     }
 }
 
@@ -450,12 +426,10 @@ fn create_button_presenter(template: Option<Rc<dyn ButtonTemplate>>) -> Rc<dyn B
 struct ButtonEventTarget {
     weak_root: WeakFlexBox,
     presenter: Rc<RefCell<Rc<dyn ButtonPresenter>>>,
-    label: Rc<RefCell<TextCore>>,
+    label: Rc<RefCell<TextNode>>,
     template: Rc<RefCell<Option<Rc<dyn ButtonTemplate>>>>,
     label_value: Rc<RefCell<String>>,
     click: Rc<RefCell<Option<ClickCallback>>>,
-    double_click: Rc<RefCell<Option<ClickCallback>>>,
-    triple_click: Rc<RefCell<Option<ClickCallback>>>,
     hovered_state: Rc<Cell<bool>>,
     pressed_state: Rc<Cell<bool>>,
     focused_state: Rc<Cell<bool>>,
@@ -475,8 +449,6 @@ impl ButtonEventTarget {
             template: self.template.clone(),
             label_value: self.label_value.clone(),
             click: self.click.clone(),
-            double_click: self.double_click.clone(),
-            triple_click: self.triple_click.clone(),
             hovered_state: self.hovered_state.clone(),
             pressed_state: self.pressed_state.clone(),
             focused_state: self.focused_state.clone(),

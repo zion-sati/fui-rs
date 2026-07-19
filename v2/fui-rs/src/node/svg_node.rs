@@ -40,24 +40,23 @@ impl Default for SvgState {
 
 #[derive(Clone)]
 pub struct SvgNode {
-    core: Rc<RefCell<NodeCore>>,
+    base: FlexBox,
     props: Rc<RefCell<SvgProps>>,
     state: Rc<RefCell<SvgState>>,
 }
 
 impl SvgNode {
     pub fn new(svg_id: u32) -> Self {
+        let base = FlexBox::default();
+        base.core.borrow_mut().kind = NodeKind::Svg;
         let node = Self {
-            core: Rc::new(RefCell::new(NodeCore::new(NodeKind::Svg))),
+            base,
             props: Rc::new(RefCell::new(SvgProps {
-                width: None,
-                height: None,
                 svg_id,
                 source_url: None,
                 tint_color: 0,
                 sampling_kind: ImageSamplingKind::Linear,
                 max_aniso: 0,
-                opacity: None,
             })),
             state: Rc::new(RefCell::new(SvgState {
                 requested_width_value: 0.0,
@@ -141,10 +140,6 @@ impl SvgNode {
         self
     }
 
-    pub fn source_url(&self, url: impl Into<String>) -> &Self {
-        self.source(url)
-    }
-
     pub fn clear_source(&self) -> &Self {
         self.release_owned_source_asset();
         {
@@ -166,23 +161,10 @@ impl SvgNode {
         self
     }
 
-    pub fn clear_source_url(&self) -> &Self {
-        self.clear_source()
-    }
-
     pub fn tint(&self, tint_color: u32) -> &Self {
         self.props.borrow_mut().tint_color = tint_color;
         if self.has_built_handle() {
             self.apply_svg_source();
-            self.notify_retained_mutation();
-        }
-        self
-    }
-
-    pub fn opacity(&self, value: f32) -> &Self {
-        self.props.borrow_mut().opacity = Some(value.clamp(0.0, 1.0));
-        if self.has_built_handle() {
-            self.build_self();
             self.notify_retained_mutation();
         }
         self
@@ -204,17 +186,6 @@ impl SvgNode {
             self.apply_svg_source();
             self.notify_retained_mutation();
         }
-        self
-    }
-
-    pub fn interactive(&self, interactive: bool) -> &Self {
-        self.core.borrow_mut().behavior.interactive = interactive;
-        self
-    }
-
-    pub fn on_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self {
-        self.core.borrow_mut().handlers.pointer_click = Some(Rc::new(handler));
-        self.retained_node_ref().require_interactive();
         self
     }
 
@@ -284,8 +255,6 @@ impl SvgNode {
         let asset_width = self.asset_width();
         let asset_height = self.asset_height();
         let has_intrinsic_size = asset_width > 0.0 && asset_height > 0.0;
-        let mut props = self.props.borrow_mut();
-
         if has_requested_width {
             let mut resolved_width_value = requested_width_value;
             let mut resolved_width_unit = requested_width_unit;
@@ -297,14 +266,7 @@ impl SvgNode {
                 }
                 resolved_width_unit = Unit::Pixel;
             }
-            props.width = Some((resolved_width_value, resolved_width_unit));
-            if self.has_built_handle() {
-                ui::set_width(
-                    self.handle().raw(),
-                    resolved_width_value,
-                    resolved_width_unit as u32,
-                );
-            }
+            self.base.width(resolved_width_value, resolved_width_unit);
         }
 
         if has_requested_height {
@@ -318,19 +280,8 @@ impl SvgNode {
                 }
                 resolved_height_unit = Unit::Pixel;
             }
-            props.height = Some((resolved_height_value, resolved_height_unit));
-            if self.has_built_handle() {
-                ui::set_height(
-                    self.handle().raw(),
-                    resolved_height_value,
-                    resolved_height_unit as u32,
-                );
-            }
-        }
-
-        drop(props);
-        if self.has_built_handle() {
-            self.notify_retained_layout_mutation();
+            self.base
+                .height(resolved_height_value, resolved_height_unit);
         }
     }
 
@@ -348,16 +299,16 @@ impl SvgNode {
             }
         }
 
-        let core_weak: Weak<RefCell<NodeCore>> = Rc::downgrade(&self.core);
+        let base_weak = self.base.downgrade();
         let props_weak: Weak<RefCell<SvgProps>> = Rc::downgrade(&self.props);
         let state_weak: Weak<RefCell<SvgState>> = Rc::downgrade(&self.state);
         let callback: Callback = Rc::new(move || {
-            if let (Some(core), Some(props), Some(state)) = (
-                core_weak.upgrade(),
+            if let (Some(base), Some(props), Some(state)) = (
+                base_weak.upgrade(),
                 props_weak.upgrade(),
                 state_weak.upgrade(),
             ) {
-                let node = SvgNode { core, props, state };
+                let node = SvgNode { base, props, state };
                 node.apply_resolved_sizing();
             }
         });
@@ -383,16 +334,46 @@ impl SvgNode {
 
 impl Node for SvgNode {
     fn retained_node_ref(&self) -> NodeRef {
-        NodeRef::from_node(self.core.clone(), self.clone())
+        NodeRef::from_node(self.base.core.clone(), self.clone())
     }
 
     fn build_self(&self) {
         self.apply_resolved_sizing();
-        apply_svg_props(
-            self.handle(),
-            &self.props.borrow(),
-            self.core.borrow().behavior.clone(),
-        );
+        self.base.build_self();
+        apply_svg_props(self.handle(), &self.props.borrow());
+    }
+}
+
+impl HasFlexBoxRoot for SvgNode {
+    fn flex_box_root(&self) -> &FlexBox {
+        &self.base
+    }
+
+    fn set_flex_box_surface_width(&self, value: f32, unit: Unit) {
+        self.width(value, unit);
+    }
+
+    fn set_flex_box_surface_height(&self, value: f32, unit: Unit) {
+        self.height(value, unit);
+    }
+}
+
+impl ThemeBindable for SvgNode {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let base = self.base.downgrade();
+        let props = Rc::downgrade(&self.props);
+        let state = Rc::downgrade(&self.state);
+        Box::new(move || {
+            Some(Self {
+                base: base.upgrade()?,
+                props: props.upgrade()?,
+                state: state.upgrade()?,
+            })
+        })
     }
 }
 

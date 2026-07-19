@@ -1,6 +1,6 @@
 use super::*;
 use crate::ffi::{FlexDirection, PositionType, Unit};
-use crate::node::{portal, Child};
+use crate::node::portal;
 use crate::popup_presenter::{PopupPlacement, PopupPresenter};
 use std::cell::Cell;
 
@@ -37,7 +37,7 @@ impl Popup {
         presenter
             .overlay_node()
             .interactive(true)
-            .on_click(move |_event| {
+            .on_pointer_click(move |_event| {
                 if dismiss_flag.get() {
                     presenter_target.hide();
                 }
@@ -55,6 +55,8 @@ impl Popup {
         self.presenter.is_open()
     }
 
+    /// Returns the presented content panel. Inherited `child`/`children` calls
+    /// are routed here rather than into the portal's overlay root.
     pub fn surface(&self) -> FlexBox {
         self.surface_node.clone()
     }
@@ -88,24 +90,6 @@ impl Popup {
     pub fn clear_appearance(&self) -> &Self {
         self.appearance_value.replace(None);
         self.sync_appearance();
-        self
-    }
-
-    pub fn child<T: Node>(&self, node: &T) -> &Self {
-        self.surface_node.child(node);
-        self
-    }
-
-    pub fn children<I, C>(&self, nodes: I) -> &Self
-    where
-        I: IntoIterator<Item = C>,
-        C: Into<Child>,
-    {
-        for node in nodes {
-            self.surface_node
-                .retained_node_ref()
-                .append_child_ref(&node.into().node_ref);
-        }
         self
     }
 
@@ -171,5 +155,36 @@ impl Node for Popup {
 impl crate::node::HasFlexBoxRoot for Popup {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+
+    fn append_flex_box_surface_child(&self, child: NodeRef) {
+        self.surface_node
+            .retained_node_ref()
+            .append_child_ref(&child);
+    }
+}
+
+impl crate::node::ThemeBindable for Popup {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let root = self.root.downgrade();
+        let surface_node = self.surface_node.downgrade();
+        let presenter = self.presenter.downgrade();
+        let dismiss_on_backdrop_click = Rc::downgrade(&self.dismiss_on_backdrop_click);
+        // Appearance state does not own the portal root. Keep it alive with the
+        // retained theme binding so a dropped wrapper remains reconstructible.
+        let appearance_value = self.appearance_value.clone();
+        Box::new(move || {
+            Some(Self {
+                root: root.upgrade()?,
+                surface_node: surface_node.upgrade()?,
+                presenter: presenter.upgrade()?,
+                dismiss_on_backdrop_click: dismiss_on_backdrop_click.upgrade()?,
+                appearance_value: appearance_value.clone(),
+            })
+        })
     }
 }

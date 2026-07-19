@@ -27,24 +27,6 @@ impl SelectionArea {
         }
     }
 
-    pub fn child<T: Node>(&self, node: &T) -> &Self {
-        self.root.child(node);
-        self
-    }
-
-    pub fn children<I, C>(&self, nodes: I) -> &Self
-    where
-        I: IntoIterator<Item = C>,
-        C: Into<Child>,
-    {
-        for node in nodes {
-            self.root
-                .retained_node_ref()
-                .append_child_ref(&node.into().node_ref);
-        }
-        self
-    }
-
     pub fn selected_text(&self) -> String {
         self.selected_text_signal.borrow().get()
     }

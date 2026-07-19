@@ -23,12 +23,13 @@ const PUBLISHED_STAGE4_ROUTE: &str = "/stage4/";
 #[derive(Clone)]
 struct HouseButtonPresenter {
     content_root: FlexBox,
-    label_node: TextCore,
+    label_node: TextNode,
 }
 
 impl HouseButtonPresenter {
     fn new() -> Self {
-        let label_node = TextCore::new("");
+        let label_node = TextNode::new("");
+        label_node.selectable(false);
         let content_root = ui! {
             row()
                 .align_items(AlignItems::Center)
@@ -48,7 +49,7 @@ impl ButtonPresenter for HouseButtonPresenter {
         self.content_root.clone()
     }
 
-    fn label_node(&self) -> TextCore {
+    fn label_node(&self) -> TextNode {
         self.label_node.clone()
     }
 

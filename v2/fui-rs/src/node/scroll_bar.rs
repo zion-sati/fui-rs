@@ -151,6 +151,12 @@ struct ScrollBarInner {
 }
 
 #[derive(Clone)]
+/// Scroll chrome helper matching FUI-AS `ScrollBar`.
+///
+/// This is not a retained `Node`; attach [`render`](Self::render) to a retained
+/// tree. It follows the active theme automatically. Per-instance theme
+/// callbacks belong on the rendered `FlexBox`, avoiding a root/state ownership
+/// cycle in this helper.
 pub struct ScrollBar {
     inner: Rc<ScrollBarInner>,
 }

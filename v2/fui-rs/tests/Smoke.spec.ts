@@ -795,6 +795,37 @@ test('stage 4 house button is bold before hover and keeps its font across hover'
   await expect.poll(readLabelFont).toEqual({ fontId: 2, fontSize: 17 });
 });
 
+test('workbench renders rich text spans through the inherited text surface', async ({ page }) => {
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => document.body.innerText.includes('Rich text underline strike helpers'));
+  }, { timeout: 10000 }).toBe(true);
+});
+
+test('workbench root follows the active dark system theme', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  const readBackground = async () => await page.evaluate(async () => {
+    const debug = window.__fui_debug;
+    if (debug === undefined || typeof debug.getDebugTree !== 'function') {
+      return null;
+    }
+    const tree = await debug.getDebugTree();
+    return tree.nodes.find((entry) => entry.nodeId === 'workbench-scroll-root')?.style.bgColor ?? null;
+  });
+
+  await expect.poll(readBackground).not.toBeNull();
+  const background = await readBackground();
+  expect(background).not.toBe(0xF7F4ECFF);
+  expect(((background ?? 0) >>> 24) & 0xFF).toBeLessThan(0x80);
+  expect(((background ?? 0) >>> 16) & 0xFF).toBeLessThan(0x80);
+  expect(((background ?? 0) >>> 8) & 0xFF).toBeLessThan(0x80);
+});
+
 test('virtual list on the routed dashboard advances its visible window on scroll', async ({ page }) => {
   await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);

@@ -1,7 +1,7 @@
 use super::Button;
 use crate::event;
 use crate::ffi::{FlexDirection, KeyEventType, SemanticRole};
-use crate::node::{flex_box, Child, FlexBox, Node, NodeRef};
+use crate::node::{flex_box, FlexBox, Node, NodeRef, ThemeBindable};
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -58,25 +58,6 @@ impl Form {
             .cancel_button
             .borrow_mut()
             .replace(button.clone());
-        self
-    }
-
-    pub fn child<T: Node>(&self, node: &T) -> &Self {
-        self.shared.root.child(node);
-        self
-    }
-
-    pub fn children<I, C>(&self, nodes: I) -> &Self
-    where
-        I: IntoIterator<Item = C>,
-        C: Into<Child>,
-    {
-        for node in nodes {
-            self.shared
-                .root
-                .retained_node_ref()
-                .append_child_ref(&node.into().node_ref);
-        }
         self
     }
 
@@ -231,5 +212,20 @@ impl Node for Form {
 impl crate::node::HasFlexBoxRoot for Form {
     fn flex_box_root(&self) -> &FlexBox {
         &self.shared.root
+    }
+}
+
+impl ThemeBindable for Form {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.shared.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let shared = Rc::downgrade(&self.shared);
+        Box::new(move || {
+            Some(Self {
+                shared: shared.upgrade()?,
+            })
+        })
     }
 }

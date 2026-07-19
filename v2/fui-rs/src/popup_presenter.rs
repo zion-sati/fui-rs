@@ -23,6 +23,15 @@ pub struct PopupPresenter {
 }
 
 #[derive(Clone)]
+pub(crate) struct WeakPopupPresenter {
+    root: WeakFlexBox,
+    overlay_node: FlexBox,
+    surface_node: FlexBox,
+    semantic_scope_node: Option<FlexBox>,
+    state: Rc<RefCell<PopupPresenterState>>,
+}
+
+#[derive(Clone)]
 pub(crate) struct PopupPresenterEventTarget {
     root: WeakFlexBox,
     overlay_node: WeakFlexBox,
@@ -105,6 +114,16 @@ impl PopupPresenter {
 
     pub fn is_open(&self) -> bool {
         self.state.borrow().open
+    }
+
+    pub(crate) fn downgrade(&self) -> WeakPopupPresenter {
+        WeakPopupPresenter {
+            root: self.root.downgrade(),
+            overlay_node: self.overlay_node.clone(),
+            surface_node: self.surface_node.clone(),
+            semantic_scope_node: self.semantic_scope_node.clone(),
+            state: self.state.clone(),
+        }
     }
 
     pub fn surface_x(&self) -> f32 {
@@ -319,6 +338,18 @@ impl PopupPresenter {
             state.surface_y = y;
         }
         self.surface_node.position(x, y);
+    }
+}
+
+impl WeakPopupPresenter {
+    pub(crate) fn upgrade(&self) -> Option<PopupPresenter> {
+        Some(PopupPresenter {
+            root: self.root.upgrade()?,
+            overlay_node: self.overlay_node.clone(),
+            surface_node: self.surface_node.clone(),
+            semantic_scope_node: self.semantic_scope_node.clone(),
+            state: self.state.clone(),
+        })
     }
 }
 

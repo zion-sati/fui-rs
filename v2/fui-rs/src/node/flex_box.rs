@@ -476,18 +476,7 @@ impl FlexBox {
     }
 
     pub fn focusable(&self, enabled: bool, tab_index: i32) -> &Self {
-        if enabled {
-            self.retained_node_ref().require_interactive();
-        }
-        let mut core = self.core.borrow_mut();
-        core.behavior.focusable = Some((enabled, tab_index));
-        let interactive = core.behavior.enabled && core.behavior.inherited_enabled;
-        let has_built_handle = core.handle != NodeHandle::INVALID;
-        drop(core);
-        if has_built_handle {
-            ui::set_focusable(self.handle().raw(), interactive && enabled, tab_index);
-            self.notify_retained_mutation();
-        }
+        Node::focusable(self, enabled, tab_index);
         self
     }
 
@@ -607,54 +596,38 @@ impl FlexBox {
         self
     }
 
-    pub(crate) fn semantic_disabled(&self, disabled: bool) -> &Self {
-        self.core.borrow_mut().behavior.semantic_disabled = Some(disabled);
-        if self.has_built_handle() {
-            ui::set_semantic_disabled(self.handle().raw(), true, disabled);
-            self.notify_retained_mutation();
-        }
+    pub fn semantic_disabled(&self, disabled: bool) -> &Self {
+        Node::semantic_disabled(self, disabled);
         self
     }
 
     pub fn semantic_checked(&self, state: SemanticCheckedState) -> &Self {
-        self.core.borrow_mut().behavior.semantic_checked = Some(state);
+        Node::semantic_checked(self, state);
         self
     }
 
-    pub(crate) fn semantic_selected(&self, selected: bool) -> &Self {
-        self.core.borrow_mut().behavior.semantic_selected = Some(selected);
-        if self.has_built_handle() {
-            ui::set_semantic_selected(self.handle().raw(), true, selected);
-            self.notify_retained_mutation();
-        }
+    pub fn semantic_selected(&self, selected: bool) -> &Self {
+        Node::semantic_selected(self, selected);
         self
     }
 
     pub fn semantic_value_range(&self, value_now: f32, value_min: f32, value_max: f32) -> &Self {
-        self.core.borrow_mut().behavior.semantic_value_range =
-            Some((value_now, value_min, value_max));
+        Node::semantic_value_range(self, value_now, value_min, value_max);
         self
     }
 
     pub fn semantic_orientation(&self, orientation: Orientation) -> &Self {
-        self.core.borrow_mut().behavior.semantic_orientation = Some(orientation);
+        Node::semantic_orientation(self, orientation);
         self
     }
 
     pub fn request_semantic_announcement(&self) -> &Self {
-        self.core
-            .borrow_mut()
-            .behavior
-            .request_semantic_announcement = true;
+        Node::request_semantic_announcement(self);
         self
     }
 
     pub fn visibility(&self, visibility: Visibility) -> &Self {
-        self.core.borrow_mut().behavior.visibility = Some(visibility);
-        if self.has_built_handle() {
-            ui::set_visibility(self.handle().raw(), visibility as u32);
-            self.notify_retained_layout_mutation();
-        }
+        Node::visibility(self, visibility);
         self
     }
 
@@ -725,28 +698,48 @@ impl FlexBox {
 
     pub fn flex_basis(&self, basis: f32) -> &Self {
         self.core.borrow_mut().behavior.flex_basis = Some(basis);
+        if self.has_built_handle() {
+            ui::set_flex_basis(self.handle().raw(), basis);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
     pub fn justify_content(&self, justify: JustifyContent) -> &Self {
         self.host_style_layers.borrow_mut().local.justify_content = Some(justify);
         self.core.borrow_mut().behavior.justify_content = Some(justify);
+        if self.has_built_handle() {
+            ui::set_justify_content(self.handle().raw(), justify as u32);
+            self.notify_retained_mutation();
+        }
         self
     }
 
     pub fn align_items(&self, align: AlignItems) -> &Self {
         self.host_style_layers.borrow_mut().local.align_items = Some(align);
         self.core.borrow_mut().behavior.align_items = Some(align);
+        if self.has_built_handle() {
+            ui::set_align_items(self.handle().raw(), align as u32);
+            self.notify_retained_mutation();
+        }
         self
     }
 
     pub fn align_self(&self, align: AlignSelf) -> &Self {
         self.core.borrow_mut().behavior.align_self = Some(align);
+        if self.has_built_handle() {
+            ui::set_align_self(self.handle().raw(), align as u32);
+            self.notify_retained_mutation();
+        }
         self
     }
 
     pub fn margin(&self, left: f32, top: f32, right: f32, bottom: f32) -> &Self {
         self.core.borrow_mut().behavior.margin = Some((left, top, right, bottom));
+        if self.has_built_handle() {
+            ui::set_margin(self.handle().raw(), left, top, right, bottom);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
@@ -989,11 +982,19 @@ impl FlexBox {
 
     pub fn flex_wrap(&self, wrap: FlexWrap) -> &Self {
         self.core.borrow_mut().behavior.flex_wrap = Some(wrap);
+        if self.has_built_handle() {
+            ui::set_flex_wrap(self.handle().raw(), wrap as u32);
+            self.notify_retained_layout_mutation();
+        }
         self
     }
 
     pub fn clip_to_bounds(&self, clip: bool) -> &Self {
         self.core.borrow_mut().behavior.clip_to_bounds = Some(clip);
+        if self.has_built_handle() {
+            ui::set_clip_to_bounds(self.handle().raw(), clip);
+            self.notify_retained_mutation();
+        }
         self
     }
 
@@ -1007,16 +1008,7 @@ impl FlexBox {
         self
     }
 
-    pub fn shared_size_scope(&self, enabled: bool) -> &Self {
-        self.core.borrow_mut().behavior.is_shared_size_scope = enabled;
-        if self.has_built_handle() {
-            ui::set_is_shared_size_scope(self.handle().raw(), enabled);
-            self.notify_retained_layout_mutation();
-        }
-        self
-    }
-
-    pub fn on_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self {
+    pub fn on_pointer_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self {
         self.core.borrow_mut().handlers.pointer_click = Some(Rc::new(handler));
         self.retained_node_ref().require_interactive();
         self

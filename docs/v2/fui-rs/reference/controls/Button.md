@@ -8,8 +8,15 @@ Theme-aware action control.
 
 ## Key APIs
 
-- `on_click`, `on_double_click`, `on_triple_click`, `template`, `colors`,
+- `on_click`, `template`, `colors`,
   `bind_theme`, inherited node/layout APIs.
+
+`on_click(...)` is high-level Button activation and includes supported pointer
+and keyboard input. Use inherited `on_pointer_click(...)` only when raw routed
+pointer data is required; it is not a replacement for control activation.
+Exact raw pointer gestures use inherited `on_pointer_double_click(...)` and
+`on_pointer_triple_click(...)`. Semantic `ClickEventArgs` intentionally carries
+no click count.
 
 ## Theme-aware control styling
 

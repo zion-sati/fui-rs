@@ -12,11 +12,12 @@ use crate::ffi::{
     CursorStyle, KeyEventType, KeyModifier, PositionType, SemanticRole, TextVerticalAlign, Unit,
 };
 use crate::node::{
-    flex_box, FlexBox, FlexBoxSurface, HasFlexBoxRoot, Node, NodeHandle, ScrollBarVisibility,
-    ScrollBox, TextCore,
+    flex_box, ChildContainerSurface, FlexBox, HasFlexBoxRoot, LayoutSurface, Node, NodeHandle,
+    ScrollBarVisibility, ScrollBox, TextNode,
 };
 use crate::persisted::{persisted_value_adapter, PersistedStringCodec};
 use crate::signal::SubscriptionGuard;
+use crate::text_indices::{scalar_count, scalar_to_byte};
 use crate::theme::{current_theme, subscribe};
 use crate::{focus_adorner, focus_visibility};
 use std::cell::{Cell, RefCell};
@@ -77,39 +78,6 @@ fn create_presenter(
     create_default_text_input_presenter()
 }
 
-fn char_count(text: &str) -> u32 {
-    text.chars().count() as u32
-}
-
-fn char_to_byte(text: &str, index: u32) -> u32 {
-    let target = min(index, char_count(text)) as usize;
-    if target == 0 {
-        return 0;
-    }
-    for (position, (byte, _)) in text.char_indices().enumerate() {
-        if position == target {
-            return byte as u32;
-        }
-    }
-    text.len() as u32
-}
-
-fn byte_to_char(text: &str, byte_index: u32) -> u32 {
-    let target = min(byte_index as usize, text.len());
-    let mut count = 0;
-    for (byte, _) in text.char_indices() {
-        if byte >= target {
-            break;
-        }
-        count += 1;
-    }
-    if target == text.len() {
-        text.chars().count() as u32
-    } else {
-        count
-    }
-}
-
 fn is_enabled(root: &FlexBox) -> bool {
     root.retained_node_ref().is_enabled_for_routing()
 }
@@ -118,9 +86,9 @@ pub struct TextInputCore {
     self_weak: RefCell<Weak<TextInputCore>>,
     profile: TextInputProfile,
     root: FlexBox,
-    editor_text: TextCore,
+    editor_text: TextNode,
     editor_scroll_box: Option<ScrollBox>,
-    placeholder_text: TextCore,
+    placeholder_text: TextNode,
     placeholder_host: FlexBox,
     placeholder_attached: Cell<bool>,
     presenter: RefCell<Rc<dyn TextInputPresenter>>,
@@ -167,14 +135,14 @@ impl TextInputCore {
             .reflect_semantic_disabled_from_enabled()
             .selection_area_barrier(true);
 
-        let editor_text = TextCore::new("");
+        let editor_text = TextNode::new_core("");
         editor_text
             .semantic_role(SemanticRole::Textbox)
             .reflect_semantic_disabled_from_enabled()
             .focusable(true, 0)
             .selectable(true)
             .editable(true);
-        let placeholder_text = TextCore::new("");
+        let placeholder_text = TextNode::new_core("");
         let placeholder_host = flex_box();
         placeholder_host
             .position_type(PositionType::Absolute)
@@ -333,16 +301,16 @@ impl TextInputCore {
 
     pub fn selection_range(&self, start: u32, end: u32) -> &Self {
         let text = self.text_value.borrow();
-        let start = min(start, char_count(&text));
-        let end = min(end, char_count(&text));
-        let start_bytes = char_to_byte(&text, start);
-        let end_bytes = char_to_byte(&text, end);
+        let start = min(start, scalar_count(&text));
+        let end = min(end, scalar_count(&text));
+        let start_bytes = scalar_to_byte(&text, start);
+        let end_bytes = scalar_to_byte(&text, end);
         drop(text);
         self.selection_start_chars.set(start);
         self.selection_end_chars.set(end);
         self.selection_start_bytes.set(start_bytes);
         self.selection_end_bytes.set(end_bytes);
-        self.editor_text.selection_range(start_bytes, end_bytes);
+        self.editor_text.selection_range(start, end);
         self
     }
 
@@ -351,7 +319,7 @@ impl TextInputCore {
     }
 
     pub fn caret_to_end(&self) -> &Self {
-        let end = char_count(&self.text_value.borrow());
+        let end = scalar_count(&self.text_value.borrow());
         self.selection_range(end, end)
     }
 
@@ -384,6 +352,11 @@ impl TextInputCore {
 
     pub fn node_id(&self, id: impl Into<String>) -> &Self {
         self.editor_text.node_id(id);
+        self
+    }
+
+    pub fn semantic_label(&self, label: impl Into<String>) -> &Self {
+        self.editor_text.semantic_label(label);
         self
     }
 
@@ -463,16 +436,15 @@ impl TextInputCore {
         self
     }
 
-    pub fn on_focus_changed(&self, handler: impl Fn(FocusChangedEventArgs) + 'static) -> &Self {
-        *self.focus_changed_callback.borrow_mut() = Some(Rc::new(handler));
-        self
+    pub(crate) fn set_focus_changed_callback(&self, handler: Rc<dyn Fn(FocusChangedEventArgs)>) {
+        *self.focus_changed_callback.borrow_mut() = Some(handler);
     }
 
     pub fn focus_now(&self) -> &Self {
         self.focus_editor();
         self.editor_text.selection_range(
-            self.selection_start_bytes.get(),
-            self.selection_end_bytes.get(),
+            self.selection_start_chars.get(),
+            self.selection_end_chars.get(),
         );
         self
     }
@@ -762,7 +734,7 @@ impl TextInputCore {
     }
 
     fn handle_editor_text_changed(&self) {
-        let value = self.editor_text.text_value();
+        let value = self.editor_text.content();
         if *self.text_value.borrow() == value {
             return;
         }
@@ -779,13 +751,11 @@ impl TextInputCore {
     }
 
     fn handle_editor_selection_changed(&self, start: u32, end: u32) {
-        self.selection_start_bytes.set(start);
-        self.selection_end_bytes.set(end);
         let text = self.text_value.borrow();
-        let start_chars = byte_to_char(&text, start);
-        let end_chars = byte_to_char(&text, end);
-        let start_bytes = char_to_byte(&text, start_chars);
-        let end_bytes = char_to_byte(&text, end_chars);
+        let start_chars = min(start, scalar_count(&text));
+        let end_chars = min(end, scalar_count(&text));
+        let start_bytes = scalar_to_byte(&text, start_chars);
+        let end_bytes = scalar_to_byte(&text, end_chars);
         drop(text);
         self.selection_start_bytes.set(start_bytes);
         self.selection_end_bytes.set(end_bytes);
@@ -845,15 +815,15 @@ impl TextInputCore {
             .selection_start_chars
             .get()
             .max(self.selection_end_chars.get());
-        let current_len = char_count(&text);
-        let inserted_len = char_count(inserted);
+        let current_len = scalar_count(&text);
+        let inserted_len = scalar_count(inserted);
         let replaced_len = end - start;
         if current_len - replaced_len + inserted_len > self.max_chars_value.get() as u32 {
             return;
         }
 
-        let start_byte = char_to_byte(&text, start) as usize;
-        let end_byte = char_to_byte(&text, end) as usize;
+        let start_byte = scalar_to_byte(&text, start) as usize;
+        let end_byte = scalar_to_byte(&text, end) as usize;
         let mut value =
             String::with_capacity(text.len() - (end_byte - start_byte) + inserted.len());
         value.push_str(&text[..start_byte]);
@@ -864,7 +834,7 @@ impl TextInputCore {
         *self.text_value.borrow_mut() = value.clone();
         let handle = self.editor_text.handle();
         if handle != NodeHandle::INVALID {
-            let caret_byte = char_to_byte(&value, caret);
+            let caret_byte = scalar_to_byte(&value, caret);
             ui::replace_text_range(
                 handle.raw(),
                 start_byte as u32,
@@ -997,11 +967,11 @@ impl TextInputCore {
 
     fn clamp_selection_to_text(&self) {
         let text = self.text_value.borrow();
-        let char_len = char_count(&text);
+        let char_len = scalar_count(&text);
         let start_chars = min(self.selection_start_chars.get(), char_len);
         let end_chars = min(self.selection_end_chars.get(), char_len);
-        let start_bytes = char_to_byte(&text, start_chars);
-        let end_bytes = char_to_byte(&text, end_chars);
+        let start_bytes = scalar_to_byte(&text, start_chars);
+        let end_bytes = scalar_to_byte(&text, end_chars);
         drop(text);
         self.selection_start_chars.set(start_chars);
         self.selection_end_chars.set(end_chars);
@@ -1079,12 +1049,12 @@ impl TextInputCore {
         self.root.build();
         self.sync_browser_input_metadata();
         self.editor_text.selection_range(
-            self.selection_start_bytes.get(),
-            self.selection_end_bytes.get(),
+            self.selection_start_chars.get(),
+            self.selection_end_chars.get(),
         );
     }
 
-    pub(crate) fn editor_node(&self) -> TextCore {
+    pub(crate) fn editor_node(&self) -> TextNode {
         self.editor_text.clone()
     }
 }

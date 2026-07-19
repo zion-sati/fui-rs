@@ -47,7 +47,7 @@ pub fn column() -> FlexBox {
     root
 }
 
-pub fn portal() -> FlexBox {
+pub fn portal() -> Portal {
     let root = FlexBox::default();
     root.clip_to_bounds(false).portal(true);
     root
@@ -99,6 +99,18 @@ pub(crate) fn apply_flex_box_props(
     }
     if let Some((height, unit)) = props.height {
         ui::set_height(handle.raw(), height, unit as u32);
+    }
+    if let Some((value, unit)) = props.min_width {
+        ui::set_min_width(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.max_width {
+        ui::set_max_width(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.min_height {
+        ui::set_min_height(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.max_height {
+        ui::set_max_height(handle.raw(), value, unit as u32);
     }
     if let Some(style) = props.box_style {
         ui::set_box_style(
@@ -175,6 +187,18 @@ pub(crate) fn apply_text_props(handle: NodeHandle, props: &TextProps, behavior: 
     if let Some((height, unit)) = props.height {
         ui::set_height(handle.raw(), height, unit as u32);
     }
+    if let Some((value, unit)) = props.min_width {
+        ui::set_min_width(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.max_width {
+        ui::set_max_width(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.min_height {
+        ui::set_min_height(handle.raw(), value, unit as u32);
+    }
+    if let Some((value, unit)) = props.max_height {
+        ui::set_max_height(handle.raw(), value, unit as u32);
+    }
     if props.has_font {
         ui::set_font(handle.raw(), props.font_id, props.font_size);
     }
@@ -226,21 +250,12 @@ pub(crate) fn apply_text_props(handle: NodeHandle, props: &TextProps, behavior: 
     if let Some(caret_color) = props.caret_color {
         ui::set_caret_color(handle.raw(), caret_color);
     }
+    if let Some((start, end)) = props.selection_range_bytes {
+        ui::set_text_selection_range(handle.raw(), start, end);
+    }
 }
 
-pub(crate) fn apply_grid_props(handle: NodeHandle, props: &GridProps, behavior: NodeBehavior) {
-    if let Some((width, unit)) = props.width {
-        ui::set_width(handle.raw(), width, unit as u32);
-    }
-    if let Some((height, unit)) = props.height {
-        ui::set_height(handle.raw(), height, unit as u32);
-    }
-    if let Some(color) = props.bg_color {
-        ui::set_bg_color(handle.raw(), color);
-    }
-    if let Some((left, top, right, bottom)) = props.padding {
-        ui::set_padding(handle.raw(), left, top, right, bottom);
-    }
+pub(crate) fn apply_grid_props(handle: NodeHandle, props: &GridProps) {
     ui::grid_set_columns(handle.raw(), &props.columns, &props.column_types);
     ui::grid_set_rows(handle.raw(), &props.rows, &props.row_types);
     for (index, group) in &props.column_shared_size_groups {
@@ -249,16 +264,9 @@ pub(crate) fn apply_grid_props(handle: NodeHandle, props: &GridProps, behavior: 
     for (index, group) in &props.row_shared_size_groups {
         ui::grid_set_row_shared_size_group(handle.raw(), *index, group);
     }
-    apply_behavior(handle, behavior);
 }
 
-pub(crate) fn apply_image_props(handle: NodeHandle, props: &ImageProps, behavior: NodeBehavior) {
-    if let Some((width, unit)) = props.width {
-        ui::set_width(handle.raw(), width, unit as u32);
-    }
-    if let Some((height, unit)) = props.height {
-        ui::set_height(handle.raw(), height, unit as u32);
-    }
+pub(crate) fn apply_image_props(handle: NodeHandle, props: &ImageProps) {
     if let Some((left, top, right, bottom)) = props.image_nine {
         ui::set_image_nine(
             handle.raw(),
@@ -279,16 +287,9 @@ pub(crate) fn apply_image_props(handle: NodeHandle, props: &ImageProps, behavior
             props.max_aniso,
         );
     }
-    apply_behavior(handle, behavior);
 }
 
-pub(crate) fn apply_svg_props(handle: NodeHandle, props: &SvgProps, behavior: NodeBehavior) {
-    if let Some((width, unit)) = props.width {
-        ui::set_width(handle.raw(), width, unit as u32);
-    }
-    if let Some((height, unit)) = props.height {
-        ui::set_height(handle.raw(), height, unit as u32);
-    }
+pub(crate) fn apply_svg_props(handle: NodeHandle, props: &SvgProps) {
     ui::set_svg(
         handle.raw(),
         props.svg_id,
@@ -296,10 +297,6 @@ pub(crate) fn apply_svg_props(handle: NodeHandle, props: &SvgProps, behavior: No
         props.sampling_kind,
         props.max_aniso,
     );
-    if let Some(opacity) = props.opacity {
-        ui::set_layer_effect(handle.raw(), opacity, 0.0, 0);
-    }
-    apply_behavior(handle, behavior);
 }
 
 pub(crate) fn apply_scroll_view_props(
@@ -320,12 +317,6 @@ pub(crate) fn apply_scroll_view_props(
     }
     if let Some((height, unit)) = props.height {
         ui::set_height(handle.raw(), height, unit as u32);
-    }
-    if let Some(color) = props.bg_color {
-        ui::set_bg_color(handle.raw(), color);
-    }
-    if let Some((left, top, right, bottom)) = props.padding {
-        ui::set_padding(handle.raw(), left, top, right, bottom);
     }
     ui::set_scroll_enabled(handle.raw(), props.enable_scroll_x, props.enable_scroll_y);
     ui::set_smooth_scrolling(handle.raw(), props.smooth_scrolling);
@@ -364,6 +355,9 @@ pub(crate) fn apply_behavior(handle: NodeHandle, behavior: NodeBehavior) {
     }
     if let Some(selected) = behavior.semantic_selected {
         ui::set_semantic_selected(handle.raw(), true, selected);
+    }
+    if let Some(expanded) = behavior.semantic_expanded {
+        ui::set_semantic_expanded(handle.raw(), true, expanded);
     }
     if let Some((value_now, value_min, value_max)) = behavior.semantic_value_range {
         ui::set_semantic_value_range(handle.raw(), true, value_now, value_min, value_max);
@@ -434,8 +428,5 @@ pub(crate) fn apply_behavior(handle: NodeHandle, behavior: NodeBehavior) {
     }
     if behavior.track_semantic_disabled_from_enabled {
         ui::set_semantic_disabled(handle.raw(), true, !effective_enabled);
-    }
-    if behavior.request_semantic_announcement {
-        ui::request_semantic_announcement(handle.raw());
     }
 }

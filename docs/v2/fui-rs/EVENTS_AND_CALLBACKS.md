@@ -3,8 +3,8 @@
 FUI-RS events use typed EventArgs structs and ordinary Rust closures.
 
 ```rust
-button("Save").on_click(|event| {
-    logger::info("Button", format!("click count {}", event.click_count));
+button("Save").on_click(|_| {
+    logger::info("Button", "Save activated");
 });
 ```
 
@@ -62,9 +62,9 @@ browser unless a focused control or user handler handles them.
 
 Common node event APIs:
 
-- `on_click(...)`
-- `on_double_click(...)`
-- `on_triple_click(...)`
+- `on_pointer_click(...)`
+- `on_pointer_double_click(...)`
+- `on_pointer_triple_click(...)`
 - `on_pointer_down(...)`
 - `on_pointer_move(...)`
 - `on_pointer_up(...)`
@@ -79,6 +79,19 @@ Common node event APIs:
 - `on_pinch_gesture(...)`
 - `on_long_press(...)`
 - `on_context_menu(...)`
+
+`on_pointer_click(...)` is a low-level routed pointer event. It fires for every
+click count and exposes mutable `PointerEventArgs` so handlers can consume the
+event. For exact double or triple clicks, `on_pointer_double_click(...)` or
+`on_pointer_triple_click(...)` then fires with the same event and handled state.
+
+`Button::on_click(...)`, `Checkbox::on_click(...)`, `RadioButton::on_click(...)`,
+and `Switch::on_click(...)` are semantic activation APIs. They fire for
+supported pointer and keyboard activation and receive count-free
+`ClickEventArgs`. Toggle controls emit `on_changed(...)` before `on_click(...)`
+when user activation changes state. Programmatic and persisted state changes
+emit `on_changed(...)` but never `on_click(...)`. `NavLink` uses
+`on_navigate(...)` for navigation activation.
 
 ## Pointer events
 

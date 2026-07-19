@@ -196,6 +196,15 @@ impl<T: 'static> VirtualList<T> {
         }
     }
 
+    pub fn is_selection_barrier(&self) -> bool {
+        true
+    }
+
+    pub fn render(&self) -> &Self {
+        self.rebuild_visible_range(true);
+        self
+    }
+
     pub fn node_id(&self, id: impl Into<String>) -> &Self {
         self.inner.scroll_box.node_id(id);
         self
@@ -558,6 +567,14 @@ impl<T: 'static> Node for VirtualList<T> {
 impl<T: 'static> HasFlexBoxRoot for VirtualList<T> {
     fn flex_box_root(&self) -> &FlexBox {
         &self.inner.root
+    }
+
+    fn set_flex_box_surface_width(&self, value: f32, unit: Unit) {
+        self.width(value, unit);
+    }
+
+    fn set_flex_box_surface_height(&self, value: f32, unit: Unit) {
+        self.height(value, unit);
     }
 }
 

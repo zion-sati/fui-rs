@@ -8,8 +8,8 @@ use crate::ffi::{
 use crate::logger::warn;
 use crate::navigation;
 use crate::node::{
-    column, flex_box, grid, portal, Border, FlexBox, Grid, GridTrack, Node, NodeRef, TextNode,
-    WeakFlexBox,
+    column, flex_box, grid, portal, Border, BoxStyleSurface, FlexBox, Grid, GridTrack,
+    LayoutSurface, Node, NodeRef, TextNode, ThemeBindable, WeakFlexBox,
 };
 use crate::popup_presenter::{PopupPresenter, PopupPresenterEventTarget};
 use crate::theme::{current_theme, subscribe, Theme};
@@ -816,8 +816,8 @@ impl ContextMenuEventTarget {
             return;
         };
         let state = self.state.borrow();
+        Grid::shared_size_scope(&panel, true);
         panel
-            .shared_size_scope(true)
             .width(state.menu_width, Unit::Pixel)
             .bg_color(state.panel_background_color)
             .background_blur(state.panel_background_blur_sigma)
@@ -968,9 +968,9 @@ impl ContextMenu {
         let theme = current_theme();
         let root = portal();
         let panel = column();
+        panel.position_type(crate::ffi::PositionType::Absolute);
+        Grid::shared_size_scope(&panel, true);
         panel
-            .position_type(crate::ffi::PositionType::Absolute)
-            .shared_size_scope(true)
             .width(MENU_WIDTH, Unit::Pixel)
             .padding(4.0, 4.0, 4.0, 4.0)
             .border(1.0, theme.context_menu.panel_border_color);
@@ -1263,5 +1263,38 @@ impl Node for ContextMenu {
 impl crate::node::HasFlexBoxRoot for ContextMenu {
     fn flex_box_root(&self) -> &FlexBox {
         &self.root
+    }
+}
+
+impl ThemeBindable for ContextMenu {
+    fn theme_binding_node(&self) -> NodeRef {
+        self.root.retained_node_ref()
+    }
+
+    fn weak_theme_target(&self) -> Box<dyn Fn() -> Option<Self>> {
+        let root = self.root.downgrade();
+        let panel = self.panel.downgrade();
+        let popup_presenter = self.popup_presenter.downgrade();
+        let items = Rc::downgrade(&self.items);
+        let entries = self.entries.clone();
+        let separators = self.separators.clone();
+        let current_items = Rc::downgrade(&self.current_items);
+        let current_item_tops = Rc::downgrade(&self.current_item_tops);
+        let current_item_heights = Rc::downgrade(&self.current_item_heights);
+        let state = Rc::downgrade(&self.state);
+        Box::new(move || {
+            Some(Self {
+                root: root.upgrade()?,
+                panel: panel.upgrade()?,
+                popup_presenter: popup_presenter.upgrade()?,
+                items: items.upgrade()?,
+                entries: entries.clone(),
+                separators: separators.clone(),
+                current_items: current_items.upgrade()?,
+                current_item_tops: current_item_tops.upgrade()?,
+                current_item_heights: current_item_heights.upgrade()?,
+                state: state.upgrade()?,
+            })
+        })
     }
 }

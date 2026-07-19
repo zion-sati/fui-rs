@@ -14,10 +14,10 @@ For the complete export list, see:
 
 | Control | Purpose | Key APIs |
 |---|---|---|
-| `Button` | Theme-aware action control | `button(label)`, `on_click(...)`, `on_double_click(...)`, `on_triple_click(...)`, `template(...)`, `colors(...)`, typed `bind_theme(...)` |
-| `Checkbox` | Boolean or tri-state check control | `checkbox(label)`, `check(...)`, `tri_state(...)`, `mixed(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
-| `Switch` | On/off toggle control | `switch(label)`, `check(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
-| `RadioButton` / `RadioGroup` | Single-choice grouped options | `radio_button(label)`, `radio_group()`, `add_option(...)`, `add_options(...)`, `select_index(...)`, `on_changed(...)` |
+| `Button` | Theme-aware action control | `button(label)`, `on_click(...)`, `template(...)`, `colors(...)`, typed `bind_theme(...)` |
+| `Checkbox` | Boolean or tri-state check control | `checkbox(label)`, `check(...)`, `tri_state(...)`, `mixed(...)`, `on_changed(...)`, `on_click(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
+| `Switch` | On/off toggle control | `switch(label)`, `check(...)`, `on_changed(...)`, `on_click(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
+| `RadioButton` / `RadioGroup` | Single-choice grouped options | radio `on_click(...)`; group `add_option(...)`, `add_options(...)`, `select_index(...)`, `on_changed(...)` |
 | `ProgressBar` | Determinate horizontal or vertical progress visualization | `value(...)`, `min(...)`, `max(...)`, `length(...)`, `thickness(...)`, `orientation(...)`, `sizing(...)`, `clear_sizing()`, `colors(...)`, `clear_colors()` |
 | `Slider` | Single-value range control | `min(...)`, `max(...)`, `step(...)`, `orientation(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Dropdown` | Non-editable selection popup control | `items(...)`, `select_index(...)`, `on_changed(...)`, `max_visible_items(...)`, templates and colors |
@@ -56,7 +56,7 @@ For the complete export list, see:
 | `Portal` | Overlay host node | detached overlay composition surfaces |
 | `ScrollView` | Low-level retained viewport | scroll state/offset plumbing, animated scroll, transitions |
 | `ScrollState` | Shared scroll metrics/state object | offsets, viewport size, content size |
-| `ScrollBar` | Retained scrollbar chrome | axis-aware track/thumb style and geometry |
+| `ScrollBar` | Helper that composes retained scrollbar chrome | axis-aware track/thumb style and geometry; attach the result of `render()` |
 | `ScrollBox` | High-level scroll container | owned viewport and scrollbars, per-axis enable/visibility control |
 | `VirtualList` | Pooled retained list surface | `virtual_list(total, item_height)`, `on_bind_item(...)`, recycled rows |
 | `CustomDrawable` | Retained custom drawing surface | `custom_drawable(|ctx| ...)`, `DrawContext`, `mark_dirty()` |
@@ -93,6 +93,26 @@ The same rule applies vertically:
 For normal stretch/fill layouts, prefer `fill_width()`, `fill_height()`, and
 `fill_size()`. Use percent sizing when the size itself should be a literal ratio
 of the parent.
+
+## Capability traits
+
+FUI-RS maps the FUI-AS retained inheritance hierarchy to cohesive Rust traits:
+
+| Trait | Public types |
+|---|---|
+| `Node` | Every retained visual node and control |
+| `LayoutSurface`, `BoxStyleSurface`, `FlexLayoutSurface`, `ChildContainerSurface` | `FlexBox` and every node/control whose FUI-AS counterpart extends `FlexBox` |
+| `FlexBoxSurface` | Composite bound for the complete four-trait FlexBox contract |
+| `TextSurface` | `Text`/`TextNode` and `RichText` |
+| `TextEditorSurface` | `TextInput` and `TextArea` |
+| `ThemeBindable` | Every retained visual type; `ScrollBar` is a helper that renders themed retained chrome rather than a standalone node |
+
+`ScrollView` follows FUI-AS and extends the universal Node model rather than
+FlexBox. It therefore exposes its explicit viewport sizing, scrolling, child,
+and theme APIs instead of `FlexBoxSurface`.
+
+Public aliases (`Text`, `Image`, `Svg`, and `Portal`) have exactly the same
+capabilities as their underlying retained types.
 
 ## Layout sizing guide: fill vs percent
 
@@ -193,6 +213,7 @@ or through their retained root:
 - `cursor(...)`
 - `semantic_role(...)`
 - `semantic_label(...)`
+- `on_pointer_click(...)`
 - `on_pointer_down(...)`, `on_pointer_up(...)`, `on_pointer_move(...)`
 - `on_key_down(...)`, `on_key_up(...)`
 - `on_focus_changed(...)`
@@ -200,6 +221,10 @@ or through their retained root:
 - gesture callbacks
 - context-menu callbacks
 - geometry helpers
+
+`on_pointer_click(...)` is the universal raw pointer event. High-level control
+actions remain control-specific: use `Button::on_click(...)` for keyboard and
+pointer activation, and `NavLink::on_navigate(...)` for navigation.
 
 ## See also
 

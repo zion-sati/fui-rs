@@ -1,7 +1,7 @@
 use crate::controls::ButtonColors;
 use crate::ffi::{AlignItems, FlexDirection, JustifyContent};
 use crate::node::{
-    flex_box, Border, Corners, EdgeInsets, FlexBox, PresenterHostStyle, Shadow, TextCore,
+    flex_box, Border, Corners, EdgeInsets, FlexBox, PresenterHostStyle, Shadow, TextNode,
 };
 use crate::theme::Theme;
 use crate::{FontStyle, FontWeight};
@@ -17,7 +17,7 @@ pub struct ButtonVisualState {
 
 pub trait ButtonPresenter {
     fn content_root(&self) -> FlexBox;
-    fn label_node(&self) -> TextCore;
+    fn label_node(&self) -> TextNode;
     fn present(
         &self,
         theme: Theme,
@@ -33,12 +33,12 @@ pub trait ButtonTemplate {
 #[derive(Clone)]
 pub struct DefaultButtonPresenter {
     content_root: FlexBox,
-    label_node: TextCore,
+    label_node: TextNode,
 }
 
 impl DefaultButtonPresenter {
     pub fn new() -> Self {
-        let label_node = TextCore::new("");
+        let label_node = TextNode::new_core("");
         let content_root = flex_box();
         content_root
             .flex_direction(FlexDirection::Row)
@@ -57,7 +57,7 @@ impl ButtonPresenter for DefaultButtonPresenter {
         self.content_root.clone()
     }
 
-    fn label_node(&self) -> TextCore {
+    fn label_node(&self) -> TextNode {
         self.label_node.clone()
     }
 

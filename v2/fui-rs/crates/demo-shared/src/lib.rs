@@ -199,7 +199,8 @@ impl Stage4Showcase {
         };
         let root = ui! {
             scroll_box().fill_size()
-            .bg_color(0xF7F4ECFF)
+            .node_id("workbench-scroll-root")
+            .bg_color(theme.colors.background)
             .scrollbar_gutter(0.0)
             .persist_scroll(false)
             .child(&page)
@@ -384,7 +385,7 @@ impl Stage4Showcase {
             .width_len(fill())
             .interactive(true)
             .cursor(CursorStyle::Pointer)
-            .on_click({
+            .on_pointer_click({
                 let probe_for_click = probe.clone();
                 let bounds_for_click = bounds_label.clone();
                 let local_for_click = local_label.clone();
@@ -2041,7 +2042,8 @@ impl Stage4Showcase {
             let custom_font_direct_stack = custom_font_direct_stack.clone();
             let custom_font_comparison = custom_font_comparison.clone();
             let on_theme_accent_changed = on_theme_accent_changed.clone();
-            move |_root, theme| {
+            move |root, theme| {
+                root.bg_color(theme.colors.background);
                 vertical_scrollbar
                     .track_color(theme.colors.scrollbar_track)
                     .thumb_color(theme.colors.scrollbar_thumb);

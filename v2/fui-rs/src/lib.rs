@@ -43,6 +43,7 @@ pub(crate) mod selection_handle_adorner;
 #[doc(hidden)]
 pub mod signal;
 pub mod text;
+mod text_indices;
 pub mod theme;
 pub mod timers;
 pub mod tool_tip;
@@ -460,7 +461,7 @@ pub mod prelude {
         text_area, text_input, use_control_templates, AntiSelectionArea, Button, ButtonColors,
         ButtonPresenter, ButtonTemplate, ButtonVisualState, CheckState, Checkbox,
         CheckboxChangedEventArgs, CheckboxIndicatorPresenter, CheckboxIndicatorTemplate,
-        CheckboxIndicatorVisualState, ClickEventArgs, ComboBox, ComboBoxChangedEventArgs,
+        CheckboxIndicatorVisualState, Clickable, ClickEventArgs, ComboBox, ComboBoxChangedEventArgs,
         ComboBoxCommitMode, ComboBoxFilterMode, ComboBoxItem, ContextMenu, ContextMenuAction,
         ContextMenuAppearance, ContextMenuItemAppearance, ContextMenuVisibilityChangedEventArgs,
         ControlTemplateSet, DefaultButtonTemplate, DefaultCheckboxIndicatorTemplate,
@@ -481,8 +482,8 @@ pub mod prelude {
         Slider, SliderChangedEventArgs, SliderColors, SliderPresenter, SliderPresenterMetrics,
         SliderSizing, SliderTemplate, SliderVisualState, SurfaceAppearance, Switch,
         SwitchChangedEventArgs, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
-        SwitchIndicatorVisualState, TextArea, TextInput, TextInputColors, TextInputPresenter,
-        TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
+        SwitchIndicatorVisualState, TextArea, TextEditorSurface, TextInput, TextInputColors,
+        TextInputPresenter, TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
         DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
         DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
         DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE,
@@ -527,11 +528,14 @@ pub mod prelude {
     pub use crate::node::{
         auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row,
         scroll_box, scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border,
-        Child, ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets,
-        FlexBox, FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image,
-        ImageNode, Length, Node, PresenterHostStyle, ScrollBar, ScrollBarStyle,
-        ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow, Svg, SvgNode, Text,
-        TextCore, TextLayoutSurface, TextNode, ThemeBindable, VirtualList,
+        BoxStyleSurface, Child, ChildContainerSurface, ContextMenuEventArgs, Corners,
+        CustomDrawable, DrawableInvalidator, EdgeInsets, FlexBox, FlexBoxSurface,
+        FlexLayoutSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image,
+        ImageNode, LayoutSurface, Length, Node, Portal, PresenterHostStyle, ScrollBar,
+        ScrollBarStyle, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow, Svg,
+        SvgNode, Text, TextContentSurface, TextEditingSurface, TextEventSurface, TextLayoutSurface,
+        TextNode, TextSelectionSurface, TextSurface, TextTypographySurface, ThemeBindable,
+        VirtualList,
     };
     pub use crate::persisted;
     pub use crate::platform;
@@ -606,12 +610,12 @@ pub use controls::{
     RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
     SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
     SurfaceAppearance, Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter,
-    SwitchIndicatorTemplate, SwitchIndicatorVisualState, TextArea, TextInput, TextInputColors,
-    TextInputPresenter, TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
-    DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
-    DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
-    DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE,
-    DEFAULT_TEXT_INPUT_TEMPLATE,
+    SwitchIndicatorTemplate, SwitchIndicatorVisualState, TextArea, TextEditorSurface, TextInput,
+    TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
+    DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
+    DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
+    DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
+    DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
 };
 pub use debug::*;
 pub use drag_drop::{
@@ -647,12 +651,14 @@ pub use logger::*;
 pub use navigation::*;
 pub use node::{
     auto, column, custom_drawable, fill, flex_box, grid, image, pct, portal, px, row, scroll_box,
-    scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border, Child,
-    ContextMenuEventArgs, Corners, CustomDrawable, DrawableInvalidator, EdgeInsets, FlexBox,
-    FlexBoxSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image, ImageNode,
-    Length, Node, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox,
-    ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextCore, TextLayoutSurface, TextNode,
-    ThemeBindable, VirtualList,
+    scroll_view, svg, text, viewport_height, viewport_width, virtual_list, Border, BoxStyleSurface,
+    Child, ChildContainerSurface, ContextMenuEventArgs, Corners, CustomDrawable,
+    DrawableInvalidator, EdgeInsets, FlexBox, FlexBoxSurface, FlexLayoutSurface, GradientStop,
+    Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image, ImageNode, LayoutSurface, Length, Node,
+    Portal, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox,
+    ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextContentSurface, TextEditingSurface,
+    TextEventSurface, TextLayoutSurface, TextNode, TextSelectionSurface, TextSurface,
+    TextTypographySurface, ThemeBindable, VirtualList,
 };
 pub use persisted::*;
 pub use platform::*;

@@ -7,8 +7,8 @@ use crate::controls::{DropdownColors, DropdownSizing};
 use crate::ffi::{CursorStyle, FlexDirection, HandleValue, PositionType, SemanticRole, Unit};
 use crate::logger;
 use crate::node::{
-    flex_box, portal, scroll_box, FlexBox, FlexBoxSurface, Node, NodeHandle, ScrollBarVisibility,
-    ScrollBox,
+    flex_box, portal, scroll_box, ChildContainerSurface, FlexBox, LayoutSurface, Node, NodeHandle,
+    ScrollBarVisibility, ScrollBox,
 };
 use crate::popup_presenter::PopupPresenter;
 use crate::theme::current_theme;

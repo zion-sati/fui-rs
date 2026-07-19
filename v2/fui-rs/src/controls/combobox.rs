@@ -10,7 +10,7 @@ use super::internal::selectable_popup_list::{
 use super::internal::text_input_presenter::{
     TextInputPresenter, TextInputTemplate, TextInputVisualState,
 };
-use super::{DropdownColors, DropdownSizing, TextInput, TextInputColors};
+use super::{DropdownColors, DropdownSizing, TextEditorSurface, TextInput, TextInputColors};
 use crate::bindings::ui;
 use crate::event::{self, TextChangedEventArgs};
 use crate::ffi::{
@@ -20,7 +20,8 @@ use crate::focus_adorner;
 use crate::focus_visibility;
 use crate::logger;
 use crate::node::{
-    row, FlexBox, FlexBoxSurface, HasFlexBoxRoot, Node, NodeRef, TextCore, WeakFlexBox,
+    row, BoxStyleSurface, FlexBox, HasFlexBoxRoot, LayoutSurface, Node, NodeRef, TextNode,
+    WeakFlexBox,
 };
 use crate::signal::SubscriptionGuard;
 use crate::theme::{current_theme, subscribe, Theme};
@@ -88,12 +89,12 @@ fn resolve_text_input_colors(
 
 #[derive(Clone, Default)]
 struct ComboBoxEditorPresenter {
-    editor_host: RefCell<Option<TextCore>>,
+    editor_host: RefCell<Option<TextNode>>,
     placeholder_host: RefCell<Option<FlexBox>>,
 }
 
 impl TextInputPresenter for ComboBoxEditorPresenter {
-    fn bind(&self, editor_host: TextCore, placeholder_host: FlexBox) {
+    fn bind(&self, editor_host: TextNode, placeholder_host: FlexBox) {
         *self.editor_host.borrow_mut() = Some(editor_host);
         *self.placeholder_host.borrow_mut() = Some(placeholder_host);
     }
@@ -401,7 +402,7 @@ impl ComboBox {
         root.retained_node_ref().retain_attachment(shared.clone());
         shared.rebuild_filtered_indices();
 
-        popup_list.popup_presenter.overlay_node().on_click({
+        popup_list.popup_presenter.overlay_node().on_pointer_click({
             let weak_shared = Rc::downgrade(&shared);
             move |_event| {
                 if let Some(shared) = weak_shared.upgrade() {
@@ -589,7 +590,7 @@ impl ComboBox {
         self.shared.editor.editor_node().editor_command_keys(true);
 
         let weak_shared = Rc::downgrade(&self.shared);
-        self.shared.chevron_host.on_click(move |event| {
+        self.shared.chevron_host.on_pointer_click(move |event| {
             let Some(shared) = weak_shared.upgrade() else {
                 return;
             };

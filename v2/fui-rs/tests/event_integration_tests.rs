@@ -343,8 +343,10 @@ fn application_shell_tracks_the_active_theme_without_overriding_the_user_root() 
     Application::mount(root.clone());
     let initial_calls = ffi::test::take_calls();
     let shell_handle = parent_for_child(&initial_calls, root.handle().raw());
-    assert!(handles_with_bg_color(&initial_calls, previous_theme.colors.background)
-        .contains(&shell_handle));
+    assert!(
+        handles_with_bg_color(&initial_calls, previous_theme.colors.background)
+            .contains(&shell_handle)
+    );
 
     let mut changed_theme = generate_theme(false, 0x2468ACFF);
     changed_theme.colors.background = 0xF1F2F3FF;
@@ -1074,7 +1076,7 @@ fn popup_control_children_attach_to_surface_not_overlay_root() {
     let root = portal();
     let popup = popup();
     let content = text("popup child");
-    popup.child(&content);
+    ChildContainerSurface::child(&popup, &content);
     root.child(&popup);
     Application::mount(root);
     ffi::test::take_calls();
@@ -1470,7 +1472,7 @@ fn pointer_click_bubbles_to_parent() {
     let root = column();
     let child = text("hit");
     child.key(1);
-    root.on_click(move |_event| clicked_clone.set(clicked_clone.get() + 1))
+    root.on_pointer_click(move |_event| clicked_clone.set(clicked_clone.get() + 1))
         .child(&child);
     Application::mount(root);
     ffi::test::take_calls();
@@ -1514,7 +1516,7 @@ fn pointer_click_uses_pending_down_click_count_when_up_has_zero_count() {
     let clicked = Rc::new(Cell::new(0));
     let clicked_clone = clicked.clone();
     let root = flex_box();
-    root.on_click(move |event| clicked_clone.set(event.click_count));
+    root.on_pointer_click(move |event| clicked_clone.set(event.click_count));
     Application::mount(root.clone());
     ffi::test::take_calls();
     let handle = root.handle().raw();
@@ -1527,6 +1529,150 @@ fn pointer_click_uses_pending_down_click_count_when_up_has_zero_count() {
     );
 
     assert_eq!(clicked.get(), 1);
+}
+
+#[test]
+fn ordinary_pointer_click_fires_for_every_click_count() {
+    ffi::test::reset();
+    let hits = Rc::new(Cell::new(0));
+    let last_click_count = Rc::new(Cell::new(0));
+    let root = flex_box();
+    root.on_pointer_click({
+        let hits = hits.clone();
+        let last_click_count = last_click_count.clone();
+        move |event| {
+            hits.set(hits.get() + 1);
+            last_click_count.set(event.click_count);
+        }
+    });
+    Application::mount(root.clone());
+    ffi::test::take_calls();
+    let handle = root.handle().raw();
+
+    for click_count in 1..=4 {
+        primary_click(handle, click_count);
+    }
+
+    assert_eq!(hits.get(), 4);
+    assert_eq!(last_click_count.get(), 4);
+}
+
+#[test]
+fn exact_pointer_multi_click_handlers_follow_ordinary_click_on_the_same_node() {
+    ffi::test::reset();
+    let ordinary_hits = Rc::new(Cell::new(0));
+    let double_hits = Rc::new(Cell::new(0));
+    let triple_hits = Rc::new(Cell::new(0));
+    let order = Rc::new(Cell::new(0));
+    let specialized_saw_handled = Rc::new(Cell::new(false));
+    let root = flex_box();
+    root.on_pointer_click({
+        let ordinary_hits = ordinary_hits.clone();
+        let order = order.clone();
+        move |event| {
+            ordinary_hits.set(ordinary_hits.get() + 1);
+            order.set(order.get() * 10 + 1);
+            event.handled = true;
+        }
+    })
+    .on_pointer_double_click({
+        let double_hits = double_hits.clone();
+        let order = order.clone();
+        let specialized_saw_handled = specialized_saw_handled.clone();
+        move |event| {
+            double_hits.set(double_hits.get() + 1);
+            order.set(order.get() * 10 + 2);
+            specialized_saw_handled.set(event.handled);
+        }
+    })
+    .on_pointer_triple_click({
+        let triple_hits = triple_hits.clone();
+        let order = order.clone();
+        let specialized_saw_handled = specialized_saw_handled.clone();
+        move |event| {
+            triple_hits.set(triple_hits.get() + 1);
+            order.set(order.get() * 10 + 3);
+            specialized_saw_handled.set(event.handled);
+        }
+    });
+    Application::mount(root.clone());
+    ffi::test::take_calls();
+    let handle = root.handle().raw();
+
+    primary_click(handle, 2);
+    assert_eq!(ordinary_hits.get(), 1);
+    assert_eq!(double_hits.get(), 1);
+    assert_eq!(triple_hits.get(), 0);
+    assert_eq!(order.get(), 12);
+    assert!(specialized_saw_handled.get());
+
+    order.set(0);
+    specialized_saw_handled.set(false);
+    primary_click(handle, 3);
+    assert_eq!(ordinary_hits.get(), 2);
+    assert_eq!(double_hits.get(), 1);
+    assert_eq!(triple_hits.get(), 1);
+    assert_eq!(order.get(), 13);
+    assert!(specialized_saw_handled.get());
+}
+
+#[test]
+fn specialized_pointer_click_handlers_work_without_an_ordinary_handler() {
+    ffi::test::reset();
+    let double_hits = Rc::new(Cell::new(0));
+    let triple_hits = Rc::new(Cell::new(0));
+    let target = text("target");
+    target
+        .on_pointer_double_click({
+            let double_hits = double_hits.clone();
+            move |_| double_hits.set(double_hits.get() + 1)
+        })
+        .on_pointer_triple_click({
+            let triple_hits = triple_hits.clone();
+            move |_| triple_hits.set(triple_hits.get() + 1)
+        });
+    Application::mount(target.clone());
+    ffi::test::take_calls();
+    let handle = target.handle().raw();
+
+    primary_click(handle, 2);
+    primary_click(handle, 3);
+
+    assert_eq!(double_hits.get(), 1);
+    assert_eq!(triple_hits.get(), 1);
+}
+
+#[test]
+fn replacing_and_dropping_pointer_multi_click_handlers_releases_captures() {
+    ffi::test::reset();
+    let target = flex_box();
+    let first_owner = Rc::new(());
+    let first_owner_weak = Rc::downgrade(&first_owner);
+    target.on_pointer_double_click({
+        let first_owner = first_owner.clone();
+        move |_| {
+            let _owner = &first_owner;
+        }
+    });
+    drop(first_owner);
+    assert!(first_owner_weak.upgrade().is_some());
+
+    target.on_pointer_double_click(|_| {});
+    assert!(first_owner_weak.upgrade().is_none());
+
+    let second_owner = Rc::new(());
+    let second_owner_weak = Rc::downgrade(&second_owner);
+    target.on_pointer_triple_click({
+        let second_owner = second_owner.clone();
+        move |_| {
+            let _owner = &second_owner;
+        }
+    });
+    drop(second_owner);
+    Application::mount(target.clone());
+    drop(target);
+    Application::unmount();
+    assert!(second_owner_weak.upgrade().is_none());
 }
 
 #[test]
@@ -1834,8 +1980,12 @@ fn button_click_key_and_multi_click_handlers_fire() {
     let button = button("Action");
     button
         .on_click(move |_event| click_count_clone.set(click_count_clone.get() + 1))
-        .on_double_click(move |_event| double_count_clone.set(double_count_clone.get() + 1))
-        .on_triple_click(move |_event| triple_count_clone.set(triple_count_clone.get() + 1));
+        .on_pointer_double_click(move |_event| {
+            double_count_clone.set(double_count_clone.get() + 1)
+        })
+        .on_pointer_triple_click(move |_event| {
+            triple_count_clone.set(triple_count_clone.get() + 1)
+        });
     Application::mount(button);
     let calls = ffi::test::take_calls();
     let handle = handle_with_semantic_role(&calls, SemanticRole::Button);
@@ -1851,6 +2001,95 @@ fn button_click_key_and_multi_click_handlers_fire() {
     assert_eq!(click_count.get(), 5);
     assert_eq!(double_count.get(), 1);
     assert_eq!(triple_count.get(), 1);
+}
+
+#[test]
+fn pressable_controls_emit_changed_before_click_and_never_click_programmatically() {
+    ffi::test::reset();
+    let checkbox_order = Rc::new(Cell::new(0));
+    let checkbox_clicks = Rc::new(Cell::new(0));
+    let checkbox_changes = Rc::new(Cell::new(0));
+    let checkbox = checkbox("Accept terms");
+    checkbox
+        .on_changed({
+            let order = checkbox_order.clone();
+            let changes = checkbox_changes.clone();
+            move |_| {
+                changes.set(changes.get() + 1);
+                order.set(order.get() * 10 + 1);
+            }
+        })
+        .on_click({
+            let order = checkbox_order.clone();
+            let clicks = checkbox_clicks.clone();
+            move |_| {
+                clicks.set(clicks.get() + 1);
+                order.set(order.get() * 10 + 2);
+            }
+        });
+
+    let radio_clicks = Rc::new(Cell::new(0));
+    let radio_changes = Rc::new(Cell::new(0));
+    let radio = radio_button("Alpha");
+    radio.check(true).on_changed({
+        let changes = radio_changes.clone();
+        move |_| changes.set(changes.get() + 1)
+    });
+    radio.on_click({
+        let clicks = radio_clicks.clone();
+        move |_| clicks.set(clicks.get() + 1)
+    });
+
+    let switch_order = Rc::new(Cell::new(0));
+    let switch_clicks = Rc::new(Cell::new(0));
+    let switch_changes = Rc::new(Cell::new(0));
+    let toggle = switch("Notifications");
+    toggle
+        .on_changed({
+            let order = switch_order.clone();
+            let changes = switch_changes.clone();
+            move |_| {
+                changes.set(changes.get() + 1);
+                order.set(order.get() * 10 + 1);
+            }
+        })
+        .on_click({
+            let order = switch_order.clone();
+            let clicks = switch_clicks.clone();
+            move |_| {
+                clicks.set(clicks.get() + 1);
+                order.set(order.get() * 10 + 2);
+            }
+        });
+
+    let root = column();
+    root.child(&checkbox).child(&radio).child(&toggle);
+    Application::mount(root);
+    ffi::test::take_calls();
+
+    primary_click(checkbox.handle().raw(), 1);
+    assert_eq!(checkbox_changes.get(), 1);
+    assert_eq!(checkbox_clicks.get(), 1);
+    assert_eq!(checkbox_order.get(), 12);
+
+    checkbox_order.set(0);
+    checkbox_clicks.set(0);
+    checkbox_changes.set(0);
+    checkbox.check(false);
+    assert_eq!(checkbox_changes.get(), 1);
+    assert_eq!(checkbox_clicks.get(), 0);
+    assert_eq!(checkbox_order.get(), 1);
+
+    primary_click(radio.handle().raw(), 1);
+    assert_eq!(radio_changes.get(), 0);
+    assert_eq!(radio_clicks.get(), 1);
+
+    event::__fui_on_focus_changed(toggle.handle().raw(), true);
+    assert!(key_event(KeyEventType::Down, " ", 0));
+    assert!(key_event(KeyEventType::Up, " ", 0));
+    assert_eq!(switch_changes.get(), 1);
+    assert_eq!(switch_clicks.get(), 1);
+    assert_eq!(switch_order.get(), 12);
 }
 
 #[test]
