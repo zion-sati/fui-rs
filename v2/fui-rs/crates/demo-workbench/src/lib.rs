@@ -30,6 +30,7 @@ fn worker_status_code(value: &str) -> i32 {
 }
 
 fn build_workbench_page() -> Stage4Showcase {
+    Application::caption("EffinDOM FUI-RS Demo • Workbench");
     Stage4Showcase::new(
         "FUI-RS workbench",
         Rc::new(|_is_wide| {}),

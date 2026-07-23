@@ -6,6 +6,7 @@
 # Build artifacts
 build/
 build-wasm/
+skia/
 
 # Dependencies
 node_modules/

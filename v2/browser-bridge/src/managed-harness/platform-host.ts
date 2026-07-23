@@ -4,6 +4,7 @@ export interface ManagedPlatformHost {
   nowMilliseconds(): number;
   getDevicePixelRatio(): number;
   isDarkMode(): boolean;
+  setApplicationCaption(caption: string): void;
   reload(): void;
   resolveUrl(target: string): URL;
   publishClipboard(payload: ClipboardWritePayload): void;
@@ -23,6 +24,10 @@ export class BrowserManagedPlatformHost implements ManagedPlatformHost {
 
   public isDarkMode(): boolean {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  public setApplicationCaption(caption: string): void {
+    document.title = caption;
   }
 
   public reload(): void {

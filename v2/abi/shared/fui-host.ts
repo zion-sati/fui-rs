@@ -45,6 +45,27 @@ export const fuiHostEnums = [
       { name: "FUI_PLATFORM_LINUX", value: "3" },
     ],
   },
+  {
+    name: "FuiHostEnvironment",
+    members: [
+      { name: "FUI_HOST_ENVIRONMENT_UNKNOWN", value: "0" },
+      { name: "FUI_HOST_ENVIRONMENT_BROWSER", value: "1" },
+      { name: "FUI_HOST_ENVIRONMENT_DESKTOP", value: "2" },
+      { name: "FUI_HOST_ENVIRONMENT_HEADLESS", value: "3" },
+    ],
+  },
+  {
+    name: "FuiHostCapability",
+    members: [
+      { name: "FUI_HOST_CAPABILITY_BROWSER_HISTORY", value: "1" },
+      { name: "FUI_HOST_CAPABILITY_RELOAD", value: "2" },
+      { name: "FUI_HOST_CAPABILITY_NEW_BROWSING_CONTEXT", value: "4" },
+      { name: "FUI_HOST_CAPABILITY_OPEN_EXTERNAL_URI", value: "8" },
+      { name: "FUI_HOST_CAPABILITY_CLIPBOARD_READ", value: "16" },
+      { name: "FUI_HOST_CAPABILITY_CLIPBOARD_WRITE", value: "32" },
+      { name: "FUI_HOST_CAPABILITY_FILE_DIALOGS", value: "64" },
+    ],
+  },
 ] as const satisfies readonly FuiHostEnum[];
 
 export const fuiHostImports = [
@@ -71,6 +92,12 @@ export const fuiHostImports = [
     importName: "get_device_pixel_ratio",
     args: [],
     returns: "f32",
+  },
+  {
+    name: "fui_set_application_caption",
+    importName: "fui_set_application_caption",
+    args: [{ name: "captionPtr", type: "usize" }, { name: "captionLen", type: "u32" }],
+    returns: "void",
   },
   {
     name: "fui_set_pointer_capture",
@@ -266,6 +293,18 @@ export const fuiHostImports = [
   {
     name: "fui_get_platform_family",
     importName: "fui_get_platform_family",
+    args: [],
+    returns: "u32",
+  },
+  {
+    name: "fui_get_host_environment",
+    importName: "fui_get_host_environment",
+    args: [],
+    returns: "u32",
+  },
+  {
+    name: "fui_get_host_capabilities",
+    importName: "fui_get_host_capabilities",
     args: [],
     returns: "u32",
   },

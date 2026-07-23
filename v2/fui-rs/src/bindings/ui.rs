@@ -6,6 +6,7 @@ use crate::ffi::{GridUnit, ImageSamplingKind};
 #[cfg(feature = "native-runtime")]
 unsafe extern "C" {
     fn fui_native_commit_ready();
+    fn fui_native_commit_frame();
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -658,6 +659,9 @@ pub fn clear_momentum_scroll() {
 
 pub fn commit_frame() {
     unsafe {
+        #[cfg(feature = "native-runtime")]
+        fui_native_commit_frame();
+        #[cfg(not(feature = "native-runtime"))]
         ffi::ui_commit_frame();
         #[cfg(feature = "native-runtime")]
         fui_native_commit_ready();

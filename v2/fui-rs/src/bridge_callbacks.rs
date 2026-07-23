@@ -43,7 +43,6 @@ thread_local! {
     static CURRENT_ROUTE: RefCell<String> = const { RefCell::new(String::new()) };
     static LAST_SCROLL: RefCell<Option<ScrollEvent>> = const { RefCell::new(None) };
     static LAST_CONTEXT_MENU: RefCell<Option<ContextMenuRequest>> = const { RefCell::new(None) };
-    static CONTEXT_MENU_VISIBLE: Cell<bool> = const { Cell::new(false) };
     static LAST_FONT_LOADED: Cell<Option<u32>> = const { Cell::new(None) };
     static LAST_SVG_LOADED: RefCell<Option<AssetReady>> = const { RefCell::new(None) };
     static LAST_SVG_FAILED: RefCell<Option<AssetFailure>> = const { RefCell::new(None) };
@@ -74,7 +73,7 @@ pub fn last_context_menu_request() -> Option<ContextMenuRequest> {
 }
 
 pub fn is_context_menu_visible() -> bool {
-    CONTEXT_MENU_VISIBLE.with(Cell::get)
+    crate::controls::ContextMenu::is_active_menu_visible()
 }
 
 pub fn last_font_loaded() -> Option<u32> {
@@ -165,14 +164,12 @@ pub extern "C" fn __fui_can_show_context_menu(handle: u64) -> bool {
 #[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_context_menu(handle: u64, x: f32, y: f32) {
     LAST_CONTEXT_MENU.with(|slot| slot.replace(Some(ContextMenuRequest { handle, x, y })));
-    let shown = context_menu_manager::show_for_current_selection(handle, x, y);
-    CONTEXT_MENU_VISIBLE.with(|visible| visible.set(shown));
+    context_menu_manager::show_for_current_selection(handle, x, y);
 }
 
 #[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
 pub extern "C" fn __fui_hide_active_context_menu() {
     context_menu_manager::hide_active_menu();
-    CONTEXT_MENU_VISIBLE.with(|visible| visible.set(false));
 }
 
 #[cfg_attr(not(feature = "worker-runtime"), no_mangle)]

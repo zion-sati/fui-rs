@@ -7,3 +7,4 @@ export * from './managed-harness/worker-types';
 export * from './managed-harness/abi-version';
 export * from './managed-harness/persisted-restore-policy';
 export * from './managed-harness/ui-chrome';
+export * from './managed-harness/loading-controller';

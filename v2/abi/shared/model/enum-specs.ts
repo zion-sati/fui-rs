@@ -251,6 +251,42 @@ export const canonicalEnumSpecs: readonly EnumSpec[] = [
     ],
   },
   {
+    name: "PlatformFamily",
+    source: "host",
+    sourceEnum: "FuiPlatformFamily",
+    members: [
+      { name: "Unknown", source: "FUI_PLATFORM_UNKNOWN" },
+      { name: "Apple", source: "FUI_PLATFORM_APPLE" },
+      { name: "Windows", source: "FUI_PLATFORM_WINDOWS" },
+      { name: "Linux", source: "FUI_PLATFORM_LINUX" },
+    ],
+  },
+  {
+    name: "HostEnvironment",
+    source: "host",
+    sourceEnum: "FuiHostEnvironment",
+    members: [
+      { name: "Unknown", source: "FUI_HOST_ENVIRONMENT_UNKNOWN" },
+      { name: "Browser", source: "FUI_HOST_ENVIRONMENT_BROWSER" },
+      { name: "Desktop", source: "FUI_HOST_ENVIRONMENT_DESKTOP" },
+      { name: "Headless", source: "FUI_HOST_ENVIRONMENT_HEADLESS" },
+    ],
+  },
+  {
+    name: "HostCapability",
+    source: "host",
+    sourceEnum: "FuiHostCapability",
+    members: [
+      { name: "BrowserHistory", source: "FUI_HOST_CAPABILITY_BROWSER_HISTORY" },
+      { name: "Reload", source: "FUI_HOST_CAPABILITY_RELOAD" },
+      { name: "NewBrowsingContext", source: "FUI_HOST_CAPABILITY_NEW_BROWSING_CONTEXT" },
+      { name: "OpenExternalUri", source: "FUI_HOST_CAPABILITY_OPEN_EXTERNAL_URI" },
+      { name: "ClipboardRead", source: "FUI_HOST_CAPABILITY_CLIPBOARD_READ" },
+      { name: "ClipboardWrite", source: "FUI_HOST_CAPABILITY_CLIPBOARD_WRITE" },
+      { name: "FileDialogs", source: "FUI_HOST_CAPABILITY_FILE_DIALOGS" },
+    ],
+  },
+  {
     name: "CursorStyle",
     source: "host",
     sourceEnum: "FuiCursorStyle",

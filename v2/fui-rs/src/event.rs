@@ -384,6 +384,7 @@ pub(crate) struct EventRouter {
     nodes: RefCell<HashMap<NodeHandle, WeakNodeRef>>,
     focused: RefCell<Option<NodeHandle>>,
     captured_pointer: RefCell<Option<NodeHandle>>,
+    selection_cursor_owner: RefCell<Option<NodeHandle>>,
     hover_stack: RefCell<Vec<NodeHandle>>,
     current_cursor_style: Cell<CursorStyle>,
     key_filters: RefCell<Vec<GlobalKeyFilterEntry>>,
@@ -397,6 +398,7 @@ impl EventRouter {
             nodes: RefCell::new(HashMap::new()),
             focused: RefCell::new(None),
             captured_pointer: RefCell::new(None),
+            selection_cursor_owner: RefCell::new(None),
             hover_stack: RefCell::new(Vec::new()),
             current_cursor_style: Cell::new(CursorStyle::Default),
             key_filters: RefCell::new(Vec::new()),
@@ -416,6 +418,7 @@ impl EventRouter {
         self.nodes.borrow_mut().clear();
         self.focused.replace(None);
         self.captured_pointer.replace(None);
+        self.selection_cursor_owner.replace(None);
         self.hover_stack.borrow_mut().clear();
         self.key_filters.borrow_mut().clear();
         // Scroll hooks are process-wide manager hooks in FUI-AS. Keep that
@@ -440,6 +443,9 @@ impl EventRouter {
         }
         if self.captured_pointer.borrow().as_ref() == Some(&handle) {
             self.captured_pointer.replace(None);
+        }
+        if self.selection_cursor_owner.borrow().as_ref() == Some(&handle) {
+            self.selection_cursor_owner.replace(None);
         }
         self.apply_current_cursor();
         unregister_keyboard_scroll_node(handle);
@@ -495,12 +501,34 @@ impl EventRouter {
         selection_handle_adorner::record_pointer_event(event_type, pointer_type);
         let pointed_node = self.resolve_node(handle);
         if event_type == PointerEventType::Down
+            && (button == PointerButton::Primary as i32
+                || matches!(pointer_type, PointerType::Touch | PointerType::Pen))
+            && crate::controls::ContextMenu::dismiss_for_outside_pointer_down(scene_x, scene_y)
+        {
+            drag_drop::handle_pointer_event(None, event_type, scene_x, scene_y, modifiers);
+            self.apply_current_cursor();
+            return true;
+        }
+        if event_type == PointerEventType::Down
             && !preserves_selection_on_pointer_down_for_routing(pointed_node.as_ref())
             && mobile_text_selection_toolbar::dismiss_for_outside_pointer_down(scene_x, scene_y)
         {
             drag_drop::handle_pointer_event(None, event_type, scene_x, scene_y, modifiers);
             self.apply_current_cursor();
             return true;
+        }
+        if event_type == PointerEventType::Down
+            && button == PointerButton::Primary as i32
+            && pointer_type != PointerType::Touch
+        {
+            self.selection_cursor_owner.replace(
+                pointed_node
+                    .as_ref()
+                    .and_then(selection_cursor_target)
+                    .map(|node| node.handle()),
+            );
+        } else if matches!(event_type, PointerEventType::Up | PointerEventType::Cancel) {
+            self.selection_cursor_owner.replace(None);
         }
         if event_type == PointerEventType::Up {
             track_keyboard_scroll_pointer_up(pointed_node.clone(), scene_x, scene_y);
@@ -831,6 +859,7 @@ impl EventRouter {
     }
 
     pub(crate) fn dispatch_cross_selection_changed(&self, handle: NodeHandle, text: String) {
+        crate::context_menu_manager::handle_selection_changed(&text);
         let Some(node) = self.resolve_node(handle) else {
             selection_handle_adorner::clear();
             mobile_text_selection_toolbar::clear();
@@ -1074,6 +1103,10 @@ impl EventRouter {
             self.resolve_node(handle)
                 .map(|node| node.cursor_style_for_routing())
                 .unwrap_or(CursorStyle::Default)
+        } else if let Some(handle) = *self.selection_cursor_owner.borrow() {
+            self.resolve_node(handle)
+                .map(|node| node.cursor_style_for_routing())
+                .unwrap_or(CursorStyle::Default)
         } else if let Some(handle) = self.hover_stack.borrow().last().copied() {
             self.resolve_node(handle)
                 .map(|node| node.cursor_style_for_routing())
@@ -1091,6 +1124,16 @@ impl EventRouter {
         self.current_cursor_style.set(style);
         unsafe { crate::ffi::fui_set_cursor(style as u32) };
     }
+}
+
+fn selection_cursor_target(node: &NodeRef) -> Option<NodeRef> {
+    if !node.is_effectively_enabled_for_routing() || !node.is_effectively_visible_for_routing() {
+        return None;
+    }
+    if node.is_selectable_text_for_routing() || node.is_editable_text_for_routing() {
+        return Some(node.clone());
+    }
+    find_editable_text_descendant(node)
 }
 
 fn selection_chrome_target(handle: NodeHandle, node: &NodeRef) -> (NodeHandle, NodeRef) {
@@ -1421,16 +1464,21 @@ pub extern "C" fn __fui_on_pointer_event_with_metadata(
     height: f32,
     click_count: i32,
 ) -> bool {
+    let routed_event_type = match event_type {
+        1 => PointerEventType::Down,
+        2 => PointerEventType::Up,
+        3 => PointerEventType::Move,
+        4 => PointerEventType::Enter,
+        5 => PointerEventType::Leave,
+        _ => PointerEventType::Cancel,
+    };
+    crate::context_menu_manager::handle_pointer_selection_event(
+        routed_event_type == PointerEventType::Down,
+        handle,
+    );
     dispatch_pointer_event(
         NodeHandle::from_raw(handle),
-        match event_type {
-            1 => PointerEventType::Down,
-            2 => PointerEventType::Up,
-            3 => PointerEventType::Move,
-            4 => PointerEventType::Enter,
-            5 => PointerEventType::Leave,
-            _ => PointerEventType::Cancel,
-        },
+        routed_event_type,
         x,
         y,
         modifiers,

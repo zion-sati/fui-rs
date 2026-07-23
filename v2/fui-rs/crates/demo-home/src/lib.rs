@@ -39,6 +39,7 @@ fn update_virtual_list_metrics(
 }
 
 fn build_dashboard_page() -> ScrollBox {
+    Application::caption("EffinDOM FUI-RS Demo • Dashboard");
     let root = ui! {
     demo_page_root("FUI-RS demo dashboard").height_len(auto())
     };

@@ -44,6 +44,8 @@ fn scroll_callback_records_bridge_payload() {
 #[test]
 fn context_menu_callbacks_record_and_hide_request() {
     ffi::test::reset();
+    ffi::test::set_host_environment(1);
+    ffi::test::set_host_capabilities(0x7f);
     let target = text("Context target");
     Application::mount(target.clone());
     let handle = target.handle().raw();

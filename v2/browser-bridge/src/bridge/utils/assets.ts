@@ -43,6 +43,31 @@ interface LoadedRuntimeManifest {
   readonly manifestUrl: string;
 }
 
+interface RuntimeAssetLoadingProgress {
+  readonly label: string;
+  readonly completed: number;
+  readonly total: number;
+}
+
+export const RUNTIME_CORE_ASSET_COUNT = 6;
+const RUNTIME_LOADING_PROGRESS_EVENT = 'effindom-loading-progress';
+
+export function publishRuntimeAssetLoadingProgress(
+  label: string,
+  completed: number,
+  total: number,
+): void {
+  const progress: RuntimeAssetLoadingProgress = {
+    label,
+    completed,
+    total,
+  };
+  window.dispatchEvent(new CustomEvent<RuntimeAssetLoadingProgress>(
+    RUNTIME_LOADING_PROGRESS_EVENT,
+    { detail: progress },
+  ));
+}
+
 const MEMORY64_VALIDATION_MODULE_BYTES = new Uint8Array([
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x0f, 0x03, 0x60,
   0x02, 0x7f, 0x7e, 0x01, 0x7f, 0x60, 0x01, 0x7e, 0x00, 0x60, 0x00, 0x01,
@@ -269,11 +294,16 @@ function resolveManifestAssetUrl(manifestUrl: string, assetUrl: string): string 
 
 async function loadRuntimeManifest(manifestCandidate: string): Promise<LoadedRuntimeManifest> {
   const manifestUrl = resolveAssetUrl(manifestCandidate);
+  const expectedRuntimeSetHash = window.__effindomRuntime?.expectedRuntimeSetHash;
+  const manifestFileName = new URL(manifestUrl).pathname.split('/').pop() ?? '';
+  const isContentAddressed = typeof expectedRuntimeSetHash === 'string'
+    && expectedRuntimeSetHash.length > 0
+    && manifestFileName === `${expectedRuntimeSetHash}.json`;
   const manifest = await fetchWithRetry<RuntimeManifest>(
     manifestUrl,
     ASSET_FETCH_ATTEMPTS,
     async (response) => await response.json() as RuntimeManifest,
-    { cache: 'force-cache' },
+    { cache: isContentAddressed ? 'force-cache' : 'reload' },
   );
   return {
     manifest,
@@ -559,8 +589,19 @@ export function buildBackendLadder(requestedBackend: RequestedRendererBackend): 
   return DEFAULT_BACKEND_LADDER;
 }
 
-async function prepareRuntimeCandidate(manifestCandidate: string): Promise<PreparedRuntimeAssets> {
+async function prepareRuntimeCandidate(
+  manifestCandidate: string,
+  runtimeAssetCount: number,
+): Promise<PreparedRuntimeAssets> {
   const loadedManifest = await loadRuntimeManifest(manifestCandidate);
+  let completedAssetCount = 1;
+  publishRuntimeAssetLoadingProgress('Runtime assets', completedAssetCount, runtimeAssetCount);
+  const trackAsset = async <T>(promise: Promise<T>): Promise<T> => {
+    const value = await promise;
+    completedAssetCount += 1;
+    publishRuntimeAssetLoadingProgress('Runtime assets', completedAssetCount, runtimeAssetCount);
+    return value;
+  };
   const manifest = loadedManifest.manifest;
   const manifestUrl = loadedManifest.manifestUrl;
   const expectedRuntimeSetHash = window.__effindomRuntime?.expectedRuntimeSetHash;
@@ -621,26 +662,28 @@ async function prepareRuntimeCandidate(manifestCandidate: string): Promise<Prepa
       bytesPromise: fetchBinaryAsset(resolveManifestAssetUrl(manifestUrl, icuAsset.url), icuAsset.integrity ?? null),
     },
   };
-  await Promise.all([
-    preparedAssets.coreWasm.modulePromise,
-    preparedAssets.uiWasm.modulePromise,
-    fetchScriptSource(coreBundle.js, coreBundle.js_integrity ?? null),
-    fetchScriptSource(uiBundle.js, uiBundle.js_integrity ?? null),
-  ]);
-  try {
-    await preparedAssets.icu.bytesPromise;
-  } catch (error: unknown) {
+  const icuPromise = trackAsset(preparedAssets.icu.bytesPromise).catch((error: unknown) => {
     const detail = error instanceof Error ? ` ${error.message}` : '';
     throw createErrorWithCause(`Failed to load ICU data from ${preparedAssets.icu.url}.${detail}`, error);
-  }
+  });
+  await Promise.all([
+    trackAsset(preparedAssets.coreWasm.modulePromise),
+    trackAsset(preparedAssets.uiWasm.modulePromise),
+    trackAsset(fetchScriptSource(coreBundle.js, coreBundle.js_integrity ?? null)),
+    trackAsset(fetchScriptSource(uiBundle.js, uiBundle.js_integrity ?? null)),
+    icuPromise,
+  ]);
   return preparedAssets;
 }
 
-export async function prepareRuntimeAssets(): Promise<PreparedRuntimeAssets> {
+export async function prepareRuntimeAssets(
+  runtimeAssetCount = RUNTIME_CORE_ASSET_COUNT,
+): Promise<PreparedRuntimeAssets> {
   const failures: string[] = [];
   for (const manifestCandidate of readManifestUrls()) {
     try {
-      const preparedAssets = await prepareRuntimeCandidate(manifestCandidate);
+      publishRuntimeAssetLoadingProgress('Runtime assets', 0, runtimeAssetCount);
+      const preparedAssets = await prepareRuntimeCandidate(manifestCandidate, runtimeAssetCount);
       const manifestUrl = resolveAssetUrl(manifestCandidate);
       const fontUrls: Record<string, string> = {};
       for (const [fileName, descriptor] of Object.entries(preparedAssets.manifest.assets?.fonts ?? {})) {

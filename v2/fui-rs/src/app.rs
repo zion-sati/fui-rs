@@ -1,6 +1,6 @@
 use crate::bindings::ui;
 use crate::context_menu_manager;
-use crate::ffi::HandleValue;
+use crate::ffi::{self, HandleValue};
 use crate::frame_scheduler;
 use crate::mobile_text_selection_toolbar;
 use crate::node::{flex_box, FlexBox, Node, NodeRef, ThemeBindable};
@@ -252,6 +252,20 @@ impl<TPage: 'static> ManagedApplication<TPage> {
 pub struct Application;
 
 impl Application {
+    pub fn caption(value: &str) {
+        let bytes = value.as_bytes();
+        unsafe {
+            ffi::fui_set_application_caption(
+                if bytes.is_empty() {
+                    0
+                } else {
+                    bytes.as_ptr() as usize
+                },
+                bytes.len() as u32,
+            );
+        }
+    }
+
     pub fn mount<TNode: Node>(root: TNode) {
         panic_hook::install();
         clear_mount_state_with_loaded_reset(false);

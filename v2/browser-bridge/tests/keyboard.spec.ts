@@ -166,10 +166,14 @@ test('textbox shift arrows preserve their anchor across repeated direction chang
       const selection = window.__bridgeSelectionsByHandle === undefined
         ? null
         : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
+      const selectionStart = editor instanceof HTMLInputElement ? editor.selectionStart : null;
+      const selectionEnd = editor instanceof HTMLInputElement ? editor.selectionEnd : null;
       return {
         start: selection?.start ?? null,
         end: selection?.end ?? null,
-        direction: editor instanceof HTMLInputElement ? editor.selectionDirection : null,
+        // Chromium may retain "forward" after a Shift selection collapses.
+        // Direction has no meaning for a collapsed DOM selection.
+        direction: selectionStart === selectionEnd ? 'none' : editor instanceof HTMLInputElement ? editor.selectionDirection : null,
       };
     })).toEqual({ start, end, direction });
   };
@@ -232,10 +236,14 @@ test('multiline textbox shift arrows preserve their anchor across visual rows', 
       ? null
       : Object.values(window.__bridgeSelectionsByHandle)[0] ?? null;
     const editor = document.querySelector('textarea[data-effindom-hidden-editor="true"]');
+    const selectionStart = editor instanceof HTMLTextAreaElement ? editor.selectionStart : null;
+    const selectionEnd = editor instanceof HTMLTextAreaElement ? editor.selectionEnd : null;
     return {
       start: selection?.start ?? null,
       end: selection?.end ?? null,
-      direction: editor instanceof HTMLTextAreaElement ? editor.selectionDirection : null,
+      // Chromium may retain "forward" after a Shift selection collapses.
+      // Direction has no meaning for a collapsed DOM selection.
+      direction: selectionStart === selectionEnd ? 'none' : editor instanceof HTMLTextAreaElement ? editor.selectionDirection : null,
     };
   });
 

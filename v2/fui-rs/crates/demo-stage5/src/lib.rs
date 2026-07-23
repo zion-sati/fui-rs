@@ -143,6 +143,7 @@ fn disabled_text_input_colors(theme: &Theme) -> TextInputColors {
 }
 
 fn build_page() -> FlexBox {
+    Application::caption("EffinDOM FUI-RS Demo • Editable Controls");
     let page = ui! {
     demo_page_root("FUI-RS Stage 5 controls").height_len(auto())
     };

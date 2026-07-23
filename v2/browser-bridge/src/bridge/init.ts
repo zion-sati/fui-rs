@@ -1,6 +1,14 @@
 import type { BridgeRuntime } from '../core-types';
 import type { PreparedRuntimeAssets, BridgeInteractionState } from './local-types';
-import { buildBackendLadder, createErrorWithCause, loadCoreModule, loadIcuData, loadUiModule, showIcuError } from './utils/assets';
+import {
+  buildBackendLadder,
+  createErrorWithCause,
+  loadCoreModule,
+  loadIcuData,
+  publishRuntimeAssetLoadingProgress,
+  loadUiModule,
+  showIcuError,
+} from './utils/assets';
 import { initRenderer } from './utils/backends';
 import { ensureCanvasLogicalSize, installEventHandlers } from './events';
 import { getBridgeAssetUrl, STARTUP_BRIDGE_FONTS } from './font-catalog';
@@ -56,13 +64,21 @@ export async function createBridgeSession(options: BridgeSessionOptions): Promis
   runtime.updateCanvasSize();
   const disposeEventHandlers = installEventHandlers(runtime, interactionState, host);
   const disposeRenderLoop = installRenderLoop(runtime, preparedAssets.loaderInfo, fallbackLadder, host);
-  await Promise.all(
-    STARTUP_BRIDGE_FONTS.map((font) => runtime.registerFont({
+  let completedFontCount = 0;
+  publishRuntimeAssetLoadingProgress('Built-in fonts', 0, STARTUP_BRIDGE_FONTS.length);
+  await Promise.all(STARTUP_BRIDGE_FONTS.map(async (font) => {
+    await runtime.registerFont({
       id: font.id,
       url: getBridgeAssetUrl(font.assetFile),
       fallbackIds: font.fallbackIds,
-    })),
-  );
+    });
+    completedFontCount += 1;
+    publishRuntimeAssetLoadingProgress(
+      'Built-in fonts',
+      completedFontCount,
+      STARTUP_BRIDGE_FONTS.length,
+    );
+  }));
 
   delete window.__bridgeError;
   return {

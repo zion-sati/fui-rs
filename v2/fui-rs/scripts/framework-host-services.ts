@@ -30,6 +30,18 @@ export const frameworkHostServices = defineHostServices({
       returns: "u32",
       implementation: () => unsupported(),
     }),
+    hostEnvironment: hostService({
+      importName: "fui_get_host_environment",
+      args: [] as const,
+      returns: "u32",
+      implementation: () => unsupported(),
+    }),
+    hostCapabilities: hostService({
+      importName: "fui_get_host_capabilities",
+      args: [] as const,
+      returns: "u32",
+      implementation: () => unsupported(),
+    }),
     isCoarsePointer: hostService({
       importName: "fui_is_coarse_pointer",
       args: [] as const,

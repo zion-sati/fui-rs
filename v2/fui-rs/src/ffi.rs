@@ -470,6 +470,9 @@ pub enum Call {
     CopyText {
         text: String,
     },
+    SetApplicationCaption {
+        caption: String,
+    },
     HasTextSelectionSnapshot {
         handle: u64,
     },
@@ -479,6 +482,11 @@ pub enum Call {
     CutFocusedTextSelection,
     CutTextSelectionSnapshot {
         handle: u64,
+    },
+    CutTextRangeSnapshot {
+        handle: u64,
+        start: u32,
+        end: u32,
     },
     DeleteFocusedTextRange {
         start: u32,
@@ -563,6 +571,8 @@ pub enum Call {
     IsDarkMode,
     GetAccentColor,
     GetPlatformFamily,
+    GetHostEnvironment,
+    GetHostCapabilities,
     IsCoarsePointer,
     LoadSvg {
         svg_id: u32,
@@ -904,6 +914,8 @@ thread_local! {
     static SYSTEM_DARK_MODE: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
     static SYSTEM_ACCENT_COLOR: std::cell::Cell<u32> = const { std::cell::Cell::new(0x2563EBFF) };
     static PLATFORM_FAMILY: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static HOST_ENVIRONMENT: std::cell::Cell<u32> = const { std::cell::Cell::new(3) };
+    static HOST_CAPABILITIES: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     static COARSE_POINTER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static HAS_TEXT_SELECTION_SNAPSHOT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static HAS_TEXT_SELECTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -934,10 +946,10 @@ pub mod test {
         Call, BEGIN_SELECTION_ENDPOINT_DRAG_RESULT, CALLS, CAN_NAVIGATE_BACK, CAN_NAVIGATE_FORWARD,
         CAN_REDO_TEXT_EDIT, CAN_UNDO_TEXT_EDIT, COARSE_POINTER, CROSS_SELECTION_ENDPOINT_RECTS,
         DEBUG_TREE_WORDS, DEVICE_PIXEL_RATIO, HAS_TEXT_SELECTION, HAS_TEXT_SELECTION_SNAPSHOT,
-        HOST_NOW_MS, IS_POINT_IN_SELECTION, LOGS_ENABLED, NEXT_HANDLE, NEXT_OFFSCREEN_ID,
-        NEXT_PATH_ID, NEXT_SEMANTIC_SCOPE_TOKEN, PERSISTED_SCROLL, PERSISTED_TEXT, PLATFORM_FAMILY,
-        SYSTEM_ACCENT_COLOR, SYSTEM_DARK_MODE, TEXT_METRICS, TEXT_RANGE_RECTS, VIEWPORT,
-        VISIBLE_BOUNDS,
+        HOST_CAPABILITIES, HOST_ENVIRONMENT, HOST_NOW_MS, IS_POINT_IN_SELECTION, LOGS_ENABLED,
+        NEXT_HANDLE, NEXT_OFFSCREEN_ID, NEXT_PATH_ID, NEXT_SEMANTIC_SCOPE_TOKEN, PERSISTED_SCROLL,
+        PERSISTED_TEXT, PLATFORM_FAMILY, SYSTEM_ACCENT_COLOR, SYSTEM_DARK_MODE, TEXT_METRICS,
+        TEXT_RANGE_RECTS, VIEWPORT, VISIBLE_BOUNDS,
     };
 
     pub fn reset() {
@@ -953,6 +965,8 @@ pub mod test {
         SYSTEM_DARK_MODE.with(|value| value.set(true));
         SYSTEM_ACCENT_COLOR.with(|value| value.set(0x2563EBFF));
         PLATFORM_FAMILY.with(|value| value.set(0));
+        HOST_ENVIRONMENT.with(|value| value.set(3));
+        HOST_CAPABILITIES.with(|value| value.set(0));
         COARSE_POINTER.with(|value| value.set(false));
         HAS_TEXT_SELECTION_SNAPSHOT.with(|value| value.set(false));
         HAS_TEXT_SELECTION.with(|value| value.set(false));
@@ -1014,6 +1028,14 @@ pub mod test {
 
     pub fn set_platform_family(value: u32) {
         PLATFORM_FAMILY.with(|family| family.set(value));
+    }
+
+    pub fn set_host_environment(value: u32) {
+        HOST_ENVIRONMENT.with(|environment| environment.set(value));
+    }
+
+    pub fn set_host_capabilities(value: u32) {
+        HOST_CAPABILITIES.with(|capabilities| capabilities.set(value));
     }
 
     pub fn set_coarse_pointer(value: bool) {
@@ -2082,10 +2104,24 @@ pub unsafe fn fui_copy_text(ptr: usize, len: u32) {
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_set_application_caption(ptr: usize, len: u32) {
+    let caption = if ptr == 0 || len == 0 {
+        String::new()
+    } else {
+        String::from_utf8_lossy(std::slice::from_raw_parts(ptr as *const u8, len as usize))
+            .into_owned()
+    };
+    push_call(Call::SetApplicationCaption { caption });
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_has_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::HasTextSelectionSnapshot { handle });
     HAS_TEXT_SELECTION_SNAPSHOT.with(|value| value.get())
 }
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_freeze_text_selection_snapshot(_handle: u64) {}
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_copy_text_selection_snapshot(handle: u64) -> bool {
@@ -2102,6 +2138,12 @@ pub unsafe fn fui_cut_focused_text_selection() -> bool {
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_cut_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::CutTextSelectionSnapshot { handle });
+    true
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_cut_text_range_snapshot(handle: u64, start: u32, end: u32) -> bool {
+    push_call(Call::CutTextRangeSnapshot { handle, start, end });
     true
 }
 
@@ -2125,6 +2167,16 @@ pub unsafe fn ui_copy_current_selection() {
 pub unsafe fn ui_has_text_selection(handle: u64) -> bool {
     push_call(Call::HasTextSelection { handle });
     HAS_TEXT_SELECTION.with(|value| value.get())
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn ui_can_undo_text_edit(_handle: u64) -> bool {
+    CAN_UNDO_TEXT_EDIT.with(|value| value.get())
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn ui_can_redo_text_edit(_handle: u64) -> bool {
+    CAN_REDO_TEXT_EDIT.with(|value| value.get())
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
@@ -2341,6 +2393,18 @@ pub unsafe fn fui_get_accent_color() -> u32 {
 pub unsafe fn fui_get_platform_family() -> u32 {
     push_call(Call::GetPlatformFamily);
     PLATFORM_FAMILY.with(|value| value.get())
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_get_host_environment() -> u32 {
+    push_call(Call::GetHostEnvironment);
+    HOST_ENVIRONMENT.with(|value| value.get())
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_get_host_capabilities() -> u32 {
+    push_call(Call::GetHostCapabilities);
+    HOST_CAPABILITIES.with(|value| value.get())
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]

@@ -93,6 +93,41 @@ when user activation changes state. Programmatic and persisted state changes
 emit `on_changed(...)` but never `on_click(...)`. `NavLink` uses
 `on_navigate(...)` for navigation activation.
 
+## Custom context menus and host capabilities
+
+`on_context_menu(...)` receives the original descendant target, pointer
+coordinates, and an immutable `event.host` snapshot. Gate menu operations by
+capability instead of inferring browser or desktop behavior from the OS:
+
+```rust
+node.on_context_menu({
+    let menu = menu.clone();
+    move |event| {
+        let mut items = Vec::new();
+        if event.host.supports(HostCapability::NewBrowsingContext) {
+            items.push(MenuItem::new("New Tab", ContextMenuAction::OpenLinkInNewTab)
+                .payload(url.clone()));
+        }
+        if event.host.supports(HostCapability::OpenExternalUri) {
+            items.push(MenuItem::new("Open", ContextMenuAction::OpenLink)
+                .payload(url.clone()));
+        }
+        menu.items(items).show(event.x, event.y);
+    }
+});
+```
+
+Use `host_context()`, `host_environment()`, or `has_host_capability(...)` when a
+menu factory is built outside the callback. `PlatformFamily` remains the OS
+family and does not identify browser versus desktop execution.
+
+On browser hosts, secondary click and coarse-pointer long press request the
+retained menu. On desktop hosts, secondary click requests it through the native
+input adapter; macOS also normalizes Control-click and supports `Shift+F10` for
+the focused control. Marking secondary pointer input handled suppresses the
+built-in fallback. Auxiliary/middle click remains a separate NavLink action and
+never opens a context menu.
+
 ## Pointer events
 
 `PointerEventArgs` includes:

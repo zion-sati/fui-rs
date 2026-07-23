@@ -567,6 +567,74 @@ test.afterAll(async () => {
   await server.close();
 });
 
+test('shows the styled loading overlay before throttled bridge scripts arrive', async ({ page }) => {
+  await page.route(/\/(bridge|harness)\.js(?:\?|$)/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    await route.continue();
+  });
+
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`, { waitUntil: 'commit' });
+  await page.waitForTimeout(400);
+
+  const overlay = page.locator('#effindom-loading-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveCSS('display', 'grid');
+  await expect(overlay).toHaveCSS('position', 'absolute');
+  await expect(overlay).toHaveCSS('cursor', 'default');
+  await expect(overlay).toHaveCSS('user-select', 'none');
+  await expect(page.locator('#effindom-loading-detail')).toHaveText('Runtime assets');
+});
+
+test('shows built-in font replay progress during a warm route load', async ({ page }) => {
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  let releaseFonts: (() => void) | undefined;
+  const fontsBlocked = new Promise<void>((resolve) => {
+    releaseFonts = resolve;
+  });
+  await page.route('**/v2/fui-rs/fonts/*.ttf', async (route) => {
+    await fontsBlocked;
+    await route.continue();
+  });
+
+  await page.evaluate(() => {
+    void window.__fui_debug?.navigateTo('/v2/fui-rs/demo/stage5/');
+  });
+
+  await expect(page.locator('#effindom-loading-overlay')).toBeVisible();
+  await expect(page.locator('#effindom-loading-detail')).toHaveText('Built-in fonts 0 / 6');
+
+  releaseFonts?.();
+  await page.waitForFunction(() => window.__fuiReady === true);
+  await expect(page).toHaveURL(`${baseUrl}/v2/fui-rs/demo/stage5/`);
+  await expect(page.locator('#effindom-loading-overlay')).toBeHidden();
+});
+
+test('does not wait for app-authored fonts during a warm route load', async ({ page }) => {
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  let releaseFonts: (() => void) | undefined;
+  const fontsBlocked = new Promise<void>((resolve) => {
+    releaseFonts = resolve;
+  });
+  await page.route('**/v2/fonts/*.ttf', async (route) => {
+    await fontsBlocked;
+    await route.continue();
+  });
+
+  await page.evaluate(() => {
+    void window.__fui_debug?.navigateTo('/v2/fui-rs/demo/stage4/');
+  });
+
+  await page.waitForFunction(() => window.__fuiReady === true);
+  await expect(page).toHaveURL(`${baseUrl}/v2/fui-rs/demo/stage4/`);
+  await expect(page.locator('#effindom-loading-overlay')).toBeHidden();
+  await expect(page.locator('#effindom-loading-detail')).not.toContainText('Fonts ');
+  releaseFonts?.();
+});
+
 test('routes the fui-rs demo scaffold through the shared routed harness', async ({ page }) => {
   await page.goto(`${baseUrl}/v2/fui-rs/demo/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);

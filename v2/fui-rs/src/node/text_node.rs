@@ -29,6 +29,15 @@ impl TextNode {
     fn new_with_defaults(content: impl Into<String>, selectable_by_default: bool) -> Self {
         let content = content.into();
         let core = Rc::new(RefCell::new(NodeCore::new(NodeKind::Text)));
+        let theme = theme::current_theme();
+        let props = Rc::new(RefCell::new(TextProps {
+            content: content.clone(),
+            font_size: theme.fonts.size_body,
+            has_font: true,
+            selectable: selectable_by_default.then_some((true, theme.colors.selection)),
+            uses_theme_selection_color: selectable_by_default,
+            ..TextProps::default()
+        }));
         {
             let mut core_mut = core.borrow_mut();
             if selectable_by_default {
@@ -36,18 +45,17 @@ impl TextNode {
                 core_mut.behavior.selectable_text = true;
             }
             core_mut.behavior.text_content = Some(content.clone());
+            let weak_props = Rc::downgrade(&props);
+            core_mut.behavior.text_selection_range_bytes = Some(Rc::new(move || {
+                weak_props
+                    .upgrade()
+                    .and_then(|props| props.borrow().selection_range_bytes)
+                    .unwrap_or((0, 0))
+            }));
         }
-        let theme = theme::current_theme();
         let node = Self {
             core,
-            props: Rc::new(RefCell::new(TextProps {
-                content,
-                font_size: theme.fonts.size_body,
-                has_font: true,
-                selectable: selectable_by_default.then_some((true, theme.colors.selection)),
-                uses_theme_selection_color: selectable_by_default,
-                ..TextProps::default()
-            })),
+            props,
             text_changed_callback: Rc::new(RefCell::new(None)),
             text_replaced_callback: Rc::new(RefCell::new(None)),
             selection_changed_callback: Rc::new(RefCell::new(None)),

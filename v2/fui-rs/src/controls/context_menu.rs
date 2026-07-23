@@ -188,6 +188,29 @@ fn commit_focused_text_action_if_needed(item: &MenuItem) {
 }
 
 pub fn run_context_menu_action(item: &MenuItem) {
+    let host = crate::platform::host_context();
+    let unsupported = match item.action {
+        ContextMenuAction::NavigateBack | ContextMenuAction::NavigateForward => {
+            !host.supports(crate::platform::HostCapability::BrowserHistory)
+        }
+        ContextMenuAction::ReloadPage => !host.supports(crate::platform::HostCapability::Reload),
+        ContextMenuAction::OpenLinkInNewTab | ContextMenuAction::OpenImageInNewTab => {
+            !host.supports(crate::platform::HostCapability::NewBrowsingContext)
+        }
+        ContextMenuAction::OpenLink | ContextMenuAction::OpenImage => {
+            !host.supports(crate::platform::HostCapability::OpenExternalUri)
+        }
+        ContextMenuAction::CopyCurrentSelection | ContextMenuAction::CutTextSelection => {
+            !host.supports(crate::platform::HostCapability::ClipboardWrite)
+        }
+        ContextMenuAction::PasteText => {
+            !host.supports(crate::platform::HostCapability::ClipboardRead)
+        }
+        _ => false,
+    };
+    if unsupported {
+        return;
+    }
     if item.disabled {
         let action_needs_live_selection = item.target_handle != HandleValue::Invalid as u64
             && matches!(
@@ -240,7 +263,13 @@ pub fn run_context_menu_action(item: &MenuItem) {
                 write_payload_to_clipboard(payload);
             }
             if item.selection_start != item.selection_end
-                && unsafe { crate::ffi::fui_cut_text_selection_snapshot(item.target_handle) }
+                && unsafe {
+                    crate::ffi::fui_cut_text_range_snapshot(
+                        item.target_handle,
+                        item.selection_start,
+                        item.selection_end,
+                    )
+                }
             {
                 commit_focused_text_action_if_needed(item);
                 return;
@@ -1007,6 +1036,34 @@ impl ContextMenu {
         }
     }
 
+    pub(crate) fn is_active_menu_visible() -> bool {
+        ACTIVE_CONTEXT_MENU.with(|slot| slot.borrow().is_some())
+    }
+
+    pub(crate) fn dismiss_for_outside_pointer_down(scene_x: f32, scene_y: f32) -> bool {
+        let menu = ACTIVE_CONTEXT_MENU.with(|slot| slot.borrow().as_ref().cloned());
+        let Some(menu) = menu else {
+            return false;
+        };
+        let Some(panel) = menu.panel.upgrade() else {
+            menu.hide();
+            return true;
+        };
+        let Some(bounds) = ui::get_bounds(panel.handle().raw()) else {
+            menu.hide();
+            return true;
+        };
+        let inside = scene_x >= bounds[0]
+            && scene_x <= bounds[0] + bounds[2]
+            && scene_y >= bounds[1]
+            && scene_y <= bounds[1] + bounds[3];
+        if inside {
+            return false;
+        }
+        menu.hide();
+        true
+    }
+
     pub(crate) fn invoke_active_slot(slot: i32) {
         if slot < 0 {
             return;
@@ -1296,5 +1353,31 @@ impl ThemeBindable for ContextMenu {
                 state: state.upgrade()?,
             })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{run_context_menu_action, ContextMenuAction, MenuItem};
+    use crate::ffi;
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    #[test]
+    fn unsupported_stale_context_menu_actions_do_not_invoke() {
+        ffi::test::reset();
+        ffi::test::set_host_environment(3);
+        ffi::test::set_host_capabilities(0);
+        let count = Rc::new(Cell::new(0));
+        let item = MenuItem::new("New Tab", ContextMenuAction::OpenLinkInNewTab)
+            .payload("https://example.test")
+            .on_invoke({
+                let count = count.clone();
+                move || count.set(count.get() + 1)
+            });
+
+        run_context_menu_action(&item);
+
+        assert_eq!(count.get(), 0);
     }
 }

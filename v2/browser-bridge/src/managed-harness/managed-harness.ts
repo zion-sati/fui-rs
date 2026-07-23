@@ -1,5 +1,3 @@
-import { instantiate } from '@assemblyscript/loader';
-
 import type { BridgeRuntime,EffinDomCallbacks,WasmHandleLike } from '@effindomv2/runtime';
 import { listHostEventMethods,type HostEventsDefinition,type NormalizedHostEventMethod } from './host-events';
 import { createHostServiceImportModule,getHostServiceImportNames,type HostServicesDefinition } from './host-services';
@@ -47,6 +45,7 @@ HarnessState,
 ManagedHarnessOptions,
 } from './types';
 import { HarnessUiChrome,waitForFrame } from './ui-chrome';
+import { createBrowserLoadingClock,HarnessLoadingController,type LoadingOperation } from './loading-controller';
 import { createUiImportModule } from './ui-imports';
 import { browserManagedPlatformHost } from './platform-host';
 
@@ -141,6 +140,7 @@ export function startHarness<Exports extends HarnessExports>(options: HarnessOpt
   };
   const onError = options.onError ?? defaultOnError;
   startManagedHarness({
+    ...(options.loading === undefined ? {} : { loading: options.loading }),
     async onReady(controller): Promise<void> {
       await controller.loadApp(loadOptions);
     },
@@ -153,50 +153,91 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
   let cleanup = () => {
     delete window.__fui_debug;
   };
+  harnessUiChrome.ensureLoadingOverlay();
+  const loadingBootstrapWindow = window as Window & {
+    __effindomLoadingBootstrap?: {
+      timerId: number | null;
+      visibleAtMs: number | null;
+      detail: string;
+    };
+  };
+  const loadingBootstrap = loadingBootstrapWindow.__effindomLoadingBootstrap;
+  if (loadingBootstrap?.timerId !== null && loadingBootstrap?.timerId !== undefined) {
+    window.clearTimeout(loadingBootstrap.timerId);
+    loadingBootstrap.timerId = null;
+  }
+  const bootstrapVisibleAtMs = loadingBootstrap?.visibleAtMs ?? null;
   const loadingOverlayText = harnessUiChrome.getLoadingOverlayText();
-  const loadingOverlayTitle = loadingOverlayText.title;
-  let loadingOverlayDetail = loadingOverlayText.detail;
-  let loadingOverlayVisible = false;
-  let loadingOverlayTimer: number | null = null;
-
-  function clearLoadingOverlayTimer(): void {
-    if (loadingOverlayTimer === null) {
-      return;
-    }
-    window.clearTimeout(loadingOverlayTimer);
-    loadingOverlayTimer = null;
-  }
-
-  function scheduleLoadingOverlay(): void {
-    if (loadingOverlayVisible || loadingOverlayTimer !== null) {
-      return;
-    }
-    loadingOverlayTimer = window.setTimeout(() => {
-      loadingOverlayTimer = null;
-      loadingOverlayVisible = true;
-      harnessUiChrome.setLoadingOverlay('loading', loadingOverlayTitle, loadingOverlayDetail);
-    }, 1000);
-  }
-
-  function updateLoadingOverlay(detail: string): void {
-    loadingOverlayDetail = detail;
-    if (loadingOverlayVisible) {
-      harnessUiChrome.setLoadingOverlay('loading', loadingOverlayTitle, loadingOverlayDetail);
-      return;
-    }
-    scheduleLoadingOverlay();
-  }
-
-  function finishLoadingOverlay(): void {
-    clearLoadingOverlayTimer();
-    loadingOverlayVisible = false;
+  const runtimeWindow = window as Window & { __effindomRuntime?: { readonly buildMode?: string } };
+  const configuredBuildMode = options.buildMode ?? runtimeWindow.__effindomRuntime?.buildMode;
+  const debugDelayParam = new URLSearchParams(window.location.search).get('effindom-loading-delay');
+  const parsedDebugDelay = debugDelayParam === null ? 0 : Number(debugDelayParam);
+  const loadingOptions = options.loading === false ? null : {
+    ...options.loading,
+    debugDelayMs: configuredBuildMode === 'debug' && Number.isFinite(parsedDebugDelay)
+      ? Math.max(options.loading?.debugDelayMs ?? 0, parsedDebugDelay)
+      : 0,
+  };
+  const loadingController = loadingOptions === null ? null : new HarnessLoadingController(
+    harnessUiChrome,
+    createBrowserLoadingClock(),
+    loadingOverlayText.title,
+    loadingOverlayText.detail,
+    loadingOptions,
+    bootstrapVisibleAtMs,
+  );
+  if (loadingController === null) {
     harnessUiChrome.hideLoadingOverlay();
+  }
+  let startupLoadingOperation = loadingController?.begin(
+    loadingBootstrap?.detail ?? 'Runtime assets',
+    0,
+  ) ?? null;
+  let activeAppLoadingOperation: LoadingOperation | null = null;
+
+  window.addEventListener('effindom-loading-progress', (event) => {
+    const operation = activeAppLoadingOperation;
+    if (operation === null || loadingController === null || !(event instanceof CustomEvent)) {
+      return;
+    }
+    const progress = event.detail as { label?: unknown; completed?: unknown; total?: unknown };
+    if (
+      typeof progress.label !== 'string' ||
+      typeof progress.completed !== 'number' ||
+      typeof progress.total !== 'number'
+    ) {
+      return;
+    }
+    loadingController.update(
+      operation,
+      `${progress.label} ${String(progress.completed)} / ${String(progress.total)}`,
+    );
+  });
+
+  function beginAppLoading(show: boolean, detail: string): LoadingOperation | null {
+    if (!show || loadingController === null) {
+      if (startupLoadingOperation !== null) {
+        void loadingController?.complete(startupLoadingOperation);
+        startupLoadingOperation = null;
+      }
+      activeAppLoadingOperation = null;
+      return null;
+    }
+    if (startupLoadingOperation !== null) {
+      const operation = startupLoadingOperation;
+      startupLoadingOperation = null;
+      loadingController.update(operation, detail);
+      activeAppLoadingOperation = operation;
+      return operation;
+    }
+    const operation = loadingController.begin(detail);
+    activeAppLoadingOperation = operation;
+    return operation;
   }
 
   function failLoadingOverlay(detail: string): void {
-    clearLoadingOverlayTimer();
-    loadingOverlayVisible = true;
-    harnessUiChrome.setLoadingOverlay('error', loadingOverlayTitle, detail);
+    activeAppLoadingOperation = null;
+    loadingController?.fail(detail);
   }
 
   const bridge = window.EffinDomBrowserBridge;
@@ -1661,10 +1702,12 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
     async function loadApp<Exports extends HarnessExports>(
       loadOptions: HarnessAppOptions<Exports>,
     ): Promise<HarnessContext<Exports>> {
-      if (loadOptions.showLoadingOverlay !== false) {
-        updateLoadingOverlay(`Loading ${loadOptions.wasmPath}`);
+      const loadingOperation = beginAppLoading(loadOptions.showLoadingOverlay !== false, `Loading ${loadOptions.wasmPath}`);
+      if (loadOptions.recreateRuntimeBeforeLoad === true) {
+        await recreateRuntime();
+      } else {
+        await unloadApp();
       }
-      await unloadApp();
       const restoredSnapshot = await queuePersistedUiStateWork(() => {
         switch (loadOptions.persistedRestoreMode ?? 'initial') {
           case 'none':
@@ -1679,7 +1722,7 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
       hydrateCurrentPersistedEntries(restoredSnapshot);
       const wasmModule = await loadWasmModule(loadOptions.wasmPath);
       validateAppImports(wasmModule, loadOptions.hostServices);
-      const instance = await instantiate(wasmModule, createAppImports(loadOptions.hostServices));
+      const instance = await WebAssembly.instantiate(wasmModule, createAppImports(loadOptions.hostServices));
       const exports = instance.exports as unknown as Exports;
       const keyBufferPtr = exports.__fui_key_buffer();
       const textBufferPtr = exports.__fui_text_buffer();
@@ -1745,14 +1788,19 @@ export function startManagedHarness(options: ManagedHarnessOptions): void {
         waitForFrame,
       };
       await loadOptions.onReady?.(context);
-      runtime.clearPointerHover();
-      runtime.refreshPointerHover();
       runtime.flushPendingCommit();
       await waitForFrame();
       await queuePersistedUiStateWork(() => ensureCurrentHistoryEntrySnapshot(`loading ${loadOptions.wasmPath}`));
       lastHandledUrlHref = window.location.href;
       updateState();
-      finishLoadingOverlay();
+      if (loadingOperation !== null) {
+        if (activeAppLoadingOperation === loadingOperation) {
+          activeAppLoadingOperation = null;
+        }
+        await loadingController?.complete(loadingOperation);
+      }
+      runtime.clearPointerHover();
+      runtime.refreshPointerHover();
       return context;
     }
 

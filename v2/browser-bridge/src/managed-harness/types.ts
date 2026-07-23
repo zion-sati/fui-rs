@@ -10,6 +10,7 @@ import type { DebugTreeSnapshot } from '../debug-tree';
 import type { HostEventsDefinition } from './host-events';
 import type { HostServicesDefinition } from './host-services';
 import type { WorkerHostServicesBundleConfig } from './worker-types';
+import type { LoadingIndicatorOptions } from './loading-controller';
 
 export interface HarnessState {
   readonly commandWordCount: number;
@@ -209,6 +210,7 @@ export interface HarnessOptions<Exports extends HarnessExports> {
   onDispose?(this: void, exports: Exports): void;
   onError?(this: void, error: unknown): void;
   showLoadingOverlay?: boolean;
+  loading?: false | LoadingIndicatorOptions;
   hostEvents?: HostEventsDefinition;
   hostServices?: HostServicesDefinition;
   workerHostServices?: WorkerHostServicesBundleConfig;
@@ -216,6 +218,7 @@ export interface HarnessOptions<Exports extends HarnessExports> {
 }
 
 export interface HarnessAppOptions<Exports extends HarnessExports> extends HarnessOptions<Exports> {
+  recreateRuntimeBeforeLoad?: boolean;
   run(this: void, exports: Exports): void;
 }
 
@@ -236,6 +239,7 @@ export interface ManagedHarnessOptions {
   buildMode?: BuildMode;
   devToolsDomMirror?: DevToolsDomMirrorMode;
   pageZoom?: PageZoomMode;
+  loading?: false | LoadingIndicatorOptions;
   onReady?(this: void, controller: HarnessController): void | Promise<void>;
   onError?(this: void, error: unknown): void;
 }

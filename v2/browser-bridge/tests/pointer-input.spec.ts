@@ -762,6 +762,20 @@ test('pointer callbacks include browser pointer metadata', async ({ page }) => {
     canvas.dispatchEvent(new PointerEvent('pointerdown', {
       bubbles: true,
       cancelable: true,
+      pointerId: 51,
+      pointerType: 'pen',
+      button: 1,
+      buttons: 3,
+      pressure: 0.5,
+      width: 11,
+      height: 13,
+      detail: 7,
+      clientX: rect.left + 42,
+      clientY: rect.top + 40,
+    }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
       pointerId: 49,
       pointerType: 'pen',
       button: 1,
@@ -805,8 +819,9 @@ test('pointer callbacks include browser pointer metadata', async ({ page }) => {
   expect(down?.clickCount).toBe(1);
   const downEvents = result.pointerEvents.filter((entry) => entry.eventType === 1);
   expect(downEvents[1]?.clickCount).toBe(2);
-  expect(downEvents[2]?.clickCount).toBe(3);
-  expect(downEvents[3]?.clickCount).toBe(1);
+  expect(downEvents[2]?.clickCount).toBe(7);
+  expect(downEvents[3]?.clickCount).toBe(3);
+  expect(downEvents[4]?.clickCount).toBe(4);
 });
 
 test('right-click pointer delivery runs before context menu fallback', async ({ page }) => {
@@ -2287,8 +2302,8 @@ test('handled touch selection drag keeps edge autoscroll ticking', async ({ page
         height: number,
         clickCount: number,
         modifiers: number,
-      ): void => {
-        originalPointerEvent(
+      ): number => {
+        const result = originalPointerEvent(
           eventType,
           handle,
           x,
@@ -2307,6 +2322,7 @@ test('handled touch selection drag keeps edge autoscroll ticking', async ({ page
           handledMoveCalls += 1;
           window.__effindomLastPointerEventHandled = true;
         }
+        return result;
       };
       ui._ui_selection_autoscroll = (x: number, y: number, edgeThreshold: number): bigint => {
         autoScrollCalls.push({ x, y, edgeThreshold });

@@ -335,6 +335,7 @@ export interface UiModule {
     outWidth: WasmHandleLike,
     outHeight: WasmHandleLike,
   ): number;
+  _ui_get_focused_handle(): WasmHandleLike;
   _ui_get_visible_bounds(
     handle: WasmHandleLike,
     outX: WasmHandleLike,
@@ -429,7 +430,7 @@ export interface UiModule {
     height: number,
     clickCount: number,
     modifiers: number,
-  ): void;
+  ): number;
   _ui_on_wheel_event(deltaX: number, deltaY: number): void;
   _ui_touch_scroll_begin(handle: WasmHandleLike, x: number, y: number, timestampMs?: number): void;
   _ui_touch_scroll_update(deltaX: number, deltaY: number, timestampMs?: number): void;

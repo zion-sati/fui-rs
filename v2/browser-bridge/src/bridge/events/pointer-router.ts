@@ -46,7 +46,6 @@ const TOUCH_AXIS_BREAKOUT_STEP_THRESHOLD = 8;
 const TRACKPAD_PINCH_WHEEL_SCALE = 0.01;
 const REPEAT_CLICK_THRESHOLD_MS = 500;
 const REPEAT_CLICK_DISTANCE = 6;
-const MAX_CLICK_COUNT = 3;
 
 interface PendingPointerMove {
   handle: bigint;
@@ -200,7 +199,7 @@ export function installPointerHandlers(
   let lastClickTimeMs = 0;
   let lastClickCount = 0;
 
-  const resolveClickCount = (handle: bigint, x: number, y: number): number => {
+  const resolveFallbackClickCount = (handle: bigint, x: number, y: number): number => {
     const now = performance.now();
     const deltaX = x - lastClickX;
     const deltaY = y - lastClickY;
@@ -208,14 +207,13 @@ export function installPointerHandlers(
       lastClickHandle === handle &&
       (now - lastClickTimeMs) <= REPEAT_CLICK_THRESHOLD_MS &&
       ((deltaX * deltaX) + (deltaY * deltaY)) <= REPEAT_CLICK_DISTANCE * REPEAT_CLICK_DISTANCE;
-    lastClickCount = isRepeat && lastClickCount < MAX_CLICK_COUNT ? lastClickCount + 1 : 1;
+    lastClickCount = isRepeat ? lastClickCount + 1 : 1;
     lastClickHandle = handle;
     lastClickX = x;
     lastClickY = y;
     lastClickTimeMs = now;
     return lastClickCount;
   };
-
   const dispatchPointerEvent = (
     eventType: number,
     handle: bigint,
@@ -1319,7 +1317,12 @@ export function installPointerHandlers(
       }
       interactionState.setCapturedPointerHandle(handle === 0n ? null : handle);
       ui._ui_set_interaction_time(currentInteractionTimeMs());
-      clickCount = resolveClickCount(handle, position.x, position.y);
+      // Preserve the browser's platform-classified count when it supplies one.
+      // Synthetic events and engines that leave pointerdown.detail at zero use
+      // the deterministic fallback, without imposing the old three-click cap.
+      clickCount = event.detail > 0
+        ? event.detail
+        : resolveFallbackClickCount(handle, position.x, position.y);
       const handled = dispatchPointerEvent(
         type,
         handle,

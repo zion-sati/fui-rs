@@ -1,0 +1,84 @@
+name: FUI-RS CI
+
+on:
+  push:
+    branches: [main]
+    paths: &fui_rs_ci_inputs
+      - '.github/workflows/fui-rs-ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'eslint.config.ts'
+      - 'scripts/ci/**'
+      - 'v2/abi/**'
+      - 'v2/core/include/**'
+      - 'v2/ui/include/**'
+      - 'v2/browser-bridge/**'
+      - 'v2/fui-rs/**'
+  pull_request:
+    paths: *fui_rs_ci_inputs
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: v2/fui-rs/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Resolve the current runtime release
+        id: runtime
+        run: |
+          runtime_version="$(npm view @effindomv2/runtime dist-tags.latest)"
+          node -e "if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.argv[1])) process.exit(1)" "$runtime_version"
+          echo "version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - name: Pin the tested runtime version
+        env:
+          RUNTIME_VERSION: ${{ steps.runtime.outputs.version }}
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const packagePath = 'v2/fui-rs/package.json';
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          packageJson.dependencies['@effindomv2/runtime'] = process.env.RUNTIME_VERSION;
+          fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+          NODE
+      - name: Install dependencies for the tested runtime
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Lint, typecheck, and run Rust checks
+        run: |
+          npm run lint
+          npm run typecheck
+          npm --workspace v2/fui-rs run lint:rust
+          npm run test
+      - name: Build the browser demo
+        run: npm run build
+      - name: Run browser integration tests
+        run: npx playwright test -c v2/fui-rs/playwright.config.ts
+      - name: Record the tested runtime pin
+        env:
+          RUNTIME_VERSION: ${{ steps.runtime.outputs.version }}
+        run: |
+          mkdir -p .release-inputs
+          node - <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync('.release-inputs/release-inputs.json', `${JSON.stringify({ runtimeVersion: process.env.RUNTIME_VERSION }, null, 2)}\n`);
+          NODE
+      - name: Upload FUI-RS release inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: fui-rs-release-inputs
+          path: .release-inputs/release-inputs.json
+          if-no-files-found: error
+          retention-days: 90

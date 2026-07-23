@@ -364,16 +364,14 @@ fn sync_button_visual_state(
     colors: Option<ButtonColors>,
 ) {
     let presenter = presenter.borrow().clone();
-    let mut host_style = presenter.present(
-        current_theme(),
-        ButtonVisualState {
-            hovered,
-            pressed,
-            focused,
-            enabled,
-        },
-        colors,
-    );
+    let theme = current_theme();
+    let state = ButtonVisualState {
+        hovered,
+        pressed,
+        focused,
+        enabled,
+    };
+    let mut host_style = presenter.present(&theme, &state, colors.as_ref());
     host_style.cursor = Some(if enabled {
         CursorStyle::Pointer
     } else {

@@ -1,4 +1,5 @@
 use crate::ffi;
+pub use crate::ffi::{HostCapability, HostEnvironment, PlatformFamily};
 use crate::generated::framework_host_services;
 
 #[cfg(feature = "native-runtime")]
@@ -330,12 +331,37 @@ pub extern "C" fn __fui_clear_ui_dispatches() {
     UI_DISPATCH_CALLBACKS.with(|callbacks| callbacks.borrow_mut().clear());
 }
 
+const KNOWN_HOST_CAPABILITIES: u32 = HostCapability::BrowserHistory as u32
+    | HostCapability::Reload as u32
+    | HostCapability::NewBrowsingContext as u32
+    | HostCapability::OpenExternalUri as u32
+    | HostCapability::ClipboardRead as u32
+    | HostCapability::ClipboardWrite as u32
+    | HostCapability::FileDialogs as u32;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PlatformFamily {
-    Unknown = 0,
-    Apple = 1,
-    Windows = 2,
-    Linux = 3,
+pub struct HostContext {
+    pub platform_family: PlatformFamily,
+    pub environment: HostEnvironment,
+    capabilities: u32,
+}
+
+impl HostContext {
+    pub fn new(
+        platform_family: PlatformFamily,
+        environment: HostEnvironment,
+        capabilities: u32,
+    ) -> Self {
+        Self {
+            platform_family,
+            environment,
+            capabilities: capabilities & KNOWN_HOST_CAPABILITIES,
+        }
+    }
+
+    pub fn supports(self, capability: HostCapability) -> bool {
+        (self.capabilities & capability as u32) != 0
+    }
 }
 
 pub fn device_pixel_ratio() -> f32 {
@@ -349,6 +375,27 @@ pub fn platform_family() -> PlatformFamily {
         3 => PlatformFamily::Linux,
         _ => PlatformFamily::Unknown,
     }
+}
+
+pub fn host_environment() -> HostEnvironment {
+    match framework_host_services::fui_get_host_environment() {
+        1 => HostEnvironment::Browser,
+        2 => HostEnvironment::Desktop,
+        3 => HostEnvironment::Headless,
+        _ => HostEnvironment::Unknown,
+    }
+}
+
+pub fn host_context() -> HostContext {
+    HostContext::new(
+        platform_family(),
+        host_environment(),
+        framework_host_services::fui_get_host_capabilities(),
+    )
+}
+
+pub fn has_host_capability(capability: HostCapability) -> bool {
+    host_context().supports(capability)
 }
 
 pub fn is_coarse_pointer() -> bool {
@@ -529,8 +576,9 @@ pub fn is_redo_shortcut(key: &str, modifiers: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        document_boundary_modifier, is_coarse_pointer, is_redo_shortcut, is_undo_shortcut,
-        line_boundary_modifier, platform_family, PlatformFamily,
+        document_boundary_modifier, has_host_capability, host_context, host_environment,
+        is_coarse_pointer, is_redo_shortcut, is_undo_shortcut, line_boundary_modifier,
+        platform_family, HostCapability, HostContext, HostEnvironment, PlatformFamily,
     };
     use crate::ffi;
 
@@ -555,5 +603,41 @@ mod tests {
             "z",
             ffi::KeyModifier::Meta as u32 | ffi::KeyModifier::Shift as u32
         ));
+    }
+
+    #[test]
+    fn reports_and_sanitizes_host_context() {
+        ffi::test::reset();
+        ffi::test::set_platform_family(1);
+        ffi::test::set_host_environment(2);
+        ffi::test::set_host_capabilities(
+            HostCapability::OpenExternalUri as u32
+                | HostCapability::FileDialogs as u32
+                | 0x8000_0000,
+        );
+        assert_eq!(host_environment(), HostEnvironment::Desktop);
+        assert_eq!(host_context().platform_family, PlatformFamily::Apple);
+        assert!(has_host_capability(HostCapability::OpenExternalUri));
+        assert!(has_host_capability(HostCapability::FileDialogs));
+        assert!(!has_host_capability(HostCapability::Reload));
+
+        ffi::test::set_host_environment(99);
+        assert_eq!(host_environment(), HostEnvironment::Unknown);
+        assert!(!HostContext::new(
+            PlatformFamily::Windows,
+            HostEnvironment::Desktop,
+            0x8000_0000,
+        )
+        .supports(HostCapability::BrowserHistory));
+
+        let windows_browser =
+            HostContext::new(PlatformFamily::Windows, HostEnvironment::Browser, 0);
+        let windows_desktop =
+            HostContext::new(PlatformFamily::Windows, HostEnvironment::Desktop, 0);
+        assert_eq!(
+            windows_browser.platform_family,
+            windows_desktop.platform_family
+        );
+        assert_ne!(windows_browser.environment, windows_desktop.environment);
     }
 }

@@ -12,6 +12,7 @@ struct ImmediateDrawingPage {
 }
 
 fn build_page() -> ImmediateDrawingPage {
+    Application::caption("EffinDOM FUI-RS Demo • Immediate Drawing");
     use_system_theme();
     let theme = current_theme();
     let page = demo_page_root("FUI-RS Immediate Drawing");

@@ -164,7 +164,6 @@ impl TextInputCore {
             root.child(&editor_text);
             None
         };
-
         let presenter = create_presenter(profile, None);
         presenter.bind(editor_text.clone(), placeholder_host.clone());
 
@@ -204,6 +203,9 @@ impl TextInputCore {
             theme_guard: RefCell::new(None),
             focus_visibility_guard: RefCell::new(None),
         };
+        this.root
+            .retained_node_ref()
+            .set_text_input_editor_for_routing(&this.editor_text.retained_node_ref());
         this.sync_semantic_label();
         this.sync_editor_limits();
         this.sync_editor_editability();
@@ -476,16 +478,14 @@ impl TextInputCore {
             if let Some(this) = weak.upgrade() {
                 if event.target_handle() == this.root.handle() {
                     this.handle_shell_pointer_down();
-                    event.handled = true;
                 }
             }
         });
 
         let weak = self.self_weak.borrow().clone();
-        self.placeholder_host.on_pointer_down(move |event| {
+        self.placeholder_host.on_pointer_down(move |_event| {
             if let Some(this) = weak.upgrade() {
                 this.handle_shell_pointer_down();
-                event.handled = true;
             }
         });
 

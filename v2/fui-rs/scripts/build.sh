@@ -186,11 +186,23 @@ cp "${WORKER_BOOTSTRAP_BUILD}" "${DEMO_OUT_DIR}/worker-bootstrap.js"
 cp "${WORKER_BOOTSTRAP_MAP_BUILD}" "${DEMO_OUT_DIR}/worker-bootstrap.js.map"
 
 cp "${PACKAGE_DIR}/browser/index.html" "${OUT_DIR}/index.html"
-cp "${PACKAGE_DIR}/demo/index.html" "${DEMO_OUT_DIR}/index.html"
-cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/workbench/index.html"
-cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage4/index.html"
-cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage5/index.html"
-cp "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/immediate-drawing/index.html"
+LOADING_OVERLAY_BODY="$(cat "${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-body.html")"
+LOADING_OVERLAY_STYLES="$(cat "${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-styles.css")"
+render_demo_shell() {
+  local source="$1"
+  local destination="$2"
+  LOADING_OVERLAY_BODY="${LOADING_OVERLAY_BODY}" \
+    LOADING_OVERLAY_STYLES="${LOADING_OVERLAY_STYLES}" \
+    perl -0pe '
+      s/\{\{LOADING_OVERLAY_BODY\}\}/$ENV{LOADING_OVERLAY_BODY}/g;
+      s/\{\{LOADING_OVERLAY_STYLES\}\}/$ENV{LOADING_OVERLAY_STYLES}/g;
+    ' "${source}" > "${destination}"
+}
+render_demo_shell "${PACKAGE_DIR}/demo/index.html" "${DEMO_OUT_DIR}/index.html"
+render_demo_shell "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/workbench/index.html"
+render_demo_shell "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage4/index.html"
+render_demo_shell "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/stage5/index.html"
+render_demo_shell "${PACKAGE_DIR}/demo/route-shell.html" "${DEMO_OUT_DIR}/immediate-drawing/index.html"
 cp "${PACKAGE_DIR}/demo/routes.json" "${DEMO_OUT_DIR}/routes.json"
 rm -f "${DEMO_OUT_DIR}/worker-manifest.json"
 if [ -f "${SHARED_DEMO_TEXTURE}" ]; then

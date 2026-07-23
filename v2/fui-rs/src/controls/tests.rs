@@ -51,9 +51,9 @@ impl ButtonPresenter for TestButtonPresenter {
 
     fn present(
         &self,
-        _theme: crate::theme::Theme,
-        _state: ButtonVisualState,
-        _colors: Option<ButtonColors>,
+        _theme: &crate::theme::Theme,
+        _state: &ButtonVisualState,
+        _colors: Option<&ButtonColors>,
     ) -> crate::PresenterHostStyle {
         self.label.text_color(0x112233FF);
         crate::PresenterHostStyle::new().border(Border::solid(3.0, self.border_color))

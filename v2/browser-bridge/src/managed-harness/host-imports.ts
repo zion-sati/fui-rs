@@ -7,6 +7,7 @@ import type { TextSessionBridge } from './text-session-bridge';
 import type { HarnessUiChrome } from './ui-chrome';
 import { toBigIntHandle, type AppHandleLike } from './interop';
 import type { ManagedPlatformHost } from './platform-host';
+import { browserHostCapabilities, HostEnvironment } from './host-environment';
 
 interface HostImportSessionLike {
   readonly exports: HarnessExports;
@@ -87,6 +88,9 @@ export function createHostImportModule(deps: HostImportDeps) {
     },
     get_device_pixel_ratio(): number {
       return deps.platformHost.getDevicePixelRatio();
+    },
+    fui_set_application_caption(captionPtr: number, captionLen: number): void {
+      deps.platformHost.setApplicationCaption(deps.readAppUtf8(captionPtr, captionLen));
     },
     fui_set_pointer_capture(handle: AppHandleLike): void {
       deps.getRuntime().setCapturedPointerHandle(toBigIntHandle(handle));
@@ -382,6 +386,12 @@ export function createHostImportModule(deps: HostImportDeps) {
     },
     fui_get_platform_family(): number {
       return deps.uiChrome.detectPlatformFamily();
+    },
+    fui_get_host_environment(): number {
+      return HostEnvironment.Browser;
+    },
+    fui_get_host_capabilities(): number {
+      return browserHostCapabilities;
     },
     fui_is_coarse_pointer(): number {
       return deps.uiChrome.detectCoarsePointer() ? 1 : 0;

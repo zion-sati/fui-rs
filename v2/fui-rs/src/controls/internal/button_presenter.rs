@@ -20,9 +20,9 @@ pub trait ButtonPresenter {
     fn label_node(&self) -> TextNode;
     fn present(
         &self,
-        theme: Theme,
-        state: ButtonVisualState,
-        colors: Option<ButtonColors>,
+        theme: &Theme,
+        state: &ButtonVisualState,
+        colors: Option<&ButtonColors>,
     ) -> PresenterHostStyle;
 }
 
@@ -63,9 +63,9 @@ impl ButtonPresenter for DefaultButtonPresenter {
 
     fn present(
         &self,
-        theme: Theme,
-        state: ButtonVisualState,
-        colors: Option<ButtonColors>,
+        theme: &Theme,
+        state: &ButtonVisualState,
+        colors: Option<&ButtonColors>,
     ) -> PresenterHostStyle {
         let background = if !state.enabled {
             colors

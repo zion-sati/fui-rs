@@ -10,6 +10,7 @@ import {
   type HarnessState,
   type HostEventsDefinition,
   type HostServicesDefinition,
+  type LoadingIndicatorOptions,
   type WorkerHostServicesBundleConfig,
 } from './managed-harness';
 import type { RoutedHarnessRouteSpec } from './routed-app-conventions';
@@ -41,6 +42,7 @@ export interface RoutedHarnessConfig<
   readonly hostServices?: HostServicesDefinition;
   readonly workerHostServices?: WorkerHostServicesBundleConfig;
   readonly recreateRuntimeOnWarmRouteSwap?: boolean;
+  readonly loading?: false | LoadingIndicatorOptions;
   readonly showLoadingOverlay?: (isWarmRouteSwap: boolean, route: TRoute) => boolean | undefined;
   readonly onBooting?: () => void;
   readonly onRouteLoading?: (route: TRoute) => void;
@@ -148,14 +150,11 @@ export function startRoutedHarness<
 
     config.onRouteLoading?.(route);
     const isWarmRouteSwap = activeRoute !== null;
-    if (isWarmRouteSwap && config.recreateRuntimeOnWarmRouteSwap === true) {
-      await controller.recreateRuntime();
-    }
-
     const persistedRestoreMode: 'initial' | 'pop' | 'none' = activeRoute === null ? 'initial' : (mode === 'pop' ? 'pop' : 'none');
     const appOptionsBase: HarnessAppOptions<TExports> = {
       wasmPath: route.wasmPath,
       persistedRestoreMode,
+      recreateRuntimeBeforeLoad: isWarmRouteSwap && config.recreateRuntimeOnWarmRouteSwap === true,
       run(exports: TExports): void {
         config.run(exports, route);
       },
@@ -173,7 +172,7 @@ export function startRoutedHarness<
       ...(config.workerHostServices === undefined ? {} : { workerHostServices: config.workerHostServices }),
     };
     const showLoadingOverlay = config.showLoadingOverlay?.(isWarmRouteSwap, route);
-    appOptions.showLoadingOverlay = showLoadingOverlay ?? !isWarmRouteSwap;
+    appOptions.showLoadingOverlay = showLoadingOverlay ?? true;
 
     await controller.loadApp(appOptions);
     routeLoads[route.routePath] = (routeLoads[route.routePath] ?? 0) + 1;
@@ -185,6 +184,7 @@ export function startRoutedHarness<
     ...(config.buildMode === undefined ? {} : { buildMode: config.buildMode }),
     ...(config.devToolsDomMirror === undefined ? {} : { devToolsDomMirror: config.devToolsDomMirror }),
     ...(config.pageZoom === undefined ? {} : { pageZoom: config.pageZoom }),
+    ...(config.loading === undefined ? {} : { loading: config.loading }),
     onReady: async (controller): Promise<void> => {
       controller.setSameOriginNavigationHandler((target, mode) => {
         navigationQueue = navigationQueue.then(() => navigateToRoute(controller, target, mode));

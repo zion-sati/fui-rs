@@ -1,0 +1,12 @@
+[package]
+name = "effindom-native-fui-rs-app"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
+
+[dependencies]
+fui = { package = "fui-rs", path = "..", features = ["native-runtime"] }
+
+[lib]
+name = "effindom_native_fui_rs_app"
+crate-type = ["staticlib"]

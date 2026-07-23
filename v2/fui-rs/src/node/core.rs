@@ -56,6 +56,7 @@ pub struct ContextMenuEventArgs {
     pub target: NodeHandle,
     pub x: f32,
     pub y: f32,
+    pub host: crate::platform::HostContext,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -161,6 +162,8 @@ pub(crate) struct NodeBehavior {
     pub(crate) selectable_text: bool,
     pub(crate) editable_text: bool,
     pub(crate) text_content: Option<String>,
+    pub(crate) text_selection_range_bytes: Option<Rc<dyn Fn() -> (u32, u32)>>,
+    pub(crate) text_input_editor: Option<Weak<RefCell<NodeCore>>>,
     pub(crate) link_url: Option<String>,
     pub(crate) image_url: Option<String>,
     pub(crate) link_preview_pin: Option<Rc<dyn Fn()>>,
@@ -219,6 +222,8 @@ impl Default for NodeBehavior {
             selectable_text: false,
             editable_text: false,
             text_content: None,
+            text_selection_range_bytes: None,
+            text_input_editor: None,
             link_url: None,
             image_url: None,
             link_preview_pin: None,
@@ -910,6 +915,30 @@ impl NodeRef {
 
     pub(crate) fn text_content_for_routing(&self) -> Option<String> {
         self.inner.borrow().behavior.text_content.clone()
+    }
+
+    pub(crate) fn text_selection_range_bytes_for_routing(&self) -> Option<(u32, u32)> {
+        let read_range = self
+            .inner
+            .borrow()
+            .behavior
+            .text_selection_range_bytes
+            .clone();
+        read_range.map(|read_range| read_range())
+    }
+
+    pub(crate) fn text_input_editor_for_routing(&self) -> Option<NodeRef> {
+        self.inner
+            .borrow()
+            .behavior
+            .text_input_editor
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .map(NodeRef::from_core)
+    }
+
+    pub(crate) fn set_text_input_editor_for_routing(&self, editor: &NodeRef) {
+        self.inner.borrow_mut().behavior.text_input_editor = Some(Rc::downgrade(&editor.inner));
     }
 
     pub(crate) fn set_link_url_for_routing(&self, value: Option<String>) {

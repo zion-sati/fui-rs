@@ -8,6 +8,10 @@
 unsafe extern "C" {
     #[link_name = "fui_get_accent_color"]
     fn __host_fui_get_accent_color() -> u32;
+    #[link_name = "fui_get_host_capabilities"]
+    fn __host_fui_get_host_capabilities() -> u32;
+    #[link_name = "fui_get_host_environment"]
+    fn __host_fui_get_host_environment() -> u32;
     #[link_name = "fui_get_platform_family"]
     fn __host_fui_get_platform_family() -> u32;
     #[link_name = "fui_is_coarse_pointer"]
@@ -26,6 +30,28 @@ pub fn fui_get_accent_color() -> u32 {
     #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
     {
         unsafe { crate::ffi::fui_get_accent_color() }
+    }
+}
+
+pub fn fui_get_host_capabilities() -> u32 {
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_get_host_capabilities() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_get_host_capabilities() }
+    }
+}
+
+pub fn fui_get_host_environment() -> u32 {
+    #[cfg(any(target_family = "wasm", feature = "native-runtime"))]
+    {
+        unsafe { __host_fui_get_host_environment() }
+    }
+    #[cfg(all(not(target_family = "wasm"), not(feature = "native-runtime")))]
+    {
+        unsafe { crate::ffi::fui_get_host_environment() }
     }
 }
 

@@ -55,9 +55,9 @@ impl ButtonPresenter for HouseButtonPresenter {
 
     fn present(
         &self,
-        theme: Theme,
-        state: ButtonVisualState,
-        colors: Option<ButtonColors>,
+        theme: &Theme,
+        state: &ButtonVisualState,
+        colors: Option<&ButtonColors>,
     ) -> PresenterHostStyle {
         let background = if !state.enabled {
             0xCBD5E1FF
@@ -956,9 +956,14 @@ fn dispose_stage4_page(_: &Stage4PresentationShowcase) {
     clear_demo_shared_state();
 }
 
+fn build_stage4_page() -> Stage4PresentationShowcase {
+    Application::caption("EffinDOM FUI-RS Demo • Templated Controls");
+    Stage4PresentationShowcase::new()
+}
+
 fui_managed_app!(
     Stage4PresentationShowcase,
-    Stage4PresentationShowcase::new,
+    build_stage4_page,
     |page: &Stage4PresentationShowcase| page.root.clone(),
     dispose: dispose_stage4_page
 );

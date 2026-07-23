@@ -32,6 +32,19 @@ if ! command -v emcmake >/dev/null 2>&1 || ! command -v emcc >/dev/null 2>&1; th
   fi
 fi
 
+WASM_DEPS_ROOT="${EFFINDOM_WASM_DEPS_ROOT:-}"
+if [ -z "${WASM_DEPS_ROOT}" ] && [ "${EFFINDOM_WASM_DEPS_MODE:-prebuilt}" != "source" ] && [ -f "${REPO_ROOT}/WasmDeps.lock.json" ]; then
+  WASM_DEPS_ROOT="$(node "${REPO_ROOT}/scripts/wasm-deps/prepare.mjs")"
+fi
+if [ -n "${WASM_DEPS_ROOT}" ]; then
+  for lane in wasm32 wasm32-simd wasm64 wasm64-simd; do
+    if [ ! -f "${WASM_DEPS_ROOT}/lanes/${lane}/skia/libskia.a" ]; then
+      echo "Prebuilt WASM dependency SDK is missing ${lane} Skia." >&2
+      exit 1
+    fi
+  done
+fi
+
 mkdir -p "${OUT_DIR}"
 
 SKIA_WORKDIR_BASE="${SKIA_BUILD_WORKDIR:-${HOME}/.cache/effindom-skia-build}"
@@ -224,6 +237,15 @@ prepare_icu_data() {
   local expected_config=""
   local current_config=""
 
+  if [ -n "${WASM_DEPS_ROOT}" ]; then
+    ICU_SOURCE="$(find "${WASM_DEPS_ROOT}/icu-data" -maxdepth 1 -type f -name 'icudt*l.dat' -print -quit 2>/dev/null || true)"
+    if [ -z "${ICU_SOURCE}" ]; then
+      echo "Prebuilt WASM dependency SDK is missing filtered ICU data." >&2
+      exit 1
+    fi
+    return
+  fi
+
   for candidate in "${ICU_ROOT_CANDIDATES[@]}"; do
     if [ -d "${candidate}" ]; then
       ICU_ROOT="${candidate}"
@@ -277,42 +299,58 @@ stage_variant() {
   local simd_mode="$3"
   local variant_dir="${STAGE_DIR}/${architecture_name}"
   local skia_workdir="${SKIA_WORKDIR_BASE}/${architecture_name}"
+  local prebuilt_env=()
 
   mkdir -p "${variant_dir}"
+  if [ -n "${WASM_DEPS_ROOT}" ]; then
+    prebuilt_env=(
+      "EFFINDOM_WASM_DEPS_ROOT=${WASM_DEPS_ROOT}"
+      "SKIA_GRAPHITE_WASM_DIR=${WASM_DEPS_ROOT}/lanes/${architecture_name}/skia"
+      "SKIA_GANESH_WASM_DIR=${WASM_DEPS_ROOT}/lanes/${architecture_name}/skia"
+    )
+  fi
 
   cd "${REPO_ROOT}"
-  SKIA_BUILD_WORKDIR="${skia_workdir}" \
-  EFFINDOM_WASM_ARCH="${wasm_arch}" \
-  EFFINDOM_SIMD="${simd_mode}" \
-  SKIA_SKIP_SOURCE_PREP=1 \
-  EFFINDOM_BROWSER_OUTPUT_DIR="${variant_dir}/core-out" \
-  EFFINDOM_TEMP_JS_OUTPUT="${variant_dir}/core.js" \
-  EFFINDOM_TEMP_WASM_OUTPUT="${variant_dir}/core.wasm" \
-  EFFINDOM_TEMP_SYMBOLS_OUTPUT="${variant_dir}/core.js.symbols" \
-  bash v2/core/scripts/build_wasm_arch.sh
+  env \
+    SKIA_BUILD_WORKDIR="${skia_workdir}" \
+    EFFINDOM_WASM_ARCH="${wasm_arch}" \
+    EFFINDOM_SIMD="${simd_mode}" \
+    SKIA_SKIP_SOURCE_PREP=1 \
+    EFFINDOM_BROWSER_OUTPUT_DIR="${variant_dir}/core-out" \
+    EFFINDOM_TEMP_JS_OUTPUT="${variant_dir}/core.js" \
+    EFFINDOM_TEMP_WASM_OUTPUT="${variant_dir}/core.wasm" \
+    EFFINDOM_TEMP_SYMBOLS_OUTPUT="${variant_dir}/core.js.symbols" \
+    "${prebuilt_env[@]}" \
+    bash v2/core/scripts/build_wasm_arch.sh
 
   cd "${REPO_ROOT}"
-  SKIA_BUILD_WORKDIR="${skia_workdir}" \
-  EFFINDOM_WASM_ARCH="${wasm_arch}" \
-  EFFINDOM_SIMD="${simd_mode}" \
-  SKIA_SKIP_SOURCE_PREP=1 \
-  EFFINDOM_BROWSER_OUTPUT_DIR="${variant_dir}/ui-out" \
-  EFFINDOM_SKIP_BRIDGE_HARNESS=1 \
-  EFFINDOM_TEMP_JS_OUTPUT="${variant_dir}/ui.js" \
-  EFFINDOM_TEMP_WASM_OUTPUT="${variant_dir}/ui.wasm" \
-  EFFINDOM_TEMP_SYMBOLS_OUTPUT="${variant_dir}/ui.js.symbols" \
-  bash v2/ui/scripts/build_wasm_arch.sh
+  env \
+    SKIA_BUILD_WORKDIR="${skia_workdir}" \
+    EFFINDOM_WASM_ARCH="${wasm_arch}" \
+    EFFINDOM_SIMD="${simd_mode}" \
+    SKIA_SKIP_SOURCE_PREP=1 \
+    EFFINDOM_BROWSER_OUTPUT_DIR="${variant_dir}/ui-out" \
+    EFFINDOM_SKIP_BRIDGE_HARNESS=1 \
+    EFFINDOM_TEMP_JS_OUTPUT="${variant_dir}/ui.js" \
+    EFFINDOM_TEMP_WASM_OUTPUT="${variant_dir}/ui.wasm" \
+    EFFINDOM_TEMP_SYMBOLS_OUTPUT="${variant_dir}/ui.js.symbols" \
+    "${prebuilt_env[@]}" \
+    bash v2/ui/scripts/build_wasm_arch.sh
 }
 
-prepare_skia_seed
+if [ -n "${WASM_DEPS_ROOT}" ]; then
+  green "=== Using verified prebuilt WASM dependencies at ${WASM_DEPS_ROOT} ==="
+else
+  prepare_skia_seed
 
-for variant_workdir in \
-  "${SKIA_WORKDIR_BASE}/wasm32" \
-  "${SKIA_WORKDIR_BASE}/wasm32-simd" \
-  "${SKIA_WORKDIR_BASE}/wasm64" \
-  "${SKIA_WORKDIR_BASE}/wasm64-simd"; do
-  copy_skia_seed_to_workdir "${variant_workdir}"
-done
+  for variant_workdir in \
+    "${SKIA_WORKDIR_BASE}/wasm32" \
+    "${SKIA_WORKDIR_BASE}/wasm32-simd" \
+    "${SKIA_WORKDIR_BASE}/wasm64" \
+    "${SKIA_WORKDIR_BASE}/wasm64-simd"; do
+    copy_skia_seed_to_workdir "${variant_workdir}"
+  done
+fi
 
 for variant_args in \
   "wasm32 wasm32 off" \

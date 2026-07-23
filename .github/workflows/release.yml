@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      npm_dist_tag: ${{ steps.version.outputs.npm_dist_tag }}
+      release_version: ${{ steps.version.outputs.release_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Validate release tag
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          test -n "$RELEASE_TAG"
+          case "$RELEASE_TAG" in v*) ;; *) exit 1 ;; esac
+          release_version="$(printf '%s' "$RELEASE_TAG" | sed 's/^v//')"
+          test -n "$release_version"
+          if [[ "$RELEASE_TAG" == *-* || "$RELEASE_PRERELEASE" == 'true' ]]; then
+            npm_dist_tag=next
+          else
+            npm_dist_tag=latest
+          fi
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "npm_dist_tag=$npm_dist_tag" >> "$GITHUB_OUTPUT"
+
+  verify_ci:
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      fui_rs_ci_run_id: ${{ steps.attestation.outputs.fui_rs_ci_run_id }}
+      release_inputs_run_id: ${{ steps.attestation.outputs.release_inputs_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+      - name: Verify the release commit is merged to main
+        id: release_commit
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Verify FUI-RS CI attestation and runtime pin
+        id: attestation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.release_commit.outputs.sha }}
+        run: node scripts/ci/verify-fui-rs-release-attestation.mjs
+
+  publish:
+    needs: [validate, verify_ci]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Download the tested runtime pin
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARTIFACT_RUN_ID: ${{ needs.verify_ci.outputs.release_inputs_run_id }}
+        run: |
+          mkdir -p .release-inputs
+          gh run download "$ARTIFACT_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name fui-rs-release-inputs \
+            --dir .release-inputs
+          test -f .release-inputs/release-inputs.json
+      - name: Stamp package and runtime versions from verified inputs
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.release_version }}
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const inputs = JSON.parse(fs.readFileSync('.release-inputs/release-inputs.json', 'utf8'));
+          const packagePath = 'v2/fui-rs/package.json';
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          packageJson.version = process.env.RELEASE_VERSION;
+          packageJson.dependencies['@effindomv2/runtime'] = inputs.runtimeVersion;
+          fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+          NODE
+      - name: Pack FUI-RS
+        id: package
+        working-directory: v2/fui-rs
+        run: |
+          mkdir -p "$RUNNER_TEMP/fui-rs-package"
+          npm pack --json --ignore-scripts --pack-destination "$RUNNER_TEMP/fui-rs-package" > "$RUNNER_TEMP/fui-rs-package/pack.json"
+          filename="$(node -e "const item=require(process.argv[1])[0]; process.stdout.write(item.filename)" "$RUNNER_TEMP/fui-rs-package/pack.json")"
+          tarball="$RUNNER_TEMP/fui-rs-package/$filename"
+          test -f "$tarball"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Publish to npm
+        env:
+          FUI_RS_TARBALL: ${{ steps.package.outputs.tarball }}
+          FUI_RS_VERSION: ${{ needs.validate.outputs.release_version }}
+          NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+          NPM_CONFIG_PROVENANCE: 'true'
+          NPM_DIST_TAG: ${{ needs.validate.outputs.npm_dist_tag }}
+        run: |
+          if published_version="$(npm view "@effindomv2/fui-rs@$FUI_RS_VERSION" version 2>/dev/null)"; then
+            test "$published_version" = "$FUI_RS_VERSION"
+            echo "@effindomv2/fui-rs@$FUI_RS_VERSION is already published."
+          else
+            npm publish "$FUI_RS_TARBALL" --access public --tag "$NPM_DIST_TAG"
+          fi
+      - name: Report release
+        run: |
+          {
+            echo '## FUI-RS released'
+            echo
+            echo "Package: @effindomv2/fui-rs@${{ needs.validate.outputs.release_version }}"
+            echo "npm dist-tag: ${{ needs.validate.outputs.npm_dist_tag }}"
+            echo "Tested runtime: $(node -p \"require('./.release-inputs/release-inputs.json').runtimeVersion\")"
+            echo "Verified FUI-RS CI run: ${{ needs.verify_ci.outputs.fui_rs_ci_run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"

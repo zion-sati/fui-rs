@@ -104,6 +104,19 @@ fn layout_edge_signatures_match_fui_as_order() {
 }
 
 #[test]
+fn application_caption_crosses_the_host_boundary_as_utf8() {
+    ffi::test::reset();
+
+    Application::caption("EffinDOM • FUI-RS");
+
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetApplicationCaption { caption } if caption == "EffinDOM • FUI-RS"
+    )));
+}
+
+#[test]
 fn unspecified_dimensions_remain_unset_while_explicit_auto_is_preserved() {
     ffi::test::reset();
     let implicit = button("Implicit sizing");
@@ -1980,9 +1993,7 @@ fn button_click_key_and_multi_click_handlers_fire() {
     let button = button("Action");
     button
         .on_click(move |_event| click_count_clone.set(click_count_clone.get() + 1))
-        .on_pointer_double_click(move |_event| {
-            double_count_clone.set(double_count_clone.get() + 1)
-        })
+        .on_pointer_double_click(move |_event| double_count_clone.set(double_count_clone.get() + 1))
         .on_pointer_triple_click(move |_event| {
             triple_count_clone.set(triple_count_clone.get() + 1)
         });
@@ -2508,6 +2519,8 @@ fn context_menu_show_attaches_overlay_and_hide_detaches_without_delete() {
 #[test]
 fn built_in_context_menu_matches_fui_as_text_and_background_items() {
     ffi::test::reset();
+    ffi::test::set_host_environment(1);
+    ffi::test::set_host_capabilities(0x7f);
     let target = text("Selectable text");
     Application::mount(target.clone());
     ffi::test::take_calls();
@@ -2548,6 +2561,51 @@ fn built_in_context_menu_matches_fui_as_text_and_background_items() {
         call,
         Call::SetSemanticLabel { label, .. } if label == "Reload Page"
     )));
+}
+
+#[test]
+fn context_menu_policy_filters_browser_desktop_and_headless_hosts() {
+    ffi::test::reset();
+    let target = nav_link("https://example.test");
+    Application::mount(target.clone());
+    ffi::test::take_calls();
+
+    ffi::test::set_host_environment(1);
+    ffi::test::set_host_capabilities(
+        fui::HostCapability::BrowserHistory as u32
+            | fui::HostCapability::Reload as u32
+            | fui::HostCapability::NewBrowsingContext as u32
+            | fui::HostCapability::OpenExternalUri as u32,
+    );
+    fui::bridge_callbacks::__fui_on_context_menu(target.handle().raw(), 12.0, 18.0);
+    let browser_calls = ffi::test::take_calls();
+    assert!(browser_calls
+        .iter()
+        .any(|call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "New Tab")));
+    assert!(browser_calls
+        .iter()
+        .any(|call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "Open")));
+    assert!(browser_calls.iter().any(
+        |call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "Reload Page")
+    ));
+    fui::bridge_callbacks::__fui_hide_active_context_menu();
+    ffi::test::take_calls();
+
+    ffi::test::set_host_environment(2);
+    ffi::test::set_host_capabilities(fui::HostCapability::OpenExternalUri as u32);
+    fui::bridge_callbacks::__fui_on_context_menu(target.handle().raw(), 12.0, 18.0);
+    let desktop_calls = ffi::test::take_calls();
+    assert!(desktop_calls
+        .iter()
+        .any(|call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "Open")));
+    fui::bridge_callbacks::__fui_hide_active_context_menu();
+    ffi::test::take_calls();
+
+    ffi::test::set_host_environment(3);
+    ffi::test::set_host_capabilities(0);
+    fui::bridge_callbacks::__fui_on_context_menu(target.handle().raw(), 12.0, 18.0);
+    assert!(!fui::bridge_callbacks::is_context_menu_visible());
+    ffi::test::take_calls();
 }
 
 #[test]
@@ -3304,14 +3362,20 @@ fn mobile_selection_toolbar_item_activates_on_pointer_up() {
 #[test]
 fn node_context_menu_handler_and_disable_follow_fui_as_ancestor_routing() {
     ffi::test::reset();
+    ffi::test::set_platform_family(1);
+    ffi::test::set_host_environment(2);
+    ffi::test::set_host_capabilities(fui::HostCapability::OpenExternalUri as u32);
     let invoked = Rc::new(Cell::new(0));
     let invoked_clone = invoked.clone();
+    let hosts = Rc::new(std::cell::RefCell::new(Vec::new()));
+    let hosts_clone = hosts.clone();
     let root = column();
     let child = text("child");
     root.on_context_menu(move |event| {
         assert_eq!(event.x, 32.0);
         assert_eq!(event.y, 48.0);
         assert_ne!(event.target.raw(), HandleValue::Invalid as u64);
+        hosts_clone.borrow_mut().push(event.host);
         invoked_clone.set(invoked_clone.get() + 1);
     })
     .child(&child);
@@ -3320,13 +3384,35 @@ fn node_context_menu_handler_and_disable_follow_fui_as_ancestor_routing() {
 
     fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
     assert_eq!(invoked.get(), 1);
+    assert_eq!(
+        hosts.borrow()[0].platform_family,
+        fui::PlatformFamily::Apple
+    );
+    assert_eq!(hosts.borrow()[0].environment, fui::HostEnvironment::Desktop);
+    assert!(hosts.borrow()[0].supports(fui::HostCapability::OpenExternalUri));
+
+    ffi::test::set_host_environment(1);
+    ffi::test::set_host_capabilities(fui::HostCapability::NewBrowsingContext as u32);
+    fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
+    assert_eq!(hosts.borrow()[1].environment, fui::HostEnvironment::Browser);
+    assert!(hosts.borrow()[1].supports(fui::HostCapability::NewBrowsingContext));
+
+    ffi::test::set_host_environment(3);
+    ffi::test::set_host_capabilities(0);
+    fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
+    assert_eq!(
+        hosts.borrow()[2].environment,
+        fui::HostEnvironment::Headless
+    );
+    assert!(!hosts.borrow()[2].supports(fui::HostCapability::OpenExternalUri));
+    assert_eq!(invoked.get(), 3);
 
     root.disable_context_menu(true);
     assert!(!fui::bridge_callbacks::__fui_can_show_context_menu(
         child.handle().raw()
     ));
     fui::bridge_callbacks::__fui_on_context_menu(child.handle().raw(), 32.0, 48.0);
-    assert_eq!(invoked.get(), 1);
+    assert_eq!(invoked.get(), 3);
 }
 
 #[test]
@@ -3435,6 +3521,7 @@ fn context_menu_disabled_item_and_separator_do_not_invoke() {
 #[test]
 fn context_menu_hover_pressed_pointer_up_invokes_once_and_opening_suppression_blocks_first_up() {
     ffi::test::reset();
+    ffi::test::set_host_capabilities(fui::HostCapability::OpenExternalUri as u32);
     let root = portal();
     let count = Rc::new(Cell::new(0));
     let count_for_click = count.clone();
@@ -3497,6 +3584,7 @@ fn context_menu_hover_pressed_pointer_up_invokes_once_and_opening_suppression_bl
 #[test]
 fn context_menu_stale_opening_suppression_does_not_block_later_primary_item_click() {
     ffi::test::reset();
+    ffi::test::set_host_capabilities(fui::HostCapability::OpenExternalUri as u32);
     let root = portal();
     let count = Rc::new(Cell::new(0));
     let count_for_click = count.clone();
@@ -3541,6 +3629,35 @@ fn context_menu_stale_opening_suppression_does_not_block_later_primary_item_clic
         0,
     );
     assert_eq!(count.get(), 1);
+    assert!(!menu.is_open());
+}
+
+#[test]
+fn context_menu_primary_pointer_down_on_owner_outside_panel_dismisses() {
+    ffi::test::reset();
+    let root = portal();
+    let owner = flex_box();
+    let menu = context_menu(vec![MenuItem::new(
+        "Primary",
+        ContextMenuAction::OpenLink,
+    )]);
+    root.child(&owner).child(&menu);
+    Application::mount(root);
+    ffi::test::take_calls();
+
+    menu.show(24.0, 32.0);
+    ffi::test::take_calls();
+    assert!(menu.is_open());
+
+    pointer_event(
+        PointerEventType::Down,
+        owner.handle().raw(),
+        10_000.0,
+        10_000.0,
+        0,
+        1,
+        1,
+    );
     assert!(!menu.is_open());
 }
 
@@ -3830,6 +3947,35 @@ fn hover_cursor_tracks_hovered_node_and_resets_on_leave() {
     pointer_event(PointerEventType::Leave, handle, 24.0, 36.0, 0, 0, 0);
     let calls = ffi::test::take_calls();
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Default as u32]);
+}
+
+#[test]
+fn text_selection_drag_keeps_text_cursor_until_pointer_release() {
+    ffi::test::reset();
+    let selectable = text("Selectable");
+    let outside = flex_box();
+    outside.cursor(CursorStyle::Pointer);
+    let root = column();
+    root.child(&selectable);
+    root.child(&outside);
+    Application::mount(root);
+    ffi::test::take_calls();
+
+    let text_handle = selectable.handle().raw();
+    let outside_handle = outside.handle().raw();
+    pointer_event(PointerEventType::Enter, text_handle, 8.0, 8.0, 0, 0, 0);
+    pointer_event(PointerEventType::Down, text_handle, 8.0, 8.0, 0, 1, 1);
+    pointer_event(PointerEventType::Leave, text_handle, 8.0, 40.0, 0, 1, 1);
+    pointer_event(PointerEventType::Enter, outside_handle, 40.0, 40.0, 0, 1, 1);
+    let calls = ffi::test::take_calls();
+    assert_eq!(
+        cursor_styles(&calls).last(),
+        Some(&(CursorStyle::Text as u32))
+    );
+
+    pointer_event(PointerEventType::Up, outside_handle, 40.0, 40.0, 0, 0, 0);
+    let calls = ffi::test::take_calls();
+    assert_eq!(cursor_styles(&calls), vec![CursorStyle::Pointer as u32]);
 }
 
 #[test]

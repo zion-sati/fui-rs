@@ -4,6 +4,19 @@
   "private": false,
   "license": "MIT",
   "description": "EffinDom browser runtime bridge, manifest assets, and runtime URL helpers",
+  "keywords": [
+    "effindom",
+    "webassembly",
+    "wasm",
+    "retained-mode",
+    "ui-runtime",
+    "canvas-ui",
+    "skia",
+    "accessibility",
+    "assemblyscript",
+    "rust"
+  ],
+  "repository": "https://github.com/zion-sati/EffinDOM",
   "type": "commonjs",
   "publishConfig": {
     "access": "public"
@@ -71,9 +84,7 @@
     "test": "playwright test -c playwright.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "@assemblyscript/loader": "^0.28.19"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@playwright/test": "1.59.1",
     "@types/node": "^24.10.1",

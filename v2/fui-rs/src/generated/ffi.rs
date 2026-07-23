@@ -189,6 +189,33 @@ pub enum SemanticRole {
 }
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlatformFamily {
+    Unknown = 0,
+    Apple = 1,
+    Windows = 2,
+    Linux = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostEnvironment {
+    Unknown = 0,
+    Browser = 1,
+    Desktop = 2,
+    Headless = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostCapability {
+    BrowserHistory = 1,
+    Reload = 2,
+    NewBrowsingContext = 4,
+    OpenExternalUri = 8,
+    ClipboardRead = 16,
+    ClipboardWrite = 32,
+    FileDialogs = 64,
+}
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CursorStyle {
     Default = 0,
     Pointer = 1,
@@ -447,7 +474,7 @@ unsafe extern "C" {
         height: f32,
         click_count: i32,
         modifiers: u32,
-    );
+    ) -> bool;
     pub fn ui_on_wheel_event(delta_x: f32, delta_y: f32);
     pub fn ui_touch_scroll_begin(handle: u64, logical_x: f32, logical_y: f32, timestamp_ms: f64);
     pub fn ui_touch_scroll_update(delta_x: f32, delta_y: f32, timestamp_ms: f64);
@@ -489,6 +516,7 @@ unsafe extern "C" {
         out_width: *mut f32,
         out_height: *mut f32,
     ) -> bool;
+    pub fn ui_get_focused_handle() -> u64;
     pub fn ui_get_visible_bounds(
         handle: u64,
         out_x: *mut f32,
@@ -496,6 +524,7 @@ unsafe extern "C" {
         out_width: *mut f32,
         out_height: *mut f32,
     ) -> bool;
+    pub fn ui_set_host_callbacks(callbacks: *const u32);
 }
 
 #[cfg(any(target_arch = "wasm32", feature = "native-runtime"))]
@@ -505,6 +534,7 @@ unsafe extern "C" {
     pub fn get_viewport_width() -> f32;
     pub fn get_viewport_height() -> f32;
     pub fn get_device_pixel_ratio() -> f32;
+    pub fn fui_set_application_caption(captionPtr: usize, captionLen: u32);
     pub fn fui_set_pointer_capture(handle: u64);
     pub fn fui_release_pointer_capture();
     pub fn fui_reload_page();
@@ -567,6 +597,8 @@ unsafe extern "C" {
     pub fn fui_is_dark_mode() -> bool;
     pub fn fui_get_accent_color() -> u32;
     pub fn fui_get_platform_family() -> u32;
+    pub fn fui_get_host_environment() -> u32;
+    pub fn fui_get_host_capabilities() -> u32;
     pub fn fui_is_coarse_pointer() -> bool;
     pub fn fui_show_url_preview(ptr: usize, len: u32);
     pub fn fui_hide_url_preview();

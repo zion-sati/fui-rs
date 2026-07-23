@@ -2,6 +2,18 @@
 
 #include <stdint.h>
 
+#if defined(_WIN32)
+#if defined(EFFINDOM_V2_CORE_BUILDING_DLL)
+#define EFFINDOM_CORE_API __declspec(dllexport)
+#else
+#define EFFINDOM_CORE_API __declspec(dllimport)
+#endif
+#elif defined(__GNUC__) || defined(__clang__)
+#define EFFINDOM_CORE_API __attribute__((visibility("default")))
+#else
+#define EFFINDOM_CORE_API
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -129,43 +141,43 @@ typedef enum EdDeviceState {
     ED_DEVICE_RECOVERING = 2
 } EdDeviceState;
 
-uint32_t ed_get_abi_version(void);
+EFFINDOM_CORE_API uint32_t ed_get_abi_version(void);
 
-void ed_init(uint32_t physical_w, uint32_t physical_h, float dpr);
-void ed_init_webgl(uint32_t physical_w, uint32_t physical_h, float dpr);
-void ed_init_sw(uint32_t physical_w, uint32_t physical_h, float dpr);
-void ed_resize(uint32_t physical_w, uint32_t physical_h, float dpr);
-void ed_set_viewport_size(float logical_w, float logical_h);
-void ed_set_viewport_transform(float scale, float offset_x, float offset_y);
-float ed_get_viewport_scale(void);
-float ed_get_viewport_offset_x(void);
-float ed_get_viewport_offset_y(void);
-void ed_set_viewport_zoom_from_scene_anchor(float scale, float anchor_scene_x, float anchor_scene_y, float screen_x, float screen_y);
-void ed_pan_viewport_by(float delta_x, float delta_y);
-void ed_begin_viewport_pan(double timestamp_ms);
-void ed_update_viewport_pan(float delta_x, float delta_y, double timestamp_ms);
-void ed_end_viewport_pan(double timestamp_ms);
-bool ed_tick_viewport_pan_momentum(double timestamp_ms);
-void ed_clear_viewport_pan_momentum(void);
+EFFINDOM_CORE_API void ed_init(uint32_t physical_w, uint32_t physical_h, float dpr);
+EFFINDOM_CORE_API void ed_init_webgl(uint32_t physical_w, uint32_t physical_h, float dpr);
+EFFINDOM_CORE_API void ed_init_sw(uint32_t physical_w, uint32_t physical_h, float dpr);
+EFFINDOM_CORE_API void ed_resize(uint32_t physical_w, uint32_t physical_h, float dpr);
+EFFINDOM_CORE_API void ed_set_viewport_size(float logical_w, float logical_h);
+EFFINDOM_CORE_API void ed_set_viewport_transform(float scale, float offset_x, float offset_y);
+EFFINDOM_CORE_API float ed_get_viewport_scale(void);
+EFFINDOM_CORE_API float ed_get_viewport_offset_x(void);
+EFFINDOM_CORE_API float ed_get_viewport_offset_y(void);
+EFFINDOM_CORE_API void ed_set_viewport_zoom_from_scene_anchor(float scale, float anchor_scene_x, float anchor_scene_y, float screen_x, float screen_y);
+EFFINDOM_CORE_API void ed_pan_viewport_by(float delta_x, float delta_y);
+EFFINDOM_CORE_API void ed_begin_viewport_pan(double timestamp_ms);
+EFFINDOM_CORE_API void ed_update_viewport_pan(float delta_x, float delta_y, double timestamp_ms);
+EFFINDOM_CORE_API void ed_end_viewport_pan(double timestamp_ms);
+EFFINDOM_CORE_API bool ed_tick_viewport_pan_momentum(double timestamp_ms);
+EFFINDOM_CORE_API void ed_clear_viewport_pan_momentum(void);
 
-void ed_register_font(uint32_t font_id, const uint8_t* bytes, uint32_t len);
-void ed_unregister_font(uint32_t font_id);
-void ed_register_svg(uint32_t svg_id, const uint8_t* bytes, uint32_t len);
-void ed_register_texture_rgba(uint32_t texture_id, const uint8_t* rgba, uint32_t w, uint32_t h, uint32_t byte_length);
-void ed_register_texture_sub_rgba(uint32_t texture_id, const uint8_t* sub_rgba, uint32_t sub_x, uint32_t sub_y, uint32_t sub_w, uint32_t sub_h, uint32_t full_w, uint32_t full_h);
-void ed_unregister_texture(uint32_t texture_id);
+EFFINDOM_CORE_API void ed_register_font(uint32_t font_id, const uint8_t* bytes, uint32_t len);
+EFFINDOM_CORE_API void ed_unregister_font(uint32_t font_id);
+EFFINDOM_CORE_API void ed_register_svg(uint32_t svg_id, const uint8_t* bytes, uint32_t len);
+EFFINDOM_CORE_API void ed_register_texture_rgba(uint32_t texture_id, const uint8_t* rgba, uint32_t w, uint32_t h, uint32_t byte_length);
+EFFINDOM_CORE_API void ed_register_texture_sub_rgba(uint32_t texture_id, const uint8_t* sub_rgba, uint32_t sub_x, uint32_t sub_y, uint32_t sub_w, uint32_t sub_h, uint32_t full_w, uint32_t full_h);
+EFFINDOM_CORE_API void ed_unregister_texture(uint32_t texture_id);
 
-void ed_execute_command_buffer(const uint32_t* buffer, uint32_t length);
-void ed_render_frame(double current_time_ms);
-void ed_recover_device(void);
+EFFINDOM_CORE_API void ed_execute_command_buffer(const uint32_t* buffer, uint32_t length);
+EFFINDOM_CORE_API void ed_render_frame(double current_time_ms);
+EFFINDOM_CORE_API void ed_recover_device(void);
 
-uint64_t ed_hit_test(float logical_x, float logical_y);
-ed_ptr_t ed_get_sw_framebuffer(void);
-EdBackendType ed_get_backend_type(void);
-EdDeviceState ed_get_device_state(void);
+EFFINDOM_CORE_API uint64_t ed_hit_test(float logical_x, float logical_y);
+EFFINDOM_CORE_API ed_ptr_t ed_get_sw_framebuffer(void);
+EFFINDOM_CORE_API EdBackendType ed_get_backend_type(void);
+EFFINDOM_CORE_API EdDeviceState ed_get_device_state(void);
 
 /* Debug / test only – simulates a device loss without destroying the GPU context. */
-void ed_debug_simulate_device_lost(void);
+EFFINDOM_CORE_API void ed_debug_simulate_device_lost(void);
 
 /*
  * Immediate-mode canvas drawing API.
@@ -180,67 +192,67 @@ void ed_debug_simulate_device_lost(void);
 
 /* ── Canvas state ─────────────────────────────────────────────── */
 
-void ed_canvas_save(void* canvas);
-void ed_canvas_restore(void* canvas);
-void ed_canvas_translate(void* canvas, float x, float y);
-void ed_canvas_scale(void* canvas, float sx, float sy);
-void ed_canvas_rotate(void* canvas, float degrees);
-void ed_canvas_clip_rect(void* canvas, float x, float y, float w, float h);
-void ed_canvas_clip_round_rect(void* canvas, float x, float y, float w, float h,
+EFFINDOM_CORE_API void ed_canvas_save(void* canvas);
+EFFINDOM_CORE_API void ed_canvas_restore(void* canvas);
+EFFINDOM_CORE_API void ed_canvas_translate(void* canvas, float x, float y);
+EFFINDOM_CORE_API void ed_canvas_scale(void* canvas, float sx, float sy);
+EFFINDOM_CORE_API void ed_canvas_rotate(void* canvas, float degrees);
+EFFINDOM_CORE_API void ed_canvas_clip_rect(void* canvas, float x, float y, float w, float h);
+EFFINDOM_CORE_API void ed_canvas_clip_round_rect(void* canvas, float x, float y, float w, float h,
                                float top_left, float top_right, float bottom_right, float bottom_left);
 
 /* ── Drawing primitives ───────────────────────────────────────── */
 
-void ed_canvas_draw_rect(void* canvas, float x, float y, float w, float h,
+EFFINDOM_CORE_API void ed_canvas_draw_rect(void* canvas, float x, float y, float w, float h,
                          uint32_t fill_color, uint32_t stroke_color, float stroke_width);
 
-void ed_canvas_draw_circle(void* canvas, float cx, float cy, float radius,
+EFFINDOM_CORE_API void ed_canvas_draw_circle(void* canvas, float cx, float cy, float radius,
                            uint32_t fill_color, uint32_t stroke_color, float stroke_width);
 
-void ed_canvas_draw_line(void* canvas, float x1, float y1, float x2, float y2,
+EFFINDOM_CORE_API void ed_canvas_draw_line(void* canvas, float x1, float y1, float x2, float y2,
                          uint32_t color, float stroke_width);
 
-void ed_canvas_draw_round_rect(void* canvas, float x, float y, float w, float h,
+EFFINDOM_CORE_API void ed_canvas_draw_round_rect(void* canvas, float x, float y, float w, float h,
                                float rx, float ry,
                                uint32_t fill_color, uint32_t stroke_color, float stroke_width);
 
 /* ── Path API ──────────────────────────────────────────────────── */
 
-uint32_t ed_path_create(void);
-void ed_path_destroy(uint32_t path_id);
+EFFINDOM_CORE_API uint32_t ed_path_create(void);
+EFFINDOM_CORE_API void ed_path_destroy(uint32_t path_id);
 
-void ed_path_move_to(uint32_t path_id, float x, float y);
-void ed_path_line_to(uint32_t path_id, float x, float y);
-void ed_path_quad_to(uint32_t path_id, float cx, float cy, float x, float y);
-void ed_path_cubic_to(uint32_t path_id, float cx1, float cy1, float cx2, float cy2, float x, float y);
-void ed_path_close(uint32_t path_id);
-void ed_path_add_rect(uint32_t path_id, float x, float y, float w, float h);
-void ed_path_add_circle(uint32_t path_id, float cx, float cy, float r);
+EFFINDOM_CORE_API void ed_path_move_to(uint32_t path_id, float x, float y);
+EFFINDOM_CORE_API void ed_path_line_to(uint32_t path_id, float x, float y);
+EFFINDOM_CORE_API void ed_path_quad_to(uint32_t path_id, float cx, float cy, float x, float y);
+EFFINDOM_CORE_API void ed_path_cubic_to(uint32_t path_id, float cx1, float cy1, float cx2, float cy2, float x, float y);
+EFFINDOM_CORE_API void ed_path_close(uint32_t path_id);
+EFFINDOM_CORE_API void ed_path_add_rect(uint32_t path_id, float x, float y, float w, float h);
+EFFINDOM_CORE_API void ed_path_add_circle(uint32_t path_id, float cx, float cy, float r);
 
-void ed_canvas_draw_path(void* canvas, uint32_t path_id,
+EFFINDOM_CORE_API void ed_canvas_draw_path(void* canvas, uint32_t path_id,
                          uint32_t fill_color, uint32_t stroke_color, float stroke_width);
 
 /* ── Text ──────────────────────────────────────────────────────── */
 
-void ed_canvas_draw_text_node(void* canvas, uint32_t handle_lo, uint32_t handle_hi, float x, float y);
+EFFINDOM_CORE_API void ed_canvas_draw_text_node(void* canvas, uint32_t handle_lo, uint32_t handle_hi, float x, float y);
 
 /* ── Image / SVG ───────────────────────────────────────────────── */
 
-void ed_canvas_draw_image(void* canvas, uint32_t texture_id,
+EFFINDOM_CORE_API void ed_canvas_draw_image(void* canvas, uint32_t texture_id,
                           float x, float y, float w, float h,
                           uint32_t sampling_kind, uint32_t max_aniso);
 
-void ed_canvas_draw_svg(void* canvas, uint32_t svg_id,
+EFFINDOM_CORE_API void ed_canvas_draw_svg(void* canvas, uint32_t svg_id,
                         float x, float y, float w, float h);
 
-void ed_canvas_draw_batch(void* canvas, const uint32_t* words, uint32_t word_count);
+EFFINDOM_CORE_API void ed_canvas_draw_batch(void* canvas, const uint32_t* words, uint32_t word_count);
 
 /* ── Offscreen surfaces ────────────────────────────────────────── */
 
-uint32_t ed_canvas_create_offscreen(uint32_t width, uint32_t height);
-void*    ed_canvas_get_offscreen_canvas(uint32_t offscreen_id);
-void     ed_canvas_read_offscreen_pixels(uint32_t offscreen_id, uint8_t* out_rgba);
-void     ed_canvas_destroy_offscreen(uint32_t offscreen_id);
+EFFINDOM_CORE_API uint32_t ed_canvas_create_offscreen(uint32_t width, uint32_t height);
+EFFINDOM_CORE_API void*    ed_canvas_get_offscreen_canvas(uint32_t offscreen_id);
+EFFINDOM_CORE_API void     ed_canvas_read_offscreen_pixels(uint32_t offscreen_id, uint8_t* out_rgba);
+EFFINDOM_CORE_API void     ed_canvas_destroy_offscreen(uint32_t offscreen_id);
 
 #ifdef __cplusplus
 }

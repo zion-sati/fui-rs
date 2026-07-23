@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FUI-RS Demo</title>
     <style>
+      {{LOADING_OVERLAY_STYLES}}
+    </style>
+    <style>
       :root {
         color-scheme: light dark;
         --shell-bg: #f7f4ec;
@@ -55,6 +58,7 @@
   <body>
     <div class="canvas-shell" id="fui-rs-demo-shell" data-effindom-canvas-size-source>
       <canvas id="fui-canvas"></canvas>
+      {{LOADING_OVERLAY_BODY}}
     </div>
     <script src="./effindom-runtime-config.js"></script>
     <script src="./bridge.js"></script>
