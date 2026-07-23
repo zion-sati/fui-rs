@@ -1,27 +1,13 @@
-name: FUI-RS CI
+name: FUI-RS Integration
 
 on:
-  push:
-    branches: [main]
-    paths: &fui_rs_ci_inputs
-      - '.github/workflows/fui-rs-ci.yml'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'eslint.config.ts'
-      - 'scripts/ci/**'
-      - 'v2/abi/**'
-      - 'v2/core/include/**'
-      - 'v2/ui/include/**'
-      - 'v2/browser-bridge/**'
-      - 'v2/fui-rs/**'
-  pull_request:
-    paths: *fui_rs_ci_inputs
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  integration:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -54,31 +40,9 @@ jobs:
         run: |
           npm install --package-lock-only --ignore-scripts
           npm ci
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Lint, typecheck, and run Rust checks
-        run: |
-          npm run lint
-          npm run typecheck
-          npm --workspace v2/fui-rs run lint:rust
-          npm run test
+      - name: Install all Playwright browsers
+        run: npx playwright install --with-deps
       - name: Build the browser demo
         run: npm run build
-      - name: Run browser integration tests
-        run: npm run test:browser:release-gate
-      - name: Record the tested runtime pin
-        env:
-          RUNTIME_VERSION: ${{ steps.runtime.outputs.version }}
-        run: |
-          mkdir -p .release-inputs
-          node - <<'NODE'
-          const fs = require('node:fs');
-          fs.writeFileSync('.release-inputs/release-inputs.json', `${JSON.stringify({ runtimeVersion: process.env.RUNTIME_VERSION }, null, 2)}\n`);
-          NODE
-      - name: Upload FUI-RS release inputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: fui-rs-release-inputs
-          path: .release-inputs/release-inputs.json
-          if-no-files-found: error
-          retention-days: 90
+      - name: Run the full browser integration suite
+        run: npm run test:integration

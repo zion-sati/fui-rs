@@ -504,6 +504,7 @@ async function clickProjectedInput(page: Page, name: string): Promise<void> {
 }
 
 async function doubleClickProjectedInput(page: Page, name: string, xFraction = 0.5): Promise<void> {
+  await waitForProjectedInput(page, name);
   const rect = await page.evaluate((fieldName) => {
     const input = document.querySelector<HTMLInputElement>(`form[data-effindom-projected-form="true"] input[name="${fieldName}"]`);
     if (input === null) {
@@ -593,7 +594,7 @@ test('shows built-in font replay progress during a warm route load', async ({ pa
   const fontsBlocked = new Promise<void>((resolve) => {
     releaseFonts = resolve;
   });
-  await page.route('**/v2/fui-rs/fonts/*.ttf', async (route) => {
+  await page.route('**/fonts/*.ttf', async (route) => {
     await fontsBlocked;
     await route.continue();
   });

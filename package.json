@@ -14,6 +14,8 @@
     "lint": "npm run lint:v2",
     "typecheck": "npm --workspace v2/fui-rs run typecheck",
     "test": "npm --workspace v2/fui-rs run test:unit",
+    "test:browser:release-gate": "playwright test -c v2/fui-rs/playwright.config.ts --project=chromium --grep 'shows the styled loading overlay before throttled bridge scripts arrive|generated routed-demo host services and host events flow into the Rust home route|runs routed-demo workers through the browser worker bridge and generated worker host services|routes to the stage 5 dropdown page and selects through keyboard interaction'",
+    "test:integration": "playwright test -c v2/fui-rs/playwright.config.ts",
     "build": "npm run lint:v2 && npm --workspace v2/fui-rs run typecheck && npm --workspace v2/fui-rs run build",
     "publish:local": "bash scripts/publish/local/fui-rs.sh",
     "publish:npm": "bash scripts/publish/npm/fui-rs.sh",
