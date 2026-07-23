@@ -1,5 +1,10 @@
 # FUI-RS — Rust SDK for EffinDom v2
 
+[![FUI-RS CI](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml/badge.svg)](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml)
+[![Integration tests](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-integration.yml/badge.svg)](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-integration.yml)
+[![npm](https://img.shields.io/npm/v/@effindomv2/fui-rs?label=fui-rs)](https://www.npmjs.com/package/@effindomv2/fui-rs)
+[![License: AGPL-3.0 or commercial](https://img.shields.io/badge/license-AGPL--3.0%20or%20commercial-green.svg)](LICENSE.md)
+
 FUI-RS is the Rust retained-mode UI SDK for EffinDom v2. It builds Rust UI
 objects into WebAssembly and runs them through the shared EffinDom browser
 runtime.
