@@ -130,11 +130,12 @@ jobs:
           fi
       - name: Report release
         run: |
+          runtime_version="$(node -p "require('./.release-inputs/release-inputs.json').runtimeVersion")"
           {
             echo '## FUI-RS released'
             echo
             echo "Package: @effindomv2/fui-rs@${{ needs.validate.outputs.release_version }}"
             echo "npm dist-tag: ${{ needs.validate.outputs.npm_dist_tag }}"
-            echo "Tested runtime: $(node -p \"require('./.release-inputs/release-inputs.json').runtimeVersion\")"
+            echo "Tested runtime: $runtime_version"
             echo "Verified FUI-RS CI run: ${{ needs.verify_ci.outputs.fui_rs_ci_run_id }}"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,4 @@
-import { defineHostServices, hostService } from "../../browser-bridge/src/managed-harness/host-services.js";
+import { defineHostServices, hostService } from "@effindomv2/runtime/managed-harness";
 
 function unsupported(): never {
   throw new Error("Framework host service definitions are generator metadata only.");

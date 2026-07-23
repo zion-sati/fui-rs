@@ -1,4 +1,4 @@
-import { defineHostEvents, hostEvent } from "../../../browser-bridge/src/managed-harness/host-events.js";
+import { defineHostEvents, hostEvent } from "@effindomv2/runtime/managed-harness";
 import {
   readDemoShellState,
   subscribeDemoShellAccentColor,

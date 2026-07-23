@@ -3,10 +3,7 @@
 set -euo pipefail
 
 PACKAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_ROOT="$(cd "${PACKAGE_DIR}/../.." && pwd)"
 PACKAGE_JSON="${PACKAGE_DIR}/package.json"
-RUNTIME_PACKAGE_JSON="${REPO_ROOT}/v2/browser-bridge/package.json"
-RUNTIME_MANIFEST="${REPO_ROOT}/v2/browser-bridge/dist/effindom.v2.manifest.json"
 
 runtime_spec="$(
   node -e '
@@ -24,19 +21,4 @@ fi
 if ! printf '%s' "${runtime_spec}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$'; then
   echo "@effindomv2/runtime must be pinned to an exact version, found: ${runtime_spec}" >&2
   exit 1
-fi
-
-if [ -f "${RUNTIME_PACKAGE_JSON}" ] && [ -f "${RUNTIME_MANIFEST}" ]; then
-  runtime_version="$(
-    node -e '
-      const fs = require("node:fs");
-      const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-      process.stdout.write(String(pkg.version ?? ""));
-    ' "${RUNTIME_PACKAGE_JSON}"
-  )"
-
-  if [ -n "${runtime_version}" ] && [ "${runtime_spec}" != "${runtime_version}" ]; then
-    echo "@effindomv2/fui-rs depends on @effindomv2/runtime@${runtime_spec}, but the local runtime is ${runtime_version}." >&2
-    exit 1
-  fi
 fi

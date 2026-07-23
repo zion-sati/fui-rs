@@ -12,7 +12,6 @@ on:
       - 'v2/abi/**'
       - 'v2/core/include/**'
       - 'v2/ui/include/**'
-      - 'v2/browser-bridge/**'
       - 'v2/fui-rs/**'
   pull_request:
     paths: *fui_rs_ci_inputs
@@ -56,6 +55,14 @@ jobs:
           npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+      - name: Assert the runtime package is framework-agnostic
+        run: |
+          node - <<'NODE'
+          const runtime = require('./node_modules/@effindomv2/runtime/package.json');
+          if (runtime.dependencies?.['@assemblyscript/loader'] !== undefined) {
+            throw new Error('@effindomv2/runtime must not depend on @assemblyscript/loader.');
+          }
+          NODE
       - name: Lint, typecheck, and run Rust checks
         run: |
           npm run lint
@@ -64,6 +71,8 @@ jobs:
           npm run test
       - name: Build the browser demo
         run: npm run build
+      - name: Run FUI-RS runtime package boundary smoke
+        run: npm run test:runtime-boundary
       - name: Run browser integration tests
         run: npm run test:browser:release-gate
       - name: Record the tested runtime pin

@@ -1250,7 +1250,7 @@ test('copies dropped files through the worker-backed save demo', async ({ page }
   }, { timeout: 4000 }).toBe('todo: ship');
 });
 
-test('routes to the stage 5 dropdown page and selects through keyboard interaction', async ({ page }) => {
+test('mounts a Rust app through raw WebAssembly instantiation and selects through keyboard interaction', async ({ page }) => {
   await page.goto(`${baseUrl}/v2/fui-rs/demo/stage5/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);
   await expect.poll(async () => {

@@ -1,9 +1,9 @@
-import type { HarnessExports, HarnessState } from '../../browser-bridge/src/managed-harness.js';
+import type { HarnessExports, HarnessState } from '@effindomv2/runtime/managed-harness';
 import {
   startRoutedHarness,
   type RoutedHarnessManagerState,
   type RoutedHarnessRoute,
-} from '../../browser-bridge/src/routed-harness.js';
+} from '@effindomv2/runtime/routed-harness';
 import { demoHostEvents } from './src/host-events.js';
 import { demoHostServices } from './src/host-services.js';
 import {
@@ -11,7 +11,7 @@ import {
   setDemoShellDarkMode,
   setDemoShellTick,
 } from './src/host-service-state.js';
-import { readHostAccentColor } from '../../browser-bridge/src/managed-harness/ui-chrome.js';
+import { readHostAccentColor } from '@effindomv2/runtime/managed-harness';
 
 declare global {
   interface Window {

@@ -21,7 +21,6 @@ const scopedPrefixes = [
   'v2/abi/',
   'v2/core/include/',
   'v2/ui/include/',
-  'v2/browser-bridge/',
   'v2/fui-rs/',
 ];
 

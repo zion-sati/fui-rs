@@ -14,6 +14,23 @@ HOST_SERVICE_GENERATOR_BUILD="${PACKAGE_DIR}/build/generate-host-services.mjs"
 HOST_EVENT_GENERATOR_BUILD="${PACKAGE_DIR}/build/generate-host-events.mjs"
 WORKER_BOOTSTRAP_BUILD="${PACKAGE_DIR}/build/worker-bootstrap.js"
 WORKER_BOOTSTRAP_MAP_BUILD="${PACKAGE_DIR}/build/worker-bootstrap.js.map"
+RUNTIME_PACKAGE_DIR="${PACKAGE_DIR}/node_modules/@effindomv2/runtime"
+LOADING_OVERLAY_STYLES_FILE="${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-styles.css"
+LOADING_OVERLAY_BODY_FILE="${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-body.html"
+WORKER_BOOTSTRAP_SOURCE="${REPO_ROOT}/v2/browser-bridge/src/managed-harness/worker-bootstrap.ts"
+
+if [ ! -d "${RUNTIME_PACKAGE_DIR}" ]; then
+  RUNTIME_PACKAGE_DIR="${REPO_ROOT}/node_modules/@effindomv2/runtime"
+fi
+if [ ! -f "${LOADING_OVERLAY_STYLES_FILE}" ]; then
+  LOADING_OVERLAY_STYLES_FILE="${RUNTIME_PACKAGE_DIR}/src/managed-harness/loading-overlay-styles.css"
+fi
+if [ ! -f "${LOADING_OVERLAY_BODY_FILE}" ]; then
+  LOADING_OVERLAY_BODY_FILE="${RUNTIME_PACKAGE_DIR}/src/managed-harness/loading-overlay-body.html"
+fi
+if [ ! -f "${WORKER_BOOTSTRAP_SOURCE}" ]; then
+  WORKER_BOOTSTRAP_SOURCE="${RUNTIME_PACKAGE_DIR}/src/managed-harness/worker-bootstrap.ts"
+fi
 
 mkdir -p "${PACKAGE_DIR}/build" "${OUT_DIR}" "${DEMO_OUT_DIR}" "${DEMO_OUT_DIR}/workbench" "${DEMO_OUT_DIR}/stage4" "${DEMO_OUT_DIR}/stage5" "${DEMO_OUT_DIR}/immediate-drawing"
 
@@ -173,7 +190,7 @@ npx esbuild "${PACKAGE_DIR}/demo/worker-host-services.ts" \
   --outfile="${DEMO_OUT_DIR}/worker-host-services.js" \
   --sourcemap
 
-npx esbuild "${REPO_ROOT}/v2/browser-bridge/src/managed-harness/worker-bootstrap.ts" \
+npx esbuild "${WORKER_BOOTSTRAP_SOURCE}" \
   --bundle \
   --format=iife \
   --platform=browser \
@@ -186,8 +203,8 @@ cp "${WORKER_BOOTSTRAP_BUILD}" "${DEMO_OUT_DIR}/worker-bootstrap.js"
 cp "${WORKER_BOOTSTRAP_MAP_BUILD}" "${DEMO_OUT_DIR}/worker-bootstrap.js.map"
 
 cp "${PACKAGE_DIR}/browser/index.html" "${OUT_DIR}/index.html"
-LOADING_OVERLAY_BODY="$(cat "${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-body.html")"
-LOADING_OVERLAY_STYLES="$(cat "${REPO_ROOT}/v2/browser-bridge/src/managed-harness/loading-overlay-styles.css")"
+LOADING_OVERLAY_BODY="$(cat "${LOADING_OVERLAY_BODY_FILE}")"
+LOADING_OVERLAY_STYLES="$(cat "${LOADING_OVERLAY_STYLES_FILE}")"
 render_demo_shell() {
   local source="$1"
   local destination="$2"

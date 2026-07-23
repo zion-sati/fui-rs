@@ -1,4 +1,4 @@
-import { defineHostServices, hostService } from "../../../browser-bridge/src/managed-harness/host-services.js";
+import { defineHostServices, hostService } from "@effindomv2/runtime/managed-harness";
 
 export const demoWorkerHostServices = defineHostServices({
   demoWorkerClock: {

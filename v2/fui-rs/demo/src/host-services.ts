@@ -1,5 +1,5 @@
-import { defineHostServices, hostService } from "../../../browser-bridge/src/managed-harness/host-services.js";
-import { formatPackedColorAsHex, readHostAccentColor } from "../../../browser-bridge/src/managed-harness/ui-chrome.js";
+import { defineHostServices, hostService } from "@effindomv2/runtime/managed-harness";
+import { formatPackedColorAsHex, readHostAccentColor } from "@effindomv2/runtime/managed-harness";
 import { readDemoShellState } from "./host-service-state.js";
 
 export const demoHostServices = defineHostServices({
