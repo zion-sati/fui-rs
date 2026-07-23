@@ -6,6 +6,7 @@ PACKAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "${PACKAGE_DIR}/../.." && pwd)"
 PACKAGE_JSON="${PACKAGE_DIR}/package.json"
 RUNTIME_PACKAGE_JSON="${REPO_ROOT}/v2/browser-bridge/package.json"
+RUNTIME_MANIFEST="${REPO_ROOT}/v2/browser-bridge/dist/effindom.v2.manifest.json"
 
 runtime_spec="$(
   node -e '
@@ -25,7 +26,7 @@ if ! printf '%s' "${runtime_spec}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A
   exit 1
 fi
 
-if [ -f "${RUNTIME_PACKAGE_JSON}" ]; then
+if [ -f "${RUNTIME_PACKAGE_JSON}" ] && [ -f "${RUNTIME_MANIFEST}" ]; then
   runtime_version="$(
     node -e '
       const fs = require("node:fs");
