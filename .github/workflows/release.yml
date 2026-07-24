@@ -91,7 +91,7 @@ jobs:
             --name fui-rs-release-inputs \
             --dir .release-inputs
           test -f .release-inputs/release-inputs.json
-      - name: Stamp package and runtime versions from verified inputs
+      - name: Stamp package, crate, and runtime versions from verified inputs
         env:
           RELEASE_VERSION: ${{ needs.validate.outputs.release_version }}
         run: |
@@ -103,6 +103,29 @@ jobs:
           packageJson.version = process.env.RELEASE_VERSION;
           packageJson.dependencies['@effindomv2/runtime'] = inputs.runtimeVersion;
           fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
+          const cargoPath = 'v2/fui-rs/Cargo.toml';
+          const cargoToml = fs.readFileSync(cargoPath, 'utf8');
+          let inPackage = false;
+          let stampedVersion = false;
+          const stampedCargoToml = cargoToml
+            .split('\n')
+            .map((line) => {
+              const section = line.match(/^\s*\[([^\]]+)\]\s*$/);
+              if (section !== null) {
+                inPackage = section[1] === 'package';
+                return line;
+              }
+              if (inPackage && /^\s*version\s*=/.test(line)) {
+                if (stampedVersion) throw new Error('Cargo.toml contains multiple [package] version fields.');
+                stampedVersion = true;
+                return `version = "${process.env.RELEASE_VERSION}"`;
+              }
+              return line;
+            })
+            .join('\n');
+          if (!stampedVersion) throw new Error('Cargo.toml is missing its [package] version field.');
+          fs.writeFileSync(cargoPath, stampedCargoToml);
           NODE
       - name: Pack FUI-RS
         id: package
@@ -114,6 +137,28 @@ jobs:
           tarball="$RUNNER_TEMP/fui-rs-package/$filename"
           test -f "$tarball"
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Verify packed npm and Cargo versions
+        env:
+          FUI_RS_TARBALL: ${{ steps.package.outputs.tarball }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.release_version }}
+        run: |
+          package_root="$RUNNER_TEMP/fui-rs-package/verify"
+          rm -rf "$package_root"
+          mkdir -p "$package_root"
+          tar -xzf "$FUI_RS_TARBALL" -C "$package_root"
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const packageJson = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/fui-rs-package/verify/package/package.json`, 'utf8'));
+          if (packageJson.version !== process.env.RELEASE_VERSION) {
+            throw new Error(`Packed npm version ${packageJson.version} does not match release ${process.env.RELEASE_VERSION}.`);
+          }
+          const cargoToml = fs.readFileSync(`${process.env.RUNNER_TEMP}/fui-rs-package/verify/package/Cargo.toml`, 'utf8');
+          const packageSection = cargoToml.match(/(?:^|\n)\[package\]\n([\s\S]*?)(?=\n\[|$)/);
+          const cargoVersion = packageSection?.[1].match(/(?:^|\n)version\s*=\s*"([^"]+)"(?:\n|$)/)?.[1];
+          if (cargoVersion !== process.env.RELEASE_VERSION) {
+            throw new Error(`Packed Cargo version ${cargoVersion ?? '<missing>'} does not match release ${process.env.RELEASE_VERSION}.`);
+          }
+          NODE
       - name: Publish to npm
         env:
           FUI_RS_TARBALL: ${{ steps.package.outputs.tarball }}
