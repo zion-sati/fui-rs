@@ -63,6 +63,8 @@ jobs:
             throw new Error('@effindomv2/runtime must not depend on @assemblyscript/loader.');
           }
           NODE
+      - name: Test idempotent crates.io publication handling
+        run: node --test scripts/ci/publish-crate-idempotently.test.mjs
       - name: Lint, typecheck, and run Rust checks
         run: |
           npm run lint

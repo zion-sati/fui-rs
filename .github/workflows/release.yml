@@ -186,26 +186,18 @@ jobs:
           else
             npm publish "$FUI_RS_TARBALL" --access public --tag "$NPM_DIST_TAG"
           fi
-      - name: Check whether the Cargo crate version is already published
-        id: cargo_crate
-        env:
-          FUI_RS_VERSION: ${{ needs.validate.outputs.release_version }}
-        run: |
-          if curl --fail --silent --show-error "https://crates.io/api/v1/crates/fui-rs/$FUI_RS_VERSION" >/dev/null 2>&1; then
-            echo 'publish=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'publish=true' >> "$GITHUB_OUTPUT"
-          fi
       - name: Authenticate to crates.io
-        if: steps.cargo_crate.outputs.publish == 'true'
         id: crates_io
         uses: rust-lang/crates-io-auth-action@v1
       - name: Publish the FUI-RS crate
-        if: steps.cargo_crate.outputs.publish == 'true'
-        working-directory: v2/fui-rs
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates_io.outputs.token }}
-        run: cargo publish --allow-dirty
+          FUI_RS_VERSION: ${{ needs.validate.outputs.release_version }}
+        run: |
+          node scripts/ci/publish-crate-idempotently.mjs \
+            --manifest-path v2/fui-rs/Cargo.toml \
+            --crate fui-rs \
+            --version "$FUI_RS_VERSION"
       - name: Report release
         run: |
           runtime_version="$(node -p "require('./.release-inputs/release-inputs.json').runtimeVersion")"
