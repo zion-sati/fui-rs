@@ -69,6 +69,7 @@ jobs:
           npm run typecheck
           npm --workspace v2/fui-rs run lint:rust
           npm run test
+          npm --workspace v2/fui-rs run test:crate-package
       - name: Build the browser demo
         run: npm run build
       - name: Run FUI-RS runtime package boundary smoke

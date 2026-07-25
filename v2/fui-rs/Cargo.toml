@@ -2,7 +2,30 @@
 name = "fui-rs"
 version = "0.1.24"
 edition = "2021"
-license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
+description = "Retained-mode Rust UI SDK for EffinDOM"
+repository = "https://github.com/zion-sati/fui-rs"
+homepage = "https://effindom.dev"
+documentation = "https://docs.rs/fui-rs"
+readme = "README.md"
+license-file = "LICENSE.md"
+keywords = ["effindom", "ui", "gui", "wasm", "retained-mode"]
+categories = ["gui", "wasm"]
+publish = ["crates-io"]
+include = [
+  "/src/**/*.rs",
+  "/tests/**/*.rs",
+  "/Cargo.toml",
+  "/Cargo.lock",
+  "/README.md",
+  "/LICENSE.md",
+  "/LICENSES/AGPL-3.0-only.md",
+  "/COMMERCIAL.md",
+]
+
+[package.metadata.effindom]
+runtime-version = "0.2.2"
+core-abi = 2
+ui-abi = 1
 
 [features]
 default = []

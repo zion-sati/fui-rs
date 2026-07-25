@@ -1,0 +1,15 @@
+schema-version = 1
+
+[application]
+identifier = "dev.effindom.native-demo"
+caption = "EffinDOM Native FUI-RS"
+icon = "resources/app/application-icon.png"
+
+[package.macos]
+minimum-version = "13.0"
+
+[package.windows]
+publisher = "CN=EffinDOM Packaging Test"
+
+[package.linux]
+categories = ["Development"]

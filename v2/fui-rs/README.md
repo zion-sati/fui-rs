@@ -5,6 +5,14 @@ apps. It provides retained controls, layout nodes, text input, overlays,
 custom drawing, host services, workers, routing support, and app lifecycle
 macros for browser-hosted Rust WASM apps.
 
+The Cargo package is named `fui-rs`, while application code imports its
+library as `fui`:
+
+```toml
+[dependencies]
+fui = { package = "fui-rs", version = "0.1" }
+```
+
 ## Quickstart
 
 Create a FUI-RS application with the published scaffolder:
@@ -35,7 +43,7 @@ Install [Binaryen](https://github.com/WebAssembly/binaryen) to make release
 builds run `wasm-opt`. Development builds do not require it.
 
 Application setup, retained-mode guidance, and entrypoint examples are covered
-in the [FUI-RS developer quickstart](../../docs/v2/fui-rs/QUICKSTART.md).
+in the [FUI-RS developer quickstart](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/QUICKSTART.md).
 
 ## Minimal app
 
@@ -73,20 +81,20 @@ let label = rich_text![
 
 ## SDK docs
 
-- [SDK docs index](../../docs/v2/fui-rs/SDK_INDEX.md)
-- [API reference](../../docs/v2/fui-rs/API_REFERENCE.md)
-- [Controls and nodes](../../docs/v2/fui-rs/CONTROLS_AND_NODES.md)
-- [Events and callbacks](../../docs/v2/fui-rs/EVENTS_AND_CALLBACKS.md)
-- [Text input reference](../../docs/v2/fui-rs/TEXT_INPUT_REFERENCE.md)
-- [Forms and autofill](../../docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
-- [Theming and style matrix](../../docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
+- [SDK docs index](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/SDK_INDEX.md)
+- [API reference](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/API_REFERENCE.md)
+- [Controls and nodes](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/CONTROLS_AND_NODES.md)
+- [Events and callbacks](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/EVENTS_AND_CALLBACKS.md)
+- [Text input reference](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/TEXT_INPUT_REFERENCE.md)
+- [Forms and autofill](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
+- [Theming and style matrix](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
 
 ## Contributing to FUI-RS
 
 The commands above are for developers building applications with the published
 FUI-RS SDK. Contributors working on the SDK, EffinDom runtime, browser bridge,
 or repository demos should follow the
-[FUI-RS contributor quickstart](../../docs/v2/fui-rs/CONTRIBUTOR_QUICKSTART.md).
+[FUI-RS contributor quickstart](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/CONTRIBUTOR_QUICKSTART.md).
 It covers the standalone repository toolchain, SDK build, lint, and test lanes.
 
 ## What is included
