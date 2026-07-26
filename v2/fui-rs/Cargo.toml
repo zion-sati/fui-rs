@@ -2,13 +2,13 @@
 name = "fui-rs"
 version = "0.1.24"
 edition = "2021"
-description = "Retained-mode Rust UI SDK for EffinDOM"
+description = "Retained Rust UI for native desktop and WebAssembly applications"
 repository = "https://github.com/zion-sati/fui-rs"
 homepage = "https://effindom.dev"
 documentation = "https://docs.rs/fui-rs"
 readme = "README.md"
 license-file = "LICENSE.md"
-keywords = ["effindom", "ui", "gui", "wasm", "retained-mode"]
+keywords = ["effindom", "ui", "gui", "wasm", "desktop"]
 categories = ["gui", "wasm"]
 publish = ["crates-io"]
 include = [

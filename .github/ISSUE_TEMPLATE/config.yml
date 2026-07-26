@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: FUI-RS discussions
+    url: https://github.com/zion-sati/fui-rs/discussions
+    about: Ask questions and discuss API or project direction before filing an implementation request.
+

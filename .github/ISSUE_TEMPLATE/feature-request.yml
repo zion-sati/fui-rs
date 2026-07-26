@@ -1,0 +1,24 @@
+name: Feature request
+description: Describe a retained UI problem or missing platform capability.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Application problem
+      description: Start with the user or application need rather than a proposed API.
+    validations:
+      required: true
+  - type: textarea
+    id: precedent
+    attributes:
+      label: Relevant behaviour in established UI frameworks
+  - type: textarea
+    id: parity
+    attributes:
+      label: Expected native and browser behaviour
+    validations:
+      required: true
+

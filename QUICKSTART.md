@@ -4,37 +4,80 @@ This guide is for developers building applications with the published FUI-RS
 SDK. Contributors working on the SDK itself should read
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Prerequisites
+## Choose the entry point
 
-- Node.js 18 or newer and npm
-- Stable Rust and Cargo
-- The `wasm32-unknown-unknown` Rust target
-- Binaryen optionally, for optimized release WASM
+Use `cargo-fui` for new native, web, or universal projects. Use
+`create-fui-rs-app` when you specifically want the npm-oriented browser-only
+simple or routed/MVC scaffold.
 
-Install Rust and its WebAssembly target once:
+| Need | Start with |
+| --- | --- |
+| Native macOS, Windows, or Linux application | `cargo fui new --target native` |
+| Browser/WASM application | `cargo fui new --target web` |
+| Shared UI for native desktop and browser | `cargo fui new --target universal` |
+| Browser-only simple or routed/MVC npm project | `npx @effindomv2/create-fui-rs-app` |
+
+## Cargo workflow
+
+All targets require stable Rust and Cargo. Install both through
+[rustup](https://rustup.rs/), then verify the toolchain and install `cargo-fui`:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
+rustc --version
+cargo --version
+cargo install --locked cargo-fui
+```
+
+Create and run a universal application:
+
+```bash
+cargo fui new my-app --target universal
+cd my-app
+cargo fui dev
+```
+
+Use `--target native` or `--target web` for a single target.
+
+Native prerequisites:
+
+- macOS: Xcode command-line tools.
+- Windows: Visual Studio Build Tools and the Windows SDK.
+- Linux: a C++ compiler and the native libraries described by the generated
+  project README.
+
+Web and universal prerequisites:
+
+- Node.js 24.
+- The `wasm32-unknown-unknown` Rust target:
+
+```bash
 rustup target add wasm32-unknown-unknown
 ```
 
-Install Binaryen with `brew install binaryen` on macOS or your distribution's
-Binaryen package on Linux. Development builds work without it.
-
-## Create a simple app
+Build optimized output or a native package:
 
 ```bash
+cargo fui build --release
+cargo fui package
+```
+
+Native-only projects do not contain or require Node.js. Universal projects keep
+shared retained UI in a target-independent crate and place platform capabilities
+behind explicit native and web adapters.
+
+## Browser-only npm workflow
+
+Install Rust, Node.js 24, and the WebAssembly target, then create a simple app:
+
+```bash
+rustup target add wasm32-unknown-unknown
 npx @effindomv2/create-fui-rs-app my-app
 cd my-app
 npm install
 npm run dev
 ```
 
-The development server watches Rust and host source files and rebuilds fast
-debug WASM automatically.
-
-## Create a routed app
+Create a routed/MVC app with one separately built WASM module per route:
 
 ```bash
 npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
@@ -43,21 +86,13 @@ npm install
 npm run dev
 ```
 
-The routed template builds each route as a separate WASM module. Routes can be
-deployed independently while sharing the same browser shell and EffinDom
-runtime assets.
+The development server watches Rust and host source files. Binaryen is optional
+for development and optimizes release WASM when `wasm-opt` is available.
 
-## Build and publish static assets
-
-Create an optimized build:
+Create optimized and deployable static assets:
 
 ```bash
 npm run build
-```
-
-Stage deployable static assets in `published/`:
-
-```bash
 npm run publish
 ```
 
@@ -80,18 +115,14 @@ fn build_page() -> FlexBox {
 fui_app!(FlexBox, build_page);
 ```
 
-FUI-RS is retained mode. Construct controls once and mutate retained controls
-from callbacks; do not recreate the UI tree in a recurring render loop.
+Construct retained controls once and mutate them from callbacks. Do not recreate
+the UI tree in a recurring render loop.
 
 `Button::on_click(...)` is the normal high-level action API and includes
-supported keyboard activation. Use `on_pointer_click(...)` only when a Node
-handler needs raw routed pointer data.
-Use `on_pointer_double_click(...)` and `on_pointer_triple_click(...)` for exact
-raw multi-click gestures. Toggle controls expose both semantic `on_click(...)`
-and state-specific `on_changed(...)`; programmatic changes emit only the latter.
+supported keyboard activation. Use raw pointer handlers only when the control
+needs routed pointer data.
 
-Use `ui!` for mixed retained child trees and `rich_text!` for fluent attributed
-text:
+Use `ui!` for retained child trees and `rich_text!` for attributed text:
 
 ```rust
 let label = rich_text![
@@ -100,10 +131,9 @@ let label = rich_text![
 ];
 ```
 
-## Documentation
+## Next references
 
-- [SDK docs index](docs/v2/fui-rs/SDK_INDEX.md)
-- [Full developer quickstart](docs/v2/fui-rs/QUICKSTART.md)
+- [Full developer guide](docs/v2/fui-rs/QUICKSTART.md)
 - [API reference](docs/v2/fui-rs/API_REFERENCE.md)
 - [Controls and nodes](docs/v2/fui-rs/CONTROLS_AND_NODES.md)
 - [Events and callbacks](docs/v2/fui-rs/EVENTS_AND_CALLBACKS.md)

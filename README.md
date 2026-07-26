@@ -1,51 +1,76 @@
-# FUI-RS — Rust SDK for EffinDom v2
+# FUI-RS — retained Rust UI for native desktop and WebAssembly
 
 [![FUI-RS CI](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml/badge.svg)](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml)
-[![npm](https://img.shields.io/npm/v/@effindomv2/fui-rs?label=fui-rs)](https://www.npmjs.com/package/@effindomv2/fui-rs)
+[![crates.io](https://img.shields.io/crates/v/fui-rs)](https://crates.io/crates/fui-rs)
+[![docs.rs](https://img.shields.io/docsrs/fui-rs)](https://docs.rs/fui-rs)
+[![npm](https://img.shields.io/npm/v/@effindomv2/fui-rs?label=web%20tooling)](https://www.npmjs.com/package/@effindomv2/fui-rs)
 [![License: AGPL-3.0 or commercial](https://img.shields.io/badge/license-AGPL--3.0%20or%20commercial-green.svg)](LICENSE.md)
 
-FUI-RS is the Rust retained-mode UI SDK for EffinDom v2. It builds Rust UI
-objects into WebAssembly and runs them through the shared EffinDom browser
-runtime.
+FUI-RS is a retained-mode Rust UI SDK that runs the same application UI as a
+real native macOS, Windows, or Linux desktop application and in the browser
+through WebAssembly. Native applications do not use Electron or a WebView.
 
-The SDK includes retained nodes, controls, themes, events, popups, dialogs,
-text input, selection, custom drawing, workers, host services, routed app
-helpers, and Rust-specific authoring macros.
+The SDK includes retained nodes, controls, layout, themes, events, popups,
+dialogs, editable text, selection, custom drawing, workers, host services,
+accessibility semantics, and Rust-specific authoring macros.
 
-Demo: https://fui-rs-demo.effindom.dev/
+- [Run the browser demo](https://fui-rs-demo.effindom.dev/)
+- [Play Galaga-RS](https://jatm80.github.io/galaga-rs/), the first known
+  community-built FUI-RS application
 
-## Quickstart
+## Start a project
 
-Create an application with the published FUI-RS scaffolder:
+For a new native, web, or universal application, use
+[`cargo-fui`](https://github.com/zion-sati/cargo-fui):
+
+Install stable Rust and Cargo through [rustup](https://rustup.rs/), then:
 
 ```bash
-# Install Rust and the WebAssembly target once
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-rustup target add wasm32-unknown-unknown
+rustc --version
+cargo --version
+cargo install --locked cargo-fui
+cargo fui new my-app --target universal
+cd my-app
+cargo fui dev
+```
 
-# Create and run an app
+Choose `native` for desktop only, `web` for browser only, or `universal` for a
+shared retained UI with explicit native and web adapters.
+
+For a browser-only application that needs the npm-oriented simple or routed/MVC
+scaffolds, use `create-fui-rs-app`:
+
+```bash
 npx @effindomv2/create-fui-rs-app my-app
 cd my-app
 npm install
 npm run dev
 ```
 
-For a routed app with one separately built WASM module per route:
+See the [FUI-RS quickstart](QUICKSTART.md) for prerequisites and the exact
+differences between these entry points.
 
-```bash
-npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
-cd my-routed-app
-npm install
-npm run dev
+## How the stack fits together
+
+```text
+Your retained Rust UI
+        │
+        ▼
+      FUI-RS          controls, themes, events, application APIs
+        │
+        ▼
+     EffinDOM         layout, text, rendering, input, semantics
+       ╱   ╲
+      ▼     ▼
+ native     browser/WebAssembly
+  host
 ```
 
-Binaryen is optional for application development and optimizes release WASM
-when `wasm-opt` is available. See the
-[FUI-RS developer quickstart](QUICKSTART.md) for setup and retained-mode
-guidance.
+`cargo-fui` sits around this stack as project/build/package tooling. FUI-RS
+package metadata identifies the compatible EffinDOM runtime, so application
+developers do not manually synchronize runtime versions.
 
-## Minimal app
+## Minimal retained UI
 
 ```rust
 use fui::prelude::*;
@@ -64,44 +89,51 @@ fn build_page() -> FlexBox {
 fui_app!(FlexBox, build_page);
 ```
 
-## Architecture
-
 FUI-RS is retained mode:
 
-- Construct nodes and controls once.
-- Store stateful controls as fields when callbacks need to mutate them later.
+- Construct controls once.
+- Keep stateful controls when callbacks need to mutate them.
 - Mutate retained objects from events, timers, host callbacks, or signals.
-- Use `ui!` as syntax sugar for retained construction, not as a render loop.
-
-The Rust app WASM talks to the shared EffinDom browser bridge and retained C++
-UI runtime through generated ABI bindings. The public SDK keeps raw ABI details
-out of normal app code.
+- Use `ui!` as construction syntax, not as a recurring render function.
 
 FUI-RS maps retained inheritance to capability traits. `Node` supplies common
-retained state and raw events, while FlexBox-derived visuals expose layout,
-style, flex-layout, and child-container traits. `TextSurface` and
-`TextEditorSurface` provide the shared text contracts.
+retained state and raw events, while visual controls expose layout, style,
+flex-layout, child-container, text, focus, and interaction capabilities as
+appropriate.
 
-Use `on_pointer_click(...)` for raw pointer input and `Button::on_click(...)`
-for high-level pointer/keyboard activation.
+## Current status
 
-Exact raw multi-click gestures use `on_pointer_double_click(...)` and
-`on_pointer_triple_click(...)`. `Checkbox`, `RadioButton`, and `Switch` also
-provide count-free `on_click(...)` semantic activation alongside their
-state-specific `on_changed(...)` events.
+FUI-RS is an early release. It already supports substantial retained UI and
+native packaging, but breaking API and generated-project changes remain possible
+before 1.0 when correctness or Rust ergonomics require them.
+
+Current boundaries:
+
+- Native support is desktop macOS, Windows, and Linux. iOS and Android are not
+  currently supported.
+- Native and web targets intentionally expose different platform-service
+  adapters where the underlying capability differs.
+- Browser-only routed applications use separate WASM modules and a shared
+  browser shell; native applications do not use that routing model.
+- Native packaging does not supply an application's production signing identity,
+  store account, notarization credentials, or distribution policy.
+- The supported CI matrix cannot represent every Linux desktop environment,
+  browser, GPU, or driver.
+
+Open a discussion when evaluating FUI-RS for an application whose requirements
+touch one of these boundaries.
 
 ## Community projects
 
 - [galaga-rs](https://github.com/jatm80/galaga-rs) by
-  [jatm80](https://github.com/jatm80) — a Galaga-style space shooter written in
-  Rust with FUI-RS, and the first known community-built FUI-RS project.
-  [Play the live demo](https://jatm80.github.io/galaga-rs/). Its repository also
-  includes a
-  [community-maintained FUI-RS skill](https://github.com/jatm80/galaga-rs/tree/main/.claude/skills/fui-rs)
-  with retained-mode guidance, API reference notes, and worked examples.
+  [jatm80](https://github.com/jatm80) is a Galaga-style space shooter and the
+  first known community-built FUI-RS project.
+  [Play it](https://jatm80.github.io/galaga-rs/) or read its
+  [community-maintained FUI-RS skill](https://github.com/jatm80/galaga-rs/tree/main/.claude/skills/fui-rs).
 
 ## Documentation
 
+- [Developer quickstart](QUICKSTART.md)
 - [SDK docs index](docs/v2/fui-rs/SDK_INDEX.md)
 - [API reference](docs/v2/fui-rs/API_REFERENCE.md)
 - [Controls and nodes](docs/v2/fui-rs/CONTROLS_AND_NODES.md)
@@ -112,11 +144,13 @@ state-specific `on_changed(...)` events.
 
 ## Contributing
 
-The quickstart above is for developers consuming the published SDK. To work on
-FUI-RS itself, follow the
+Application developers should begin with the quickstart. Contributors working
+on the SDK should follow the
 [FUI-RS contributor quickstart](docs/v2/fui-rs/CONTRIBUTOR_QUICKSTART.md).
 
 ## License
 
-AGPL-3.0-only, or commercial. See
-[the commercial licensing terms](COMMERCIAL.md).
+FUI-RS is AGPL-3.0-only or commercially licensed. See
+[the commercial licensing terms](COMMERCIAL.md). EffinDOM runtime components are
+distributed under their own terms; FUI-RS's AGPL licence should not be inferred
+to apply to the runtime itself.

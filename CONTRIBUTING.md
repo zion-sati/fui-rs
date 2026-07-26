@@ -13,3 +13,15 @@ This is a solo project. If you're thinking about contributing, please open an
 issue or start a discussion before writing code.
 
 For anything else: **zionsatidev@gmail.com**
+
+## Good first contributions
+
+Good first contributions should stay within an existing public contract:
+
+- Reproduce a quickstart or documentation example and correct a concrete gap.
+- Add a focused regression test for an existing control behaviour.
+- Improve an error or diagnostic without changing control semantics.
+- Add a small example for an already documented API.
+
+Open an issue or discussion before changing retained lifecycle, cross-platform
+behaviour, public API shape, or ABI contracts.
