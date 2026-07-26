@@ -12,9 +12,7 @@
 /v2/fui-rs/build/
 /v2/fui-rs/target/
 
-# The root package only orchestrates the npm workspace. The SDK-owned lockfile
-# at v2/fui-rs/package-lock.json remains tracked.
-/package-lock.json
+# The root workspace lockfile is committed so CI can use npm ci reproducibly.
 
 # Node.js package managers
 node_modules/
