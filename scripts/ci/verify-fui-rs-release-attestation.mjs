@@ -13,6 +13,7 @@ if (repository === undefined || releaseSha === undefined || token === undefined 
 const exactPaths = new Set([
   'package.json',
   'package-lock.json',
+  'update-deps.sh',
   'eslint.config.ts',
   '.github/workflows/fui-rs-ci.yml',
 ]);
@@ -68,17 +69,11 @@ async function successfulFuiRsCiRuns() {
   return runs;
 }
 
-async function hasReleaseInputs(runId) {
-  const result = await api(`/repos/${repository}/actions/runs/${runId}/artifacts?per_page=100`);
-  return result.artifacts.some((artifact) => artifact.name === 'fui-rs-release-inputs' && !artifact.expired);
-}
-
 const runs = await successfulFuiRsCiRuns();
 let attestationRun = null;
 for (const run of runs) {
   if (!isAncestor(run.head_sha, releaseSha)) continue;
   if (changedPaths(run.head_sha, releaseSha).some(affectsFuiRs)) continue;
-  if (!(await hasReleaseInputs(run.id))) continue;
   attestationRun = run;
   break;
 }
@@ -87,5 +82,5 @@ if (attestationRun === null) {
   throw new Error('No successful FUI-RS CI run attests all FUI-RS release inputs for this release commit.');
 }
 
-appendFileSync(outputPath, `fui_rs_ci_run_id=${attestationRun.id}\nrelease_inputs_run_id=${attestationRun.id}\n`);
+appendFileSync(outputPath, `fui_rs_ci_run_id=${attestationRun.id}\n`);
 console.log(`FUI-RS CI attestation: ${attestationRun.html_url}`);

@@ -36,6 +36,7 @@
     "COMMERCIAL.md"
   ],
   "scripts": {
+    "update:upstream": "node scripts/update-upstream-versions.mjs",
     "generate:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi && node build/generate-abi.mjs native-host-header",
     "check:abi": "mkdir -p build && esbuild ../abi/generate.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-abi.mjs && node build/generate-abi.mjs fui-rs-ffi --check && node build/generate-abi.mjs native-host-header --check",
     "generate:host-services": "mkdir -p build && esbuild scripts/generate-host-services.ts --bundle --format=esm --platform=node --target=node20 --packages=external --outfile=build/generate-host-services.mjs && node build/generate-host-services.mjs demo/src/host-services.ts demoHostServices crates/demo-shared/src/generated/host_services.rs fui::host_services",
@@ -58,7 +59,7 @@
     "prepublishOnly": "npm run check:abi && npm run lint && npm run lint:rust && npm run typecheck && npm run test:crate-package"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.2.2"
+    "@effindomv2/runtime": "0.2.4"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

@@ -7,6 +7,7 @@ on:
       - '.github/workflows/fui-rs-ci.yml'
       - 'package.json'
       - 'package-lock.json'
+      - 'update-deps.sh'
       - 'eslint.config.ts'
       - 'scripts/ci/**'
       - 'v2/abi/**'
@@ -32,27 +33,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - name: Resolve the current runtime release
-        id: runtime
-        run: |
-          runtime_version="$(npm view @effindomv2/runtime dist-tags.latest)"
-          node -e "if (!/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.argv[1])) process.exit(1)" "$runtime_version"
-          echo "version=$runtime_version" >> "$GITHUB_OUTPUT"
-      - name: Pin the tested runtime version
-        env:
-          RUNTIME_VERSION: ${{ steps.runtime.outputs.version }}
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const packagePath = 'v2/fui-rs/package.json';
-          const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-          packageJson.dependencies['@effindomv2/runtime'] = process.env.RUNTIME_VERSION;
-          fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
-          NODE
-      - name: Install dependencies for the tested runtime
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          npm ci
+      - name: Install committed dependencies
+        run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Assert the runtime package is framework-agnostic
@@ -78,19 +60,3 @@ jobs:
         run: npm run test:runtime-boundary
       - name: Run browser integration tests
         run: npm run test:browser:release-gate
-      - name: Record the tested runtime pin
-        env:
-          RUNTIME_VERSION: ${{ steps.runtime.outputs.version }}
-        run: |
-          mkdir -p .release-inputs
-          node - <<'NODE'
-          const fs = require('node:fs');
-          fs.writeFileSync('.release-inputs/release-inputs.json', `${JSON.stringify({ runtimeVersion: process.env.RUNTIME_VERSION }, null, 2)}\n`);
-          NODE
-      - name: Upload FUI-RS release inputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: fui-rs-release-inputs
-          path: .release-inputs/release-inputs.json
-          if-no-files-found: error
-          retention-days: 90
