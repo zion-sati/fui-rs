@@ -18,6 +18,22 @@ accessibility semantics, and Rust-specific authoring macros.
 - [Play Galaga-RS](https://jatm80.github.io/galaga-rs/), the first known
   community-built FUI-RS application
 
+https://github.com/user-attachments/assets/75815f18-8476-4882-b290-6a6bd6a9b0e7
+
+<details>
+
+<summary>More demo videos (inc. Galaga space shooter game)...</summary>
+
+https://github.com/user-attachments/assets/198f1c7f-3d92-4acb-b2b3-53fd72898ed0
+
+https://github.com/user-attachments/assets/22e2c40f-a762-4a05-b164-4499cca0bf27
+
+https://github.com/user-attachments/assets/f4b94bad-b93d-486e-8ed4-43482990d324
+
+https://github.com/user-attachments/assets/ac497b4a-cc36-4f4f-862d-005ca706edbc
+
+</details>
+
 ## Start a project
 
 For a new native, web, or universal application, use
