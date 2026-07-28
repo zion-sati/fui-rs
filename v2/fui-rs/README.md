@@ -1,36 +1,43 @@
-# FUI-RS - Rust SDK for EffinDom v2
+# FUI-RS - retained Rust UI for native desktop and WebAssembly
 
-FUI-RS is the Rust retained-mode SDK for building EffinDom v2 WebAssembly UI
-apps. It provides retained controls, layout nodes, text input, overlays,
-custom drawing, host services, workers, routing support, and app lifecycle
-macros for browser-hosted Rust WASM apps.
+FUI-RS is the retained-mode Rust UI SDK for EffinDom. One application model
+runs as a real native macOS, Windows, or Linux desktop application and in the
+browser through WebAssembly. Native applications embed neither Chromium nor a
+system WebView.
+
+The SDK provides retained controls, layout nodes, text input, overlays, custom
+drawing, host services, workers, accessibility semantics, routing support, and
+application lifecycle macros.
 
 The Cargo package is named `fui-rs`, while application code imports its
 library as `fui`:
 
-```toml
-[dependencies]
-fui = { package = "fui-rs", version = "0.1" }
+```bash
+cargo add fui-rs --rename fui
 ```
 
 ## Quickstart
 
-Create a FUI-RS application with the published scaffolder:
+Create a native, web, or universal application with `cargo-fui`:
 
 ```bash
-# Install Rust and the WebAssembly target once
+# Install stable Rust and Cargo once
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
-rustup target add wasm32-unknown-unknown
 
-# Create and run an app
-npx @effindomv2/create-fui-rs-app my-app
+cargo install --locked cargo-fui
+cargo fui new my-app --target universal
 cd my-app
-npm install
-npm run dev
+cargo fui dev
 ```
 
-For a routed application with one independently built WASM module per route:
+Choose `native` for desktop only, `web` for browser only, or `universal` for a
+shared retained UI with explicit native and web adapters. Native-only projects
+do not require Node.js. `cargo fui build --release` creates optimised output and
+`cargo fui package` emits DMG, MSIX, or AppImage packages.
+
+For a browser-only routed application with one independently built WASM module
+per route, use the npm scaffolder:
 
 ```bash
 npx @effindomv2/create-fui-rs-app my-routed-app -- --template routed
@@ -112,6 +119,7 @@ It covers the standalone repository toolchain, SDK build, lint, and test lanes.
 | Selection, mobile text handles, context toolbar | Available |
 | ScrollView, ScrollBox, VirtualList | Available |
 | Custom drawing and text layouts | Available |
+| Native and browser platform adapters | Available |
 | Browser file/fetch/worker bridges | Available |
 | Host services/events generator support | Available |
 
@@ -186,10 +194,10 @@ fui_worker!(primeWorker => PrimeJob);
 
 ## Architecture
 
-FUI-RS builds Rust retained UI objects into the EffinDom v2 runtime through the
-browser bridge. Rust app WASM and the UI runtime WASM are separate modules;
-strings and command data cross the bridge through explicit UTF-8/runtime ABI
-calls.
+FUI-RS builds retained Rust UI objects against the shared EffinDom runtime.
+Native hosts execute that runtime directly through platform adapters. On the
+web, Rust app WASM and the UI runtime WASM are separate modules; strings and
+command data cross the browser bridge through explicit UTF-8/runtime ABI calls.
 
 Retained controls are cheap clone handles. Cloning a control gives another Rust
 handle to the same retained UI object.
@@ -205,6 +213,24 @@ Use `on_pointer_click(...)` for raw routed pointer input. Use
 multi-click gestures. `Button`, `Checkbox`, `RadioButton`, and `Switch` expose
 count-free `on_click(...)` semantic activation for supported pointer and
 keyboard input.
+
+## Project status
+
+FUI-RS is feature-rich early access. Its retained SDK, web and native hosts,
+controls, text editing, accessibility projection, custom drawing, and packaging
+workflow are usable today, but public APIs remain pre-1.0 and may change
+incompatibly.
+
+Current platform limits:
+
+- Linux AT-SPI support is implemented; validation across the wider desktop and screen-reader ecosystem remains early.
+- iOS and Android are not currently supported.
+- Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
+  hidden, and virtualised content.
+- The third-party control and integration ecosystem is new.
+
+Try the [live demo](https://fui-rs-demo.effindom.dev/), then open a discussion
+or issue if a real application is blocked by a missing capability.
 
 ## License
 

@@ -119,14 +119,17 @@ appropriate.
 
 ## Current status
 
-FUI-RS is an early release. It already supports substantial retained UI and
-native packaging, but breaking API and generated-project changes remain possible
-before 1.0 when correctness or Rust ergonomics require them.
+FUI-RS is feature-rich early access. It already supports substantial retained
+UI and native packaging, but breaking API and generated-project changes remain
+possible before 1.0 when correctness or Rust ergonomics require them.
 
 Current boundaries:
 
 - Native support is desktop macOS, Windows, and Linux. iOS and Android are not
   currently supported.
+- Linux AT-SPI support is implemented; validation across the wider desktop and screen-reader ecosystem remains early.
+- Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
+  hidden, and virtualised content.
 - Native and web targets intentionally expose different platform-service
   adapters where the underlying capability differs.
 - Browser-only routed applications use separate WASM modules and a shared
@@ -135,6 +138,7 @@ Current boundaries:
   store account, notarization credentials, or distribution policy.
 - The supported CI matrix cannot represent every Linux desktop environment,
   browser, GPU, or driver.
+- The third-party control and integration ecosystem is new.
 
 Open a discussion when evaluating FUI-RS for an application whose requirements
 touch one of these boundaries.

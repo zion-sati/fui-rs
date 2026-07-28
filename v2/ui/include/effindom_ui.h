@@ -360,6 +360,76 @@ EFFINDOM_UI_API bool ui_set_text_find_match(ui_handle_t handle, uint32_t start, 
 EFFINDOM_UI_API void ui_clear_text_find_match(void);
 EFFINDOM_UI_API bool ui_push_text_find_highlight(ui_handle_t handle, uint32_t start, uint32_t end, ui_color_t color);
 EFFINDOM_UI_API void ui_clear_text_find_highlights(void);
+
+typedef enum UiTextAccessibilityQueryStatus {
+    UI_TEXT_ACCESSIBILITY_QUERY_OK = 0,
+    UI_TEXT_ACCESSIBILITY_QUERY_NOT_TEXT = 1,
+    UI_TEXT_ACCESSIBILITY_QUERY_OBSCURED = 2,
+    UI_TEXT_ACCESSIBILITY_QUERY_STALE_REVISION = 3,
+    UI_TEXT_ACCESSIBILITY_QUERY_INVALID_RANGE = 4,
+    UI_TEXT_ACCESSIBILITY_QUERY_BUFFER_TOO_SMALL = 5,
+    UI_TEXT_ACCESSIBILITY_QUERY_READ_ONLY = 6,
+    UI_TEXT_ACCESSIBILITY_QUERY_INVALID_TEXT = 7,
+} UiTextAccessibilityQueryStatus;
+
+typedef enum UiTextAccessibilityFlags {
+    UI_TEXT_ACCESSIBILITY_FLAG_READ_ONLY = 1U << 0U,
+    UI_TEXT_ACCESSIBILITY_FLAG_MULTILINE = 1U << 1U,
+    UI_TEXT_ACCESSIBILITY_FLAG_OBSCURED = 1U << 2U,
+} UiTextAccessibilityFlags;
+
+EFFINDOM_UI_API bool ui_get_accessibility_text_info(
+    ui_handle_t handle,
+    uint64_t* out_revision,
+    uint32_t* out_character_count,
+    uint32_t* out_selection_start,
+    uint32_t* out_selection_end,
+    uint32_t* out_flags);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_get_accessibility_text_range_utf8_length(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character,
+    uint32_t* out_utf8_length);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_copy_accessibility_text_range_utf8(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character,
+    uint8_t* out_utf8,
+    uint32_t buffer_length);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_get_accessibility_text_range_rect_count(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character,
+    uint32_t* out_rect_count);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_copy_accessibility_text_range_rects(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character,
+    float* out_rect_words,
+    uint32_t max_rect_count,
+    uint32_t* out_rect_count);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_set_accessibility_text_selection(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_reveal_accessibility_text_range(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character);
+EFFINDOM_UI_API UiTextAccessibilityQueryStatus ui_replace_accessibility_text_range(
+    ui_handle_t handle,
+    uint64_t revision,
+    uint32_t start_character,
+    uint32_t end_character,
+    const uint8_t* replacement_utf8,
+    uint32_t replacement_length,
+    uint64_t* out_revision);
 EFFINDOM_UI_API uint32_t ui_get_text_document_utf8_length(ui_handle_t handle);
 EFFINDOM_UI_API bool ui_copy_text_document_utf8(ui_handle_t handle, uint8_t* out_utf8, uint32_t buffer_length);
 EFFINDOM_UI_API bool ui_get_text_visible_bounds(

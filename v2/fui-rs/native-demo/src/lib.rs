@@ -187,10 +187,17 @@ fn build_application() -> NativeApplication {
         "Retained controls",
         "Pointer, keyboard, focus, state, and rendering all use the same FUI-RS control implementations as the browser runtime.",
     );
+    let accessibility_editor = ui! {
+        text_input()
+            .width(420.0, Unit::Pixel)
+            .text("AT-SPI Unicode text")
+    };
     controls_card.children(children![
         action.clone(),
         ui! { spacer(8.0) },
         click_text,
+        ui! { spacer(12.0) },
+        accessibility_editor,
         ui! { spacer(18.0) },
         checkbox_control,
         ui! { spacer(6.0) },

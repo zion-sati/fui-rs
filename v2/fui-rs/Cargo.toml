@@ -7,7 +7,7 @@ repository = "https://github.com/zion-sati/fui-rs"
 homepage = "https://effindom.dev"
 documentation = "https://docs.rs/fui-rs"
 readme = "README.md"
-license-file = "LICENSE.md"
+license = "AGPL-3.0-only"
 keywords = ["effindom", "ui", "gui", "wasm", "desktop"]
 categories = ["gui", "wasm"]
 publish = ["crates-io"]
@@ -23,7 +23,7 @@ include = [
 ]
 
 [package.metadata.effindom]
-runtime-version = "0.2.4"
+runtime-version = "0.2.5"
 core-abi = 2
 ui-abi = 1
 

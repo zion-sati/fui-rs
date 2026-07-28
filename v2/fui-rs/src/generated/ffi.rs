@@ -418,6 +418,66 @@ unsafe extern "C" {
     pub fn ui_clear_text_find_match();
     pub fn ui_push_text_find_highlight(handle: u64, start: u32, end: u32, color: u32) -> bool;
     pub fn ui_clear_text_find_highlights();
+    pub fn ui_get_accessibility_text_info(
+        handle: u64,
+        out_revision: *mut u64,
+        out_character_count: *mut u32,
+        out_selection_start: *mut u32,
+        out_selection_end: *mut u32,
+        out_flags: *mut u32,
+    ) -> bool;
+    pub fn ui_get_accessibility_text_range_utf8_length(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+        out_utf8_length: *mut u32,
+    ) -> u32;
+    pub fn ui_copy_accessibility_text_range_utf8(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+        out_utf8: *mut u8,
+        buffer_length: u32,
+    ) -> u32;
+    pub fn ui_get_accessibility_text_range_rect_count(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+        out_rect_count: *mut u32,
+    ) -> u32;
+    pub fn ui_copy_accessibility_text_range_rects(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+        out_rect_words: *mut f32,
+        max_rect_count: u32,
+        out_rect_count: *mut u32,
+    ) -> u32;
+    pub fn ui_set_accessibility_text_selection(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+    ) -> u32;
+    pub fn ui_reveal_accessibility_text_range(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+    ) -> u32;
+    pub fn ui_replace_accessibility_text_range(
+        handle: u64,
+        revision: u64,
+        start_character: u32,
+        end_character: u32,
+        replacement_utf8: *const u8,
+        replacement_length: u32,
+        out_revision: *mut u64,
+    ) -> u32;
     pub fn ui_get_text_document_utf8_length(handle: u64) -> u32;
     pub fn ui_copy_text_document_utf8(handle: u64, out_utf8: *mut u8, buffer_length: u32) -> bool;
     pub fn ui_get_text_visible_bounds(
