@@ -81,16 +81,19 @@ differences between these entry points.
 ## How the stack fits together
 
 ```text
-Your retained Rust UI
-        │
-        ▼
-      FUI-RS          controls, themes, events, application APIs
-        │
-        ▼
-     EffinDOM         layout, text, rendering, input, semantics
-       ╱   ╲
-      ▼     ▼
- browser/WebAssembly     native host
+                  Your retained Rust UI
+                           │
+                           ▼
+                         FUI-RS
+          controls, themes, events, application APIs
+                           │
+                           ▼
+                        EffinDOM
+           layout, text, rendering, input, semantics
+                     ╱             ╲
+                    ▼               ▼
+            Browser host      Native desktop host
+            WebAssembly       macOS / Windows / Linux
 ```
 
 `cargo-fui` sits around this stack as project/build/package tooling. FUI-RS
