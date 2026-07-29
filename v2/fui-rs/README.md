@@ -1,9 +1,9 @@
-# FUI-RS - retained Rust UI for native desktop and WebAssembly
+# FUI-RS - retained Rust UI for WebAssembly and native desktop
 
-FUI-RS is the retained-mode Rust UI SDK for EffinDom. One application model
-runs as a real native macOS, Windows, or Linux desktop application and in the
-browser through WebAssembly. Native applications embed neither Chromium nor a
-system WebView.
+FUI-RS is the web-born retained-mode Rust UI SDK for EffinDOM. One application
+model runs in the browser through WebAssembly and as a real native macOS,
+Windows, or Linux desktop application. Native applications embed neither
+Chromium nor a system WebView.
 
 The SDK provides retained controls, layout nodes, text input, overlays, custom
 drawing, host services, workers, accessibility semantics, routing support, and
@@ -223,7 +223,10 @@ incompatibly.
 
 Current platform limits:
 
-- Linux AT-SPI support is implemented; validation across the wider desktop and screen-reader ecosystem remains early.
+- Accessibility projection is implemented through DOM/ARIA on the web,
+  `NSAccessibility` on macOS, Microsoft UI Automation on Windows, and AT-SPI on
+  Linux. Broad compatibility testing across screen readers, browser
+  combinations, and Linux desktop environments remains early.
 - iOS and Android are not currently supported.
 - Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
   hidden, and virtualised content.

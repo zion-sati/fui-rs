@@ -1,4 +1,4 @@
-# FUI-RS — retained Rust UI for native desktop and WebAssembly
+# FUI-RS — retained Rust UI for WebAssembly and native desktop
 
 [![FUI-RS CI](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml/badge.svg)](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml)
 [![crates.io](https://img.shields.io/crates/v/fui-rs)](https://crates.io/crates/fui-rs)
@@ -6,23 +6,30 @@
 [![npm](https://img.shields.io/npm/v/@effindomv2/fui-rs?label=web%20tooling)](https://www.npmjs.com/package/@effindomv2/fui-rs)
 [![License: AGPL-3.0 or commercial](https://img.shields.io/badge/license-AGPL--3.0%20or%20commercial-green.svg)](LICENSE.md)
 
-FUI-RS is a retained-mode Rust UI SDK that runs the same application UI as a
-real native macOS, Windows, or Linux desktop application and in the browser
-through WebAssembly. Native applications do not use Electron or a WebView.
+FUI-RS is a web-born retained-mode Rust UI SDK. It runs application UI in the
+browser through WebAssembly and carries the same retained application model to
+native macOS, Windows, and Linux. Native applications do not use Electron or a
+WebView.
+
+The browser is a primary target, not a compatibility layer. FUI-RS supports the
+web platform facilities application UI depends on, including accessibility,
+IME and text editing, password-manager integration, workers, history, files,
+touch input, and asynchronous assets. Its native hosts reuse that architecture
+rather than defining a separate framework.
 
 The SDK includes retained nodes, controls, layout, themes, events, popups,
 dialogs, editable text, selection, custom drawing, workers, host services,
 accessibility semantics, and Rust-specific authoring macros.
 
 - [Run the browser demo](https://fui-rs-demo.effindom.dev/)
-- [Play Galaga-RS](https://jatm80.github.io/galaga-rs/), the first known
-  community-built FUI-RS application
+- [Play Galaga-RS](https://jatm80.github.io/galaga-rs/), a Galaga-style space
+  shooter and the first known community-built FUI-RS application
 
 https://github.com/user-attachments/assets/75815f18-8476-4882-b290-6a6bd6a9b0e7
 
 <details>
 
-<summary>More demo videos (inc. Galaga space shooter game)...</summary>
+<summary>More demo videos, including the Galaga-style space shooter</summary>
 
 https://github.com/user-attachments/assets/198f1c7f-3d92-4acb-b2b3-53fd72898ed0
 
@@ -83,8 +90,7 @@ Your retained Rust UI
      EffinDOM         layout, text, rendering, input, semantics
        ╱   ╲
       ▼     ▼
- native     browser/WebAssembly
-  host
+ browser/WebAssembly     native host
 ```
 
 `cargo-fui` sits around this stack as project/build/package tooling. FUI-RS
@@ -132,7 +138,10 @@ Current boundaries:
 
 - Native support is desktop macOS, Windows, and Linux. iOS and Android are not
   currently supported.
-- Linux AT-SPI support is implemented; validation across the wider desktop and screen-reader ecosystem remains early.
+- Accessibility projection is implemented through DOM/ARIA on the web,
+  `NSAccessibility` on macOS, Microsoft UI Automation on Windows, and AT-SPI on
+  Linux. Broad compatibility testing across screen readers, browser
+  combinations, and Linux desktop environments remains early.
 - Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
   hidden, and virtualised content.
 - Native and web targets intentionally expose different platform-service
@@ -141,8 +150,6 @@ Current boundaries:
   browser shell; native applications do not use that routing model.
 - Native packaging does not supply an application's production signing identity,
   store account, notarization credentials, or distribution policy.
-- The supported CI matrix cannot represent every Linux desktop environment,
-  browser, GPU, or driver.
 - The third-party control and integration ecosystem is new.
 
 Open a discussion when evaluating FUI-RS for an application whose requirements
