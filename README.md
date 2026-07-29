@@ -39,7 +39,12 @@ https://github.com/user-attachments/assets/ac497b4a-cc36-4f4f-862d-005ca706edbc
 For a new native, web, or universal application, use
 [`cargo-fui`](https://github.com/zion-sati/cargo-fui):
 
-Install stable Rust and Cargo through [rustup](https://rustup.rs/), then:
+Install the platform compiler and linker first: Xcode Command Line Tools on
+macOS; Visual Studio 2022 Build Tools with Desktop development with C++ and a
+Windows SDK on Windows; or a C/C++ toolchain and the required native development
+libraries on Linux. Windows ARM64 also requires the ARM64 C++ build tools.
+
+Then install stable Rust and Cargo through [rustup](https://rustup.rs/):
 
 ```bash
 rustc --version

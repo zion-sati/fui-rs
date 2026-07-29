@@ -19,7 +19,16 @@ simple or routed/MVC scaffold.
 
 ## Cargo workflow
 
-All targets require stable Rust and Cargo. Install both through
+Install the platform compiler and linker before installing `cargo-fui`:
+
+- macOS: Xcode Command Line Tools (`xcode-select --install`).
+- Windows: Visual Studio 2022 Build Tools with the **Desktop development with
+  C++** workload and a Windows SDK. Windows ARM64 also requires the ARM64 C++
+  build tools.
+- Linux: a C/C++ compiler toolchain plus the Vulkan, Fontconfig, D-Bus, X11, and
+  Xext development libraries used by the EffinDOM native host.
+
+All targets also require stable Rust and Cargo. Install both through
 [rustup](https://rustup.rs/), then verify the toolchain and install `cargo-fui`:
 
 ```bash
@@ -37,13 +46,6 @@ cargo fui dev
 ```
 
 Use `--target native` or `--target web` for a single target.
-
-Native prerequisites:
-
-- macOS: Xcode command-line tools.
-- Windows: Visual Studio Build Tools and the Windows SDK.
-- Linux: a C++ compiler and the native libraries described by the generated
-  project README.
 
 Web and universal prerequisites:
 
