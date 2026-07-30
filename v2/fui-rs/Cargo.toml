@@ -23,7 +23,7 @@ include = [
 ]
 
 [package.metadata.effindom]
-runtime-version = "0.2.6"
+runtime-version = "0.2.7"
 core-abi = 2
 ui-abi = 1
 
