@@ -11,8 +11,6 @@ license = "AGPL-3.0-only"
 keywords = ["effindom", "ui", "gui", "wasm", "desktop"]
 categories = ["gui", "wasm"]
 
-[package.metadata.docs.rs]
-all-features = true
 publish = ["crates-io"]
 include = [
   "/src/**/*.rs",
@@ -24,6 +22,9 @@ include = [
   "/LICENSES/AGPL-3.0-only.md",
   "/COMMERCIAL.md",
 ]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [package.metadata.effindom]
 runtime-version = "0.2.8"
