@@ -140,7 +140,7 @@ impl CounterPage {
     }
 }
 
-fui_managed_app!(CounterPage, CounterPage::new, |page: &CounterPage| page.clone());
+fui_app!(CounterPage, CounterPage::new);
 ```
 
 Do not recreate retained controls in a render loop. That loses identity, focus,
@@ -191,14 +191,15 @@ let label = rich_text![
 
 ## App entrypoint macros
 
-Use `fui_app!` for simple pages:
+Use `fui_app!` for normal pages, including cloneable retained page objects that
+own controls, state, subscriptions, workers, and other RAII resources:
 
 ```rust
 fn build_page() -> FlexBox { column() }
 fui_app!(FlexBox, build_page);
 ```
 
-Use `fui_managed_app!` for retained page/controller ownership:
+Use `fui_managed_app!` when the application needs a custom root projection:
 
 ```rust
 #[derive(Clone)]
@@ -211,8 +212,9 @@ impl Page {
 fui_managed_app!(Page, Page::new, |page: &Page| page.root.clone());
 ```
 
-Optional `mount:` and `dispose:` callbacks are available for route pages that
-need to attach host subscriptions or release route-scoped resources.
+Optional `mount:` and `dispose:` callbacks are available when lifecycle work
+cannot be represented by normal Rust ownership. Prefer fields and RAII guards
+on the retained page for ordinary route-scoped resources.
 
 ## Common imports
 

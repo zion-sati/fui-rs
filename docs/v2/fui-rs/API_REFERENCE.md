@@ -37,6 +37,11 @@ Public lifecycle types and macros:
 Normal apps and route pages should use the macros. They emit the browser harness
 `__runApp` / `__disposeApp` exports and keep ABI details out of user code.
 
+`fui_app!` is the normal entrypoint for both simple roots and cloneable retained
+page/component objects. It delegates to `fui_managed_app!` using the page clone
+as the mounted root. Use `fui_managed_app!` directly only for a custom root
+projection or custom `mount:`/`dispose:` hooks.
+
 ```rust
 use fui::prelude::*;
 
@@ -78,16 +83,28 @@ operation where the API exposes a guard.
 
 FUI-RS follows Rust conventions while keeping the UI model retained and explicit:
 
-- Use `fui_app!` and `fui_managed_app!` so app authors do not write browser lifecycle exports manually.
+- Use `fui_app!` for normal roots and retained page objects. Use
+  `fui_managed_app!` only for custom root projection or lifecycle hooks; neither
+  macro requires handwritten browser lifecycle exports.
 - Use `ui!` for static mixed child trees when Rust's concrete collection types would otherwise require noisy conversions.
 - Use `rich_text!` for typed fluent spans without manually constructing a span vector.
 - Fluent borrowed expressions can be placed directly in `ui!`; they preserve the original retained identity.
-- Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot` forwarding for retained wrappers. Declare `owner:` or `owners:` when weak callbacks or RAII guards depend on component-owned state.
+- Use `fui_component!` instead of handwritten `Node`/`HasFlexBoxRoot`
+  forwarding for retained wrappers. Declare `owner:` or `owners:` only when the
+  retained root must keep weak callback state or RAII guards alive and no
+  enclosing retained object already owns them.
 - Use ordinary Rust closure capture for event handlers and callbacks.
 - Keep RAII guards alive for subscriptions, pending file requests, timers, workers, and similar resources when the API returns one.
 - Treat cloned controls as cheap handles to the same retained UI object, not as duplicated controls.
 - Public editable-text positions are Unicode scalar-value character positions. Internally FUI-RS converts to UTF-8 byte offsets for the runtime boundary.
 - Prefer `Text`, `Image`, and `Svg` in public app code; lower-level node names such as `TextNode`, `ImageNode`, and `SvgNode` are also available where surfaced.
+
+Detailed workflows:
+
+- [Custom fonts](./CUSTOM_FONTS.md)
+- [Custom drawing and bitmaps](./CUSTOM_DRAWING_AND_BITMAPS.md)
+- [Host services, host events, and workers](./HOST_SERVICES_AND_WORKERS.md)
+- [Accessibility and semantics](./ACCESSIBILITY_AND_SEMANTICS.md)
 
 ## Layout and node helpers
 

@@ -42,6 +42,9 @@ practical guide, start with [Controls and nodes](../CONTROLS_AND_NODES.md).
 - [Bitmap](./nodes/Bitmap.md)
 - [TextLayout](./nodes/TextLayout.md)
 - [DynamicTextLayout](./nodes/DynamicTextLayout.md)
+- [FontFace](./nodes/FontFace.md)
+- [FontStack](./nodes/FontStack.md)
+- [FontFamily](./nodes/FontFamily.md)
 - [GradientStop](./nodes/GradientStop.md)
 
 ## See also

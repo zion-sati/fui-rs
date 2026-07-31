@@ -2,7 +2,7 @@
 name = "fui-rs"
 version = "0.1.24"
 edition = "2021"
-description = "Retained Rust UI for native desktop and WebAssembly applications"
+description = "Web-first retained Rust UI for WebAssembly and native desktop applications"
 repository = "https://github.com/zion-sati/fui-rs"
 homepage = "https://effindom.dev"
 documentation = "https://docs.rs/fui-rs"
@@ -10,6 +10,9 @@ readme = "README.md"
 license = "AGPL-3.0-only"
 keywords = ["effindom", "ui", "gui", "wasm", "desktop"]
 categories = ["gui", "wasm"]
+
+[package.metadata.docs.rs]
+all-features = true
 publish = ["crates-io"]
 include = [
   "/src/**/*.rs",

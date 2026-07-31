@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub mod animation;
 pub mod app;
 pub mod assets;
@@ -112,6 +114,12 @@ pub trait Configure: Sized {
 
 impl<T> Configure for T {}
 
+/// Defines the standard FUI-RS application lifecycle exports.
+///
+/// The page can be a built-in node or a cloneable retained component that owns
+/// controls, state, subscriptions, workers, and other RAII resources. Use
+/// [`fui_managed_app!`] directly only when the mounted root needs custom
+/// projection or custom mount/dispose hooks.
 #[macro_export]
 macro_rules! fui_app {
     ($page_ty:ty, $build_page:expr) => {
@@ -159,6 +167,12 @@ macro_rules! fui_worker {
     };
 }
 
+/// Defines FUI-RS application lifecycle exports with custom root projection
+/// and optional mount/dispose hooks.
+///
+/// Normal retained pages should use [`fui_app!`]. This lower-level macro is for
+/// applications whose page object is not itself the mounted root or whose
+/// lifecycle requires explicit host hooks beyond ordinary Rust ownership.
 #[macro_export]
 macro_rules! fui_managed_app {
     ($page_ty:ty, $build_page:expr, $get_root:expr) => {
@@ -396,6 +410,12 @@ macro_rules! ui {
     };
 }
 
+/// Delegates `Node` and `HasFlexBoxRoot` to a retained component's root.
+///
+/// Use `owner:` or `owners:` only when the retained root must keep callback
+/// state or RAII guards alive after a temporary component wrapper is dropped.
+/// A retained page object may own ordinary fields directly without declaring
+/// them here.
 #[macro_export]
 macro_rules! fui_component {
     ($component:ty => $root:ident) => {

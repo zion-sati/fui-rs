@@ -12,6 +12,9 @@ entrypoints and mixed child trees.
 - [API reference](./API_REFERENCE.md)
 - [Controls and nodes overview](./CONTROLS_AND_NODES.md)
 - [Text input reference](./TEXT_INPUT_REFERENCE.md)
+- [Custom fonts](./CUSTOM_FONTS.md)
+- [Custom drawing and bitmaps](./CUSTOM_DRAWING_AND_BITMAPS.md)
+- [Host services, host events, and workers](./HOST_SERVICES_AND_WORKERS.md)
 
 ## Accessibility
 
@@ -43,6 +46,7 @@ entrypoints and mixed child trees.
 - [Browser file bridge](./API_REFERENCE.md#browser-file-bridge)
 - [Browser fetch bridge](./API_REFERENCE.md#browser-fetch-bridge)
 - [Workers](./API_REFERENCE.md#workers)
+- [Host services, host events, and workers](./HOST_SERVICES_AND_WORKERS.md)
 - [Timers](./API_REFERENCE.md#timers)
 - [Platform helpers](./API_REFERENCE.md#platform-and-shortcuts)
 - [DevTools DOM Mirror](https://github.com/zion-sati/EffinDOM/blob/main/docs/v2/browser-bridge/DEVTOOLS_DOM_MIRROR.md)
@@ -62,6 +66,19 @@ entrypoints and mixed child trees.
 - [`rich_text!` retained rich-text macro](./QUICKSTART.md#rich-text-with-rich_text)
 - [`fui_app!` and `fui_managed_app!`](./QUICKSTART.md#app-entrypoint-macros)
 - [Rust SDK conventions](./API_REFERENCE.md#rust-sdk-conventions)
+- [Custom fonts and asynchronous readiness](./CUSTOM_FONTS.md)
+- [Custom drawing and bitmap ownership](./CUSTOM_DRAWING_AND_BITMAPS.md)
+
+## Validation scope
+
+- [`fui-rs-demo`](https://github.com/zion-sati/fui-rs-demo) demonstrates the routed browser/npm
+  application workflow.
+- Fresh scaffolder fixtures validate generated browser projects.
+- `cargo-fui` generated fixtures validate web, native, and universal tooling.
+- Native demos and platform adapter tests validate native runtime and
+  accessibility claims.
+- Exact supported package combinations come from resolved CI/release inputs,
+  not from an inferred minor-version range.
 
 ## Contributing
 

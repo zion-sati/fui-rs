@@ -2033,8 +2033,9 @@ pub trait Node: Clone {
 
     /// Handles the low-level routed pointer-click event.
     ///
-    /// This is not control activation. Use [`Button::on_click`](crate::Button::on_click)
-    /// for a button action that also supports keyboard activation.
+    /// This is not control activation. Use
+    /// [`Clickable::on_click`](crate::controls::Clickable::on_click) for a control action
+    /// that also supports keyboard activation.
     fn on_pointer_click(&self, handler: impl Fn(&mut PointerEventArgs) + 'static) -> &Self
     where
         Self: Sized,

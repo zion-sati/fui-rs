@@ -3,6 +3,32 @@
 FUI-RS exports a retained semantic tree alongside visual canvas rendering. Use
 normal controls first; they provide default roles, labels, and state.
 
+## Semantics are not behavior
+
+Assigning `SemanticRole::Button` does not add focus, keyboard activation, an
+action handler, disabled behavior, or press state. A custom interactive control
+must implement the complete behavioral contract represented by its role.
+
+Before assigning an interactive semantic role, verify:
+
+- The control is focusable when enabled and participates in the intended tab
+  order.
+- The platform-standard keyboard operation performs the same high-level action
+  as pointer or touch input.
+- Labels, values, checked/selected/expanded state, orientation, and disabled
+  state stay synchronized with retained state.
+- The action remains available without pointer input.
+- Focus, activation, and state behavior have platform-independent tests.
+
+If an affordance is intentionally pointer-only, use truthful non-interactive
+semantics rather than presenting it as a partially implemented button or form
+control.
+
+Browser semantic projection, macOS accessibility, Windows accessibility, and
+Linux AT-SPI are separate adapters over the same retained model and require
+separate acceptance evidence. The routed browser demo demonstrates browser
+projection only.
+
 ## Default semantic behavior
 
 | Surface | Default role | Default label behavior | Auto semantic state |
@@ -47,6 +73,11 @@ nodes from paint/hit/focus and semantic export.
 
 Selectable `Text` and editor controls contribute text to the semantic/find layer.
 Text inside `AntiSelectionArea` blocks ancestor selection collection.
+
+The normal desktop find shortcut opens EffinDOM's retained find experience.
+Mobile browser find and explicitly invoked browser-native find search the
+projected semantic text. Browser-native matching works, but its DOM-owned
+highlight can use a slightly different font rendering from the canvas text.
 
 ## Autofill projection is not the semantic tree
 

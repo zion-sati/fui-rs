@@ -3,8 +3,10 @@
   "version": "0.1.24",
   "private": false,
   "license": "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial",
-  "description": "Retained Rust UI SDK for native desktop and WebAssembly applications",
+  "description": "Web-first retained Rust UI SDK for WebAssembly and native desktop applications",
   "repository": "https://github.com/zion-sati/fui-rs",
+  "homepage": "https://effindom.dev",
+  "bugs": "https://github.com/zion-sati/fui-rs/issues",
   "keywords": [
     "effindom",
     "rust",

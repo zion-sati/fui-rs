@@ -186,17 +186,21 @@ fui_component!(SettingsHeader => root);
 ```
 
 The macro delegates `Node` and `HasFlexBoxRoot`; it does not create another UI
-node. Stateful components whose callbacks capture weak state must declare the
-state retained by their parent:
+node. A component object can own ordinary state directly without an owner
+declaration. Declare `owner:` or `owners:` when an inline component returns its
+root and that root must keep callback state or RAII guards alive after the
+temporary component object is dropped:
 
 ```rust
 fui_component!(DropPanel => root, owner: state);
 fui_component!(SubscribedPanel => root, owners: [state, subscriptions]);
 ```
 
-This allows stateful components to be placed inline in `ui!` without losing
-their callback or RAII-subscription lifetime. Owner fields must not strongly own
-the component root or an ancestor, because that would create an `Rc` cycle. Keep
+This allows inline stateful components to be placed in `ui!` without losing
+their callback or RAII-subscription lifetime. Do not add an owner declaration
+when an enclosing retained page/component already owns the field. Owner fields
+must not strongly own the component root or an ancestor, because that would
+create an `Rc` cycle. Keep
 an intermediate variable only when later mutations need the control. Do not use
 `Deref` to imitate UI inheritance.
 

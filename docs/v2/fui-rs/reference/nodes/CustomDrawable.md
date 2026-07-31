@@ -1,5 +1,18 @@
 # CustomDrawable
 
+Retained immediate-mode drawing surface. Its callback redraws current retained
+state; it does not rebuild the UI tree.
+
+Keep paths, images, SVGs, text layouts, and other expensive resources outside
+the draw callback. Call `mark_dirty()` only when visible state changes, and use
+`DrawableInvalidator` from long-lived callbacks to avoid strongly retaining the
+drawable.
+
+Pointer-driven drawing must capture the pointer while active and release state
+on pointer-up and pointer-cancel, including when the pointer leaves the bounds.
+
+See [Custom drawing and bitmaps](../../CUSTOM_DRAWING_AND_BITMAPS.md).
+
 Retained custom drawing surface.
 
 ## Constructor

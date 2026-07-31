@@ -145,8 +145,10 @@ Current boundaries:
   `NSAccessibility` on macOS, Microsoft UI Automation on Windows, and AT-SPI on
   Linux. Broad compatibility testing across screen readers, browser
   combinations, and Linux desktop environments remains early.
-- Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
-  hidden, and virtualised content.
+- Find-on-page is implemented through retained find for the normal desktop
+  shortcut and projected semantic text for mobile or explicitly invoked
+  browser-native find. Browser-native highlights can render with a slightly
+  different DOM font from the canvas text.
 - Native and web targets intentionally expose different platform-service
   adapters where the underlying capability differs.
 - Browser-only routed applications use separate WASM modules and a shared
@@ -176,6 +178,14 @@ touch one of these boundaries.
 - [Text input reference](docs/v2/fui-rs/TEXT_INPUT_REFERENCE.md)
 - [Forms and autofill](docs/v2/fui-rs/FORMS_AND_AUTOFILL.md)
 - [Theming and styles](docs/v2/fui-rs/THEMING_STYLE_MATRIX.md)
+- [Custom fonts](docs/v2/fui-rs/CUSTOM_FONTS.md)
+- [Custom drawing and bitmaps](docs/v2/fui-rs/CUSTOM_DRAWING_AND_BITMAPS.md)
+- [Host services, host events, and workers](docs/v2/fui-rs/HOST_SERVICES_AND_WORKERS.md)
+- [Accessibility and semantics](docs/v2/fui-rs/ACCESSIBILITY_AND_SEMANTICS.md)
+
+The [live routed demo](https://fui-rs-demo.effindom.dev/) demonstrates the
+browser/npm workflow. Native and packaging claims are validated separately by
+`cargo-fui` fixtures and native platform tests.
 
 ## Contributing
 

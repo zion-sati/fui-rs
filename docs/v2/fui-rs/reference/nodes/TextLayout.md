@@ -1,5 +1,16 @@
 # TextLayout
 
+Retained formatted text resource for custom drawing. A layout may wait for
+fonts asynchronously. Check readiness or register `on_ready(...)`, retain the
+returned readiness state as required by the API, and invalidate the owning
+`CustomDrawable` before drawing it.
+
+Use ordinary retained `Text` or `RichText` when the text should participate in
+normal retained layout and selection.
+
+See [Custom fonts](../../CUSTOM_FONTS.md) and
+[Custom drawing and bitmaps](../../CUSTOM_DRAWING_AND_BITMAPS.md).
+
 Immediate-mode formatted text resource.
 
 ## Constructor

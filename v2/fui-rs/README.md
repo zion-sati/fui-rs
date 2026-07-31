@@ -61,13 +61,27 @@ fn build_page() -> FlexBox {
     ui! {
         column().fill_size().padding(24.0, 24.0, 24.0, 24.0) {
             text("Hello from Rust"),
-            button("Click me").on_click(|_| logger::info("App", "clicked")),
+            button("Click me").on_click(|_| {}),
         }
     }
 }
 
 fui_app!(FlexBox, build_page);
 ```
+
+## Documentation
+
+- [SDK index](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/SDK_INDEX.md)
+- [Quickstart](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/QUICKSTART.md)
+- [API reference](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/API_REFERENCE.md)
+- [Custom fonts](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/CUSTOM_FONTS.md)
+- [Custom drawing and bitmaps](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/CUSTOM_DRAWING_AND_BITMAPS.md)
+- [Host services, host events, and workers](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/HOST_SERVICES_AND_WORKERS.md)
+- [Accessibility and semantics](https://github.com/zion-sati/fui-rs/blob/main/docs/v2/fui-rs/ACCESSIBILITY_AND_SEMANTICS.md)
+
+The [live routed demo](https://fui-rs-demo.effindom.dev/) demonstrates the
+browser/npm workflow. Native and packaging claims are validated separately by
+`cargo-fui` fixtures and native platform tests.
 
 ## Rich text
 
@@ -76,6 +90,8 @@ span vector. String literals become spans, braced expressions provide dynamic
 text, and `span => expression` accepts an existing `RichTextSpan`:
 
 ```rust
+use fui::prelude::*;
+
 let value = 42;
 let suffix = span("!").underline();
 let label = rich_text![
@@ -130,6 +146,8 @@ construct typed row state, then update that state from `on_bind_item` whenever a
 pool slot is assigned a new item index:
 
 ```rust
+use fui::prelude::*;
+
 struct ContactRow {
     name: TextNode,
 }
@@ -153,6 +171,8 @@ or create controls inside `on_bind_item`.
 Apply common scrollbar chrome without leaving fluent `ScrollBox` construction:
 
 ```rust
+use fui::prelude::*;
+
 let content = scroll_box().scrollbar_style(
     ScrollBarStyle::new()
         .track_width(10.0)
@@ -176,7 +196,7 @@ an older guard cannot remove its replacement.
 Enable the `worker-runtime` feature, implement `Default + WorkerJob`, and let
 the SDK emit resumable entries plus the shared callback-buffer ABI:
 
-```rust
+```rust,ignore
 use fui::prelude::*;
 
 #[derive(Default)]
@@ -228,8 +248,10 @@ Current platform limits:
   Linux. Broad compatibility testing across screen readers, browser
   combinations, and Linux desktop environments remains early.
 - iOS and Android are not currently supported.
-- Browser-native find-on-page cannot be reproduced perfectly for all mirrored,
-  hidden, and virtualised content.
+- Find-on-page is implemented through retained find for the normal desktop
+  shortcut and projected semantic text for mobile or explicitly invoked
+  browser-native find. Browser-native highlights can render with a slightly
+  different DOM font from the canvas text.
 - The third-party control and integration ecosystem is new.
 
 Try the [live demo](https://fui-rs-demo.effindom.dev/), then open a discussion
