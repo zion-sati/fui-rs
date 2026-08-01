@@ -134,9 +134,10 @@ It covers the standalone repository toolchain, SDK build, lint, and test lanes.
 | Context menu, popup, dialog, tooltip | Available |
 | Selection, mobile text handles, context toolbar | Available |
 | ScrollView, ScrollBox, VirtualList | Available |
-| Custom drawing and text layouts | Available |
+| Custom drawing, paths, dynamic bitmaps, offscreen composition, retained rasterization, and timers | Available on web and native |
 | Native and browser platform adapters | Available |
-| Browser file/fetch/worker bridges | Available |
+| Browser file/fetch bridges | Available in browser applications |
+| First-party background workers | Available on web and native |
 | Host services/events generator support | Available |
 
 ## Recycled virtual-list rows
@@ -211,6 +212,23 @@ impl WorkerJob for PrimeJob {
 
 fui_worker!(primeWorker => PrimeJob);
 ```
+
+Declare each Worker artifact, native Cargo manifest, and exported entry in
+`fui.toml`. Application code then uses the same identity on every target:
+
+```rust,ignore
+let worker = Worker::new("./workers.wasm", "primeWorker")
+    .on_complete(|event| println!("{}", event.result))
+    .start("input");
+```
+
+On the web, `cargo-fui` compiles the worker crate to the declared Worker WASM
+artifact and runs it in a browser Worker. On native desktop, the same worker
+crate is linked into the application and the artifact/entry pair resolves
+through a generated registry onto a dedicated thread; native does not load
+`workers.wasm` from disk. Cancellation is cooperative, so long-running jobs
+must yield or check cancellation regularly. Worker callbacks are delivered on
+the application UI thread.
 
 ## Architecture
 

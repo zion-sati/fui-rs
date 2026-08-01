@@ -48,7 +48,7 @@ For the complete export list, see:
 | `Grid` | WPF-style retained grid layout | rows, columns, placements, shared-size scope/group helpers |
 | `Text` / `TextNode` | Retained text rendering node | `text(...)`, font family/size/weight/style, text color, selection, alignment |
 | `RichText` / `RichTextSpan` | Attributed inline rich text | `rich_text![...]`, `span(...)`, inline color/background/bold/italic styling |
-| `Bitmap` | Retained pixel buffer backed by GPU texture | direct pixel access and retained bitmap text rendering |
+| `Bitmap` | Shared retained RGBA/texture/offscreen resource | direct pixels, full/dirty commits, offscreen Skia drawing/readback, retained-node and text rasterization, deterministic disposal |
 | `TextLayout` | Immediate-mode formatted text resource | `TextLayout::text(...)`, `TextLayout::rich(...)`, drawing via `DrawContext` |
 | `DynamicTextLayout` | Immediate-mode short label resource | fixed charset text layout for frequently changing labels |
 | `Image` / `ImageNode` | Retained raster image node | URL/asset-backed images, object-fit, sampling, nine-patch behavior |
@@ -59,7 +59,7 @@ For the complete export list, see:
 | `ScrollBar` | Helper that composes retained scrollbar chrome | axis-aware track/thumb style and geometry; attach the result of `render()` |
 | `ScrollBox` | High-level scroll container | owned viewport and scrollbars, per-axis enable/visibility control |
 | `VirtualList` | Pooled retained list surface | `virtual_list(total, item_height)`, `on_bind_item(...)`, recycled rows |
-| `CustomDrawable` | Retained custom drawing surface | `custom_drawable(|ctx| ...)`, `DrawContext`, `mark_dirty()` |
+| `CustomDrawable` | Retained host-neutral custom drawing surface | `custom_drawable(|ctx| ...)`, primitives/transforms/clips/paths/text/images/SVG, weak invalidation, web/native parity |
 | `GradientStop` | Linear gradient stop value | `GradientStop::new(offset, color)` |
 
 ## Helpers

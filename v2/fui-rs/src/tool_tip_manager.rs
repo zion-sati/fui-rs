@@ -99,6 +99,10 @@ thread_local! {
 pub(crate) struct ToolTipManager;
 
 impl ToolTipManager {
+    pub(crate) fn is_visible() -> bool {
+        TOOL_TIP_MANAGER.with(|slot| slot.borrow().active_owner_handle.is_some())
+    }
+
     pub(crate) fn create_default_host() -> FlexBox {
         let (host_root, needs_focus_visibility_subscription) = TOOL_TIP_MANAGER.with(|slot| {
             let mut state = slot.borrow_mut();

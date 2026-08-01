@@ -568,6 +568,38 @@ test.afterAll(async () => {
   await server.close();
 });
 
+for (const colorScheme of ['light','dark'] as const) {
+  test(`loading overlay and page background follow the ${colorScheme} system theme`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.route(/\/(bridge|harness)\.js(?:\?|$)/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await route.continue();
+    });
+
+    await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`, { waitUntil: 'commit' });
+    await page.waitForTimeout(400);
+
+    const expected = colorScheme === 'light'
+      ? { detail: 'rgb(71, 85, 105)',page: 'rgb(247, 244, 236)' }
+      : { detail: 'rgb(203, 213, 225)',page: 'rgb(22, 24, 29)' };
+    await expect(page.locator('#effindom-loading-overlay')).toBeVisible();
+    await expect(page.locator('#effindom-loading-detail')).toHaveCSS('color', expected.detail);
+    await expect(page.locator('body')).toHaveCSS('background-color', expected.page);
+    await expect(page.locator('#effindom-loading-overlay')).toHaveCSS('pointer-events', 'none');
+    await expect(page.locator('#fui-canvas')).toHaveCSS('visibility', 'hidden');
+  });
+}
+
+test('Chromium detaches the loading overlay before exposing the canvas for pointer hit testing', async ({ page }) => {
+  await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html?effindom-loading-delay=900`, { waitUntil: 'commit' });
+  await page.mouse.move(640, 360);
+  await page.waitForFunction(() => window.__fuiReady === true);
+
+  await expect(page.locator('#effindom-loading-overlay')).toHaveCount(0);
+  await expect(page.locator('#fui-canvas')).toHaveCSS('visibility', 'visible');
+  await expect.poll(async () => page.evaluate(() => document.elementFromPoint(640, 360)?.id ?? '')).toBe('fui-canvas');
+});
+
 test('shows the styled loading overlay before throttled bridge scripts arrive', async ({ page }) => {
   await page.route(/\/(bridge|harness)\.js(?:\?|$)/, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1_000));

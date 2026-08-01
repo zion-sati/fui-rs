@@ -44,6 +44,13 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
+ESBUILD_RUNTIME_ALIAS_ARGS=()
+if [ -f "${REPO_ROOT}/v2/browser-bridge/src/index.ts" ]; then
+  ESBUILD_RUNTIME_ALIAS_ARGS+=(
+    "--alias:@effindomv2/runtime=${REPO_ROOT}/v2/browser-bridge/src"
+  )
+fi
+
 resolve_runtime_dist_dir() {
   local candidate=""
   local public_manifest="${PUBLIC_BRIDGE_DIR}/effindom.v2.manifest.json"
@@ -102,6 +109,7 @@ generate_host_services() {
   local output_file="$3"
   local runtime_path="${4:-}"
   local host_import_module="${5:-}"
+  local native_mode="${6:-}"
 
   npx esbuild "${PACKAGE_DIR}/scripts/generate-host-services.ts" \
     --bundle \
@@ -111,7 +119,10 @@ generate_host_services() {
     --packages=external \
     --outfile="${HOST_SERVICE_GENERATOR_BUILD}"
 
-  if [ -n "${runtime_path}" ] && [ -n "${host_import_module}" ]; then
+  if [ -n "${native_mode}" ]; then
+    node "${HOST_SERVICE_GENERATOR_BUILD}" \
+      "${definition_file}" "${export_name}" "${output_file}" "${runtime_path}" "${host_import_module}" "${native_mode}"
+  elif [ -n "${runtime_path}" ] && [ -n "${host_import_module}" ]; then
     node "${HOST_SERVICE_GENERATOR_BUILD}" \
       "${definition_file}" "${export_name}" "${output_file}" "${runtime_path}" "${host_import_module}"
   elif [ -n "${runtime_path}" ]; then
@@ -146,7 +157,7 @@ generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-sta
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-stage5/src/generated/host_events.rs"
 generate_host_events "demo/src/host-events.ts" "demoHostEvents" "crates/demo-immediate-drawing/src/generated/host_events.rs"
 generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-shared/src/generated/worker_host_services.rs" "fui::host_services" "fui_host_service"
-generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-worker/src/generated/worker_host_services.rs" "" "fui_host_service"
+generate_host_services "demo/src/worker-host-services.ts" "demoWorkerHostServices" "crates/demo-worker/src/generated/worker_host_services.rs" "" "fui_host_service" "worker"
 generate_host_services "scripts/framework-host-services.ts" "frameworkHostServices" "src/generated/framework_host_services.rs" "crate::host_services" "fui_host"
 
 rm -f "${OUT_DIR}/app.wasm" "${OUT_DIR}/harness.js" "${OUT_DIR}/harness.js.map" "${DEMO_OUT_DIR}/demo.wasm"
@@ -161,12 +172,19 @@ build_demo_route() {
   optimize_wasm "${wasm_out}"
 }
 
+build_demo_worker() {
+  local wasm_out="$1"
+  cargo rustc --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "fui-rs-demo-worker" --target wasm32-unknown-unknown --target-dir "${PACKAGE_DIR}/target" --release --lib --crate-type cdylib
+  cp "${PACKAGE_DIR}/target/wasm32-unknown-unknown/release/fui_rs_demo_worker.wasm" "${wasm_out}"
+  optimize_wasm "${wasm_out}"
+}
+
 build_demo_route "fui-rs-demo-home" "fui_rs_demo_home" "${DEMO_OUT_DIR}/home.wasm"
 build_demo_route "fui-rs-demo-workbench" "fui_rs_demo_workbench" "${DEMO_OUT_DIR}/workbench.wasm"
 build_demo_route "fui-rs-demo-stage4" "fui_rs_demo_stage4" "${DEMO_OUT_DIR}/stage4.wasm"
 build_demo_route "fui-rs-demo-stage5" "fui_rs_demo_stage5" "${DEMO_OUT_DIR}/stage5.wasm"
 build_demo_route "fui-rs-demo-immediate-drawing" "fui_rs_demo_immediate_drawing" "${DEMO_OUT_DIR}/immediate-drawing.wasm"
-build_demo_route "fui-rs-demo-worker" "fui_rs_demo_worker" "${DEMO_OUT_DIR}/workers.wasm"
+build_demo_worker "${DEMO_OUT_DIR}/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/workbench/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/stage4/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/stage5/workers.wasm"
@@ -178,6 +196,7 @@ npx esbuild "${PACKAGE_DIR}/demo/harness.ts" \
   --platform=browser \
   --target=es2020 \
   --minify \
+  "${ESBUILD_RUNTIME_ALIAS_ARGS[@]}" \
   --outfile="${DEMO_OUT_DIR}/harness.js" \
   --sourcemap
 
@@ -187,6 +206,7 @@ npx esbuild "${PACKAGE_DIR}/demo/worker-host-services.ts" \
   --platform=browser \
   --target=es2020 \
   --minify \
+  "${ESBUILD_RUNTIME_ALIAS_ARGS[@]}" \
   --outfile="${DEMO_OUT_DIR}/worker-host-services.js" \
   --sourcemap
 

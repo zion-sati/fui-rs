@@ -2,17 +2,37 @@ use super::core::*;
 use super::*;
 
 #[derive(Clone)]
+/// A retained visual surface whose callback records immediate drawing commands.
+///
+/// The same callback API is supported by browser/WebAssembly and native desktop
+/// hosts. Keep expensive drawing resources outside the callback and invalidate
+/// the drawable after retained state changes.
+///
+/// ```no_run
+/// use fui::prelude::*;
+///
+/// let preview = custom_drawable(|context| {
+///     context.draw_circle(32.0, 32.0, 20.0, Paint::fill(rgb(0x38, 0xbd, 0xf8)));
+/// });
+/// preview
+///     .width(64.0, Unit::Pixel)
+///     .height(64.0, Unit::Pixel)
+///     .semantic_label("Drawing preview");
+/// preview.mark_dirty();
+/// ```
 pub struct CustomDrawable {
     base: FlexBox,
     draw_callback: DrawCallback,
 }
 
 #[derive(Clone)]
+/// A weak invalidation handle that does not keep its [`CustomDrawable`] alive.
 pub struct DrawableInvalidator {
     base: WeakFlexBox,
 }
 
 impl DrawableInvalidator {
+    /// Schedules a redraw if the associated drawable is still mounted.
     pub fn mark_dirty(&self) {
         if let Some(base) = self.base.upgrade() {
             mark_base_dirty(&base);
@@ -21,6 +41,10 @@ impl DrawableInvalidator {
 }
 
 impl CustomDrawable {
+    /// Creates a retained custom-drawing surface.
+    ///
+    /// The runtime saves canvas state, clips to the drawable bounds, invokes
+    /// `handler`, restores state, and flushes the command batch.
     pub fn new(handler: impl Fn(&mut DrawContext) + 'static) -> Self {
         let base = FlexBox::default();
         base.custom_drawable(true);
@@ -30,10 +54,12 @@ impl CustomDrawable {
         }
     }
 
+    /// Schedules a commit when visible drawing state has changed.
     pub fn mark_dirty(&self) {
         mark_base_dirty(&self.base);
     }
 
+    /// Returns a weak invalidator suitable for timers and readiness callbacks.
     pub fn invalidator(&self) -> DrawableInvalidator {
         DrawableInvalidator {
             base: self.base.downgrade(),

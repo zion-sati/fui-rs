@@ -186,7 +186,7 @@ fn with_active_worker(worker_id: u32, callback: impl FnOnce(&mut WorkerInner)) {
     callback(&mut inner);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_progress(
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn __fui_on_worker_progress(
     });
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for an empty result or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_complete(
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn __fui_on_worker_complete(
     }
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_error(worker_id: u32, text_ptr: *const u8, text_len: u32) {
@@ -272,6 +272,16 @@ mod tests {
     use crate::ffi::{self, Call};
     use std::cell::RefCell;
     use std::rc::Rc;
+
+    fn started_worker_id(calls: &[Call]) -> u32 {
+        calls
+            .iter()
+            .find_map(|call| match call {
+                Call::WorkerStartString { worker_id, .. } => Some(*worker_id),
+                _ => None,
+            })
+            .expect("worker start call")
+    }
 
     #[test]
     fn worker_start_emits_host_call() {
@@ -314,11 +324,91 @@ mod tests {
                 result_clone.replace(event.result);
             })
             .start("hello");
+        let worker_id = started_worker_id(&ffi::test::take_calls());
         unsafe {
-            super::__fui_on_worker_progress(1, b"25%".as_ptr(), 3);
-            super::__fui_on_worker_complete(1, b"done".as_ptr(), 4);
+            super::__fui_on_worker_progress(worker_id, b"25%".as_ptr(), 3);
+            super::__fui_on_worker_complete(worker_id, b"done".as_ptr(), 4);
         }
         assert_eq!(&*progress.borrow(), "25%");
         assert_eq!(&*result.borrow(), "done");
+    }
+
+    #[test]
+    fn worker_is_one_shot_and_first_terminal_callback_wins() {
+        ffi::test::reset();
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let progress_events = events.clone();
+        let complete_events = events.clone();
+        let error_events = events.clone();
+        let worker = Worker::new("./workers/test.wasm", "demo")
+            .on_progress(move |event| progress_events.borrow_mut().push(event.message))
+            .on_complete(move |event| complete_events.borrow_mut().push(event.result))
+            .on_error(move |event| error_events.borrow_mut().push(event.message))
+            .start("first")
+            .start("second");
+        let calls = ffi::test::take_calls();
+        assert_eq!(
+            calls
+                .iter()
+                .filter(|call| matches!(call, Call::WorkerStartString { .. }))
+                .count(),
+            1
+        );
+        let worker_id = started_worker_id(&calls);
+        unsafe {
+            super::__fui_on_worker_progress(worker_id, b"progress".as_ptr(), 8);
+            super::__fui_on_worker_complete(worker_id, b"complete".as_ptr(), 8);
+            super::__fui_on_worker_error(worker_id, b"late error".as_ptr(), 10);
+            super::__fui_on_worker_progress(worker_id, b"late".as_ptr(), 4);
+        }
+        assert_eq!(&*events.borrow(), &["progress", "complete"]);
+        drop(worker);
+    }
+
+    #[test]
+    fn cancellation_is_idempotent_and_suppresses_progress() {
+        ffi::test::reset();
+        let progress = Rc::new(RefCell::new(Vec::new()));
+        let progress_clone = progress.clone();
+        let worker = Worker::new("./workers/test.wasm", "demo")
+            .on_progress(move |event| progress_clone.borrow_mut().push(event.message))
+            .start("input");
+        let start_calls = ffi::test::take_calls();
+        let worker_id = started_worker_id(&start_calls);
+        worker.cancel();
+        worker.cancel();
+        unsafe {
+            super::__fui_on_worker_progress(worker_id, b"ignored".as_ptr(), 7);
+        }
+        let calls = ffi::test::take_calls();
+        assert_eq!(
+            calls
+                .iter()
+                .filter(|call| matches!(call, Call::WorkerCancel { worker_id: id } if *id == worker_id))
+                .count(),
+            1
+        );
+        assert!(progress.borrow().is_empty());
+    }
+
+    #[test]
+    fn dropping_started_worker_cancels_and_detaches_callbacks() {
+        ffi::test::reset();
+        let completed = Rc::new(RefCell::new(false));
+        let completed_clone = completed.clone();
+        let worker = Worker::new("./workers/test.wasm", "demo")
+            .on_complete(move |_| {
+                completed_clone.replace(true);
+            })
+            .start("input");
+        let worker_id = started_worker_id(&ffi::test::take_calls());
+        drop(worker);
+        assert!(ffi::test::take_calls()
+            .iter()
+            .any(|call| matches!(call, Call::WorkerCancel { worker_id: id } if *id == worker_id)));
+        unsafe {
+            super::__fui_on_worker_complete(worker_id, b"late".as_ptr(), 4);
+        }
+        assert!(!*completed.borrow());
     }
 }

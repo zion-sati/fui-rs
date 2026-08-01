@@ -25,6 +25,7 @@ const OP_DRAW_IMAGE: u32 = 31;
 const OP_DRAW_SVG: u32 = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+/// Fill and stroke state for an immediate drawing command.
 pub struct Paint {
     pub fill_color: u32,
     pub stroke_color: u32,
@@ -32,6 +33,7 @@ pub struct Paint {
 }
 
 impl Paint {
+    /// Creates a fill-only paint using packed RGBA color.
     pub fn fill(color: u32) -> Self {
         Self {
             fill_color: color,
@@ -40,6 +42,7 @@ impl Paint {
         }
     }
 
+    /// Creates a stroke-only paint using packed RGBA color.
     pub fn stroke(color: u32, width: f32) -> Self {
         Self {
             fill_color: 0,
@@ -48,6 +51,7 @@ impl Paint {
         }
     }
 
+    /// Creates a paint with both fill and stroke.
     pub fn filled_stroke(fill_color: u32, stroke_color: u32, stroke_width: f32) -> Self {
         Self {
             fill_color,
@@ -56,10 +60,12 @@ impl Paint {
         }
     }
 
+    /// Reports whether the fill has non-zero alpha.
     pub fn has_fill(self) -> bool {
         (self.fill_color & 0xff) != 0
     }
 
+    /// Reports whether the stroke has positive width and non-zero alpha.
     pub fn has_stroke(self) -> bool {
         self.stroke_width > 0.0 && (self.stroke_color & 0xff) != 0
     }
@@ -76,6 +82,7 @@ impl Drop for PathResource {
 }
 
 #[derive(Clone)]
+/// A shared retained vector path released when its final clone drops.
 pub struct Path {
     resource: Rc<PathResource>,
 }
@@ -87,6 +94,7 @@ impl Default for Path {
 }
 
 impl Path {
+    /// Creates an empty host-neutral path.
     pub fn new() -> Self {
         let id = unsafe { ffi::fui_path_create() };
         Self {
@@ -94,25 +102,30 @@ impl Path {
         }
     }
 
+    /// Returns the opaque engine path identifier.
     pub fn id(&self) -> u32 {
         self.resource.id
     }
 
+    /// Starts a new contour at `(x, y)`.
     pub fn move_to(&mut self, x: f32, y: f32) -> &mut Self {
         unsafe { ffi::fui_path_move_to(self.id(), x, y) };
         self
     }
 
+    /// Adds a line segment to `(x, y)`.
     pub fn line_to(&mut self, x: f32, y: f32) -> &mut Self {
         unsafe { ffi::fui_path_line_to(self.id(), x, y) };
         self
     }
 
+    /// Adds a quadratic Bezier segment.
     pub fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) -> &mut Self {
         unsafe { ffi::fui_path_quad_to(self.id(), cx, cy, x, y) };
         self
     }
 
+    /// Adds a cubic Bezier segment.
     pub fn cubic_to(
         &mut self,
         cx1: f32,
@@ -126,16 +139,19 @@ impl Path {
         self
     }
 
+    /// Closes the current contour.
     pub fn close(&mut self) -> &mut Self {
         unsafe { ffi::fui_path_close(self.id()) };
         self
     }
 
+    /// Adds an axis-aligned rectangle.
     pub fn add_rect(&mut self, x: f32, y: f32, w: f32, h: f32) -> &mut Self {
         unsafe { ffi::fui_path_add_rect(self.id(), x, y, w, h) };
         self
     }
 
+    /// Adds a circle.
     pub fn add_circle(&mut self, cx: f32, cy: f32, r: f32) -> &mut Self {
         unsafe { ffi::fui_path_add_circle(self.id(), cx, cy, r) };
         self
@@ -150,11 +166,17 @@ struct DrawContextState {
 }
 
 #[derive(Clone, Default)]
+/// A batched immediate drawing command recorder.
+///
+/// Application code normally receives this from `CustomDrawable` or
+/// [`Bitmap::canvas`](crate::bitmap::Bitmap::canvas), rather than constructing
+/// it directly.
 pub struct DrawContext {
     inner: Rc<RefCell<DrawContextState>>,
 }
 
 impl DrawContext {
+    #[doc(hidden)]
     pub fn new(canvas_ptr: usize) -> Self {
         Self {
             inner: Rc::new(RefCell::new(DrawContextState {
@@ -169,6 +191,8 @@ impl DrawContext {
         words.push(value.to_bits());
     }
 
+    /// Sends the current ordered command batch to the active host canvas.
+    /// Normal `CustomDrawable` callbacks are flushed automatically.
     pub fn flush(&self) {
         let mut state = self.inner.borrow_mut();
         if state.words.is_empty() {
@@ -185,14 +209,17 @@ impl DrawContext {
         state.retained_paths.clear();
     }
 
+    /// Saves transform and clip state.
     pub fn save(&self) {
         self.inner.borrow_mut().words.push(OP_SAVE);
     }
 
+    /// Restores the most recently saved transform and clip state.
     pub fn restore(&self) {
         self.inner.borrow_mut().words.push(OP_RESTORE);
     }
 
+    /// Translates subsequent commands.
     pub fn translate(&self, x: f32, y: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_TRANSLATE);
@@ -200,6 +227,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, y);
     }
 
+    /// Scales subsequent commands.
     pub fn scale(&self, sx: f32, sy: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_SCALE);
@@ -207,12 +235,14 @@ impl DrawContext {
         Self::push_float(&mut state.words, sy);
     }
 
+    /// Rotates subsequent commands in degrees.
     pub fn rotate(&self, degrees: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_ROTATE);
         Self::push_float(&mut state.words, degrees);
     }
 
+    /// Intersects the current clip with an axis-aligned rectangle.
     pub fn clip_rect(&self, x: f32, y: f32, w: f32, h: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_CLIP_RECT);
@@ -222,6 +252,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, h);
     }
 
+    /// Intersects the current clip with a per-corner rounded rectangle.
     pub fn clip_round_rect(
         &self,
         x: f32,
@@ -245,6 +276,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, bl);
     }
 
+    /// Draws a rectangle.
     pub fn draw_rect(&self, x: f32, y: f32, w: f32, h: f32, paint: Paint) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_RECT);
@@ -257,6 +289,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, paint.stroke_width);
     }
 
+    /// Draws a circle.
     pub fn draw_circle(&self, cx: f32, cy: f32, radius: f32, paint: Paint) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_CIRCLE);
@@ -268,6 +301,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, paint.stroke_width);
     }
 
+    /// Draws a line segment.
     pub fn draw_line(&self, x1: f32, y1: f32, x2: f32, y2: f32, color: u32, stroke_width: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_LINE);
@@ -279,6 +313,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, stroke_width);
     }
 
+    /// Draws a rounded rectangle.
     pub fn draw_round_rect(&self, x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32, paint: Paint) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_ROUND_RECT);
@@ -293,6 +328,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, paint.stroke_width);
     }
 
+    /// Draws a retained path and keeps it alive through the current batch.
     pub fn draw_path(&self, path: &Path, paint: Paint) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_PATH);
@@ -303,6 +339,7 @@ impl DrawContext {
         state.retained_paths.push(path.clone());
     }
 
+    /// Draws a built retained text node at logical coordinates.
     pub fn draw_text_node<T: Node>(&self, node: &T, x: f32, y: f32) {
         let handle = node.handle().raw();
         let mut state = self.inner.borrow_mut();
@@ -313,6 +350,7 @@ impl DrawContext {
         Self::push_float(&mut state.words, y);
     }
 
+    /// Draws a ready retained text layout.
     pub fn draw_text_layout(&self, layout: &TextLayout, x: f32, y: f32) {
         if !layout.is_ready() {
             error(
@@ -325,6 +363,7 @@ impl DrawContext {
         self.draw_text_node(&node, x, y);
     }
 
+    /// Draws a ready frequently-changing fixed-charset text layout.
     pub fn draw_dynamic_text_layout(&self, layout: &DynamicTextLayout, x: f32, y: f32) {
         if !layout.is_ready() {
             error(
@@ -337,10 +376,12 @@ impl DrawContext {
         self.draw_text_node(&node, x, y);
     }
 
+    /// Draws a texture with default linear sampling.
     pub fn draw_image(&self, texture_id: u32, x: f32, y: f32, w: f32, h: f32) {
         self.draw_image_sampling(texture_id, x, y, w, h, ImageSampling::linear());
     }
 
+    /// Draws a texture with explicit sampling policy.
     pub fn draw_image_sampling(
         &self,
         texture_id: u32,
@@ -361,6 +402,7 @@ impl DrawContext {
         state.words.push(sampling.max_aniso());
     }
 
+    /// Draws a retained SVG resource.
     pub fn draw_svg(&self, svg_id: u32, x: f32, y: f32, w: f32, h: f32) {
         let mut state = self.inner.borrow_mut();
         state.words.push(OP_DRAW_SVG);

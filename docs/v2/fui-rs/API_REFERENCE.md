@@ -326,6 +326,44 @@ let worker = Worker::new("/workers/report.wasm", "run_report")
 Keep the `Worker` value alive while work is running. Dropping it cancels the
 worker and unregisters callbacks.
 
+`Worker::new(artifact, entry)` is target-neutral. The artifact and entry must
+match a `[[workers]]` declaration in `fui.toml`. Browser builds compile and load
+the declared Worker WASM. Native builds link the worker crate into the
+application and resolve the same artifact/entry pair through a generated
+registry before running it on a dedicated thread; no Worker WASM file is loaded
+by the native application.
+
+Progress, completion, and error callbacks run on the application UI thread.
+Cancellation is cooperative: split long work into bounded chunks and call
+`WorkerJob::yield` or check `WorkerRuntime::is_cancelled()` often enough to
+terminate promptly. Worker host services are an explicit allowlist and their
+native implementations must be safe to invoke from the worker thread.
+
+## Custom drawing, paths, and bitmaps
+
+- `custom_drawable(handler)` / `CustomDrawable::new(handler)`
+- `CustomDrawable::mark_dirty()` / `invalidator()`
+- `DrawContext`: transforms, clips, primitives, paths, text, images, and SVGs
+- `Paint::fill(...)`, `stroke(...)`, `filled_stroke(...)`
+- `Path`: line/curve/shape mutation with shared-resource teardown
+- `Bitmap`: direct pixels, full/dirty commits, offscreen canvas, retained-node
+  rasterization, bitmap text readiness, and explicit/final-drop disposal
+
+These APIs are host-neutral and have the same public behavior in browser WASM
+and native macOS, Windows, and Linux applications. Native graphics backend
+selection is not exposed to application drawing code.
+
+Important lifecycle rules:
+
+- release a `pixels()` mutable borrow before any other bitmap method,
+- call `commit()` after pixel, offscreen, or retained-raster changes,
+- do not mix direct writes after a bitmap has entered offscreen-canvas mode,
+- retain resources referenced by a draw callback,
+- wait for text/font readiness and retained layout before rasterization, and
+- invalidate a drawable after visible retained state changes.
+
+See [Custom drawing and bitmaps](./CUSTOM_DRAWING_AND_BITMAPS.md).
+
 ## Timers
 
 - `set_timeout(delay_ms, callback) -> TimerHandle`
@@ -333,6 +371,9 @@ worker and unregisters callbacks.
 - `TimerHandle`
 
 Timer IDs are implementation details. Keep the handle if you may need to cancel.
+Timers are one-shot and callbacks run on the app UI queue on web and native
+hosts. Recurring work must rearm itself and should store/cancel its handle in
+app-owned state.
 
 ## Platform and shortcuts
 

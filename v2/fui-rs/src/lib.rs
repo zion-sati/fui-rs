@@ -57,6 +57,8 @@ pub mod worker;
 #[cfg(feature = "worker-runtime")]
 pub mod worker_job;
 #[cfg(feature = "worker-runtime")]
+pub mod worker_host_services;
+#[cfg(feature = "worker-runtime")]
 pub mod worker_runtime;
 
 #[macro_export]
@@ -139,30 +141,53 @@ macro_rules! fui_worker {
                     static ACTIVE_JOB: ::std::cell::RefCell<Option<$job>> =
                         const { ::std::cell::RefCell::new(None) };
                 }
-                let input = unsafe {
-                    $crate::WorkerRuntime::entry_input(input_ptr, input_len)
+                let invoke = || {
+                    let input = unsafe {
+                        $crate::WorkerRuntime::entry_input(input_ptr, input_len)
+                    };
+                    ACTIVE_JOB.with(|slot| {
+                        let mut active = slot.borrow_mut();
+                        if active.is_none() {
+                            $crate::worker_runtime::reset_worker_runtime();
+                        }
+                        let mut job = active.take().unwrap_or_default();
+                        if $crate::WorkerJob::resume(&mut job, input) {
+                            *active = Some(job);
+                        }
+                    });
                 };
-                ACTIVE_JOB.with(|slot| {
-                    let mut active = slot.borrow_mut();
-                    if active.is_none() {
-                        $crate::worker_runtime::reset_worker_runtime();
-                    }
-                    let mut job = active.take().unwrap_or_default();
-                    if $crate::WorkerJob::resume(&mut job, input) {
-                        *active = Some(job);
-                    }
-                });
+                #[cfg(target_arch = "wasm32")]
+                invoke();
+                #[cfg(not(target_arch = "wasm32"))]
+                if ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(invoke)).is_err() {
+                    $crate::WorkerRuntime::fail("Worker panicked.");
+                }
             }
         )+
 
+        #[cfg(target_arch = "wasm32")]
         #[no_mangle]
         pub extern "C" fn __fui_worker_text_buffer() -> usize {
             $crate::worker_runtime::worker_text_buffer_ptr()
         }
 
+        #[cfg(target_arch = "wasm32")]
         #[no_mangle]
         pub extern "C" fn __fui_worker_text_buffer_size() -> u32 {
             $crate::worker_runtime::worker_text_buffer_size()
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __fui_native_worker_registry {
+    () => {
+        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(unexpected_cfgs)]
+        mod __fui_native_worker_registry {
+            #[cfg(fui_native_worker_registry)]
+            include!(env!("FUI_NATIVE_WORKER_REGISTRY_RS"));
         }
     };
 }
@@ -176,6 +201,8 @@ macro_rules! fui_worker {
 #[macro_export]
 macro_rules! fui_managed_app {
     ($page_ty:ty, $build_page:expr, $get_root:expr) => {
+        $crate::__fui_native_worker_registry!();
+
         thread_local! {
             static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
                 const { ::std::cell::RefCell::new(None) };
@@ -205,6 +232,8 @@ macro_rules! fui_managed_app {
         }
     };
     ($page_ty:ty, $build_page:expr, $get_root:expr, mount: $mount_page:expr) => {
+        $crate::__fui_native_worker_registry!();
+
         thread_local! {
             static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
                 const { ::std::cell::RefCell::new(None) };
@@ -236,6 +265,8 @@ macro_rules! fui_managed_app {
         }
     };
     ($page_ty:ty, $build_page:expr, $get_root:expr, dispose: $dispose_page:expr) => {
+        $crate::__fui_native_worker_registry!();
+
         thread_local! {
             static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
                 const { ::std::cell::RefCell::new(None) };
@@ -267,6 +298,8 @@ macro_rules! fui_managed_app {
         }
     };
     ($page_ty:ty, $build_page:expr, $get_root:expr, mount: $mount_page:expr, dispose: $dispose_page:expr) => {
+        $crate::__fui_native_worker_registry!();
+
         thread_local! {
             static __FUI_RS_APP: ::std::cell::RefCell<Option<$crate::ManagedApplication<$page_ty>>> =
                 const { ::std::cell::RefCell::new(None) };

@@ -30,14 +30,40 @@ route instance.
 ## Workers
 
 Workers have an explicit host-service allowlist. Main-host services are not
-automatically callable from worker WASM. Put only worker-safe services in the
-worker contract, generate the worker bindings, and enable the FUI-RS
-`worker-runtime` feature for worker entrypoints.
+automatically callable from a worker environment. Put only worker-safe services
+in the worker contract, generate the worker bindings, and enable the FUI-RS
+`worker-runtime` feature for worker entrypoints. Native worker service
+implementations run from a dedicated worker thread and therefore must be
+thread-safe.
 
-Retain the `Worker` handle while work is active. Report bounded progress,
-cooperate with cancellation at yield points, and release the handle when the
-route or operation ends. Use transferable buffers for large payloads where the
-host contract supports them.
+Declare the portable worker identity in `fui.toml`:
+
+```toml
+[[workers]]
+id = "prime"
+web-artifact = "./workers.wasm"
+native-cargo-manifest = "worker/Cargo.toml"
+entries = ["primeWorker"]
+```
+
+Use the same application API on web and native:
+
+```rust,ignore
+let worker = Worker::new("./workers.wasm", "primeWorker").start("input");
+```
+
+The browser compiles and loads `workers.wasm` in a browser Worker. A native
+build links the worker crate into the application and resolves the same
+artifact/entry pair through a generated registry onto a dedicated thread. The
+native host does not attempt to open `workers.wasm`.
+
+Cancellation is cooperative. Retain the `Worker` handle while work is active.
+Report bounded progress,
+cooperate with cancellation at yield points or explicit cancellation checks,
+and release the handle when the route or operation ends. Progress, completion,
+and error callbacks are marshalled onto the application UI thread. Use
+transferable buffers for large payloads where the browser host contract
+supports them.
 
 The routed demo shows the complete source contracts, generation scripts,
 subscription ownership, worker allowlist, progress, and cancellation:
@@ -52,3 +78,25 @@ Browser-specific contracts need equivalent native application adapters for a
 universal application. The shared abstraction is intended to cover common
 operations without preventing target-specific services where an application
 needs them.
+
+The browser file-processing helper is separate from the first-party `Worker`
+API. Its browser file handles and transferable pipeline remain browser-only;
+native applications should use native file APIs and may perform their own file
+work inside a portable Worker job.
+
+## Worker troubleshooting
+
+- **Unknown native worker entry:** confirm the `Worker::new` artifact and entry
+  exactly match one `[[workers]]` declaration, then rebuild so cargo-fui can
+  regenerate and relink the native registry.
+- **Disallowed host service:** add only the required thread-safe service to that
+  worker's explicit allowlist and regenerate its bindings. Do not expose the
+  entire main-host service registry.
+- **Cancellation stays pending:** break long computation into bounded chunks
+  and yield or check `WorkerRuntime::is_cancelled()` inside inner loops.
+- **Old worker behavior after a source change:** rebuild both targets. Worker
+  source participates in the web Worker artifact and native executable
+  fingerprints.
+- **Callbacks after a route change:** retain the `Worker` in the route owner and
+  drop it during disposal. Session and generation checks reject stale native
+  delivery, but application ownership should still be explicit.

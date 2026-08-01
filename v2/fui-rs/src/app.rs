@@ -341,7 +341,7 @@ impl Node for NodeRefMount {
     fn build_self(&self) {}
 }
 
-#[cfg(not(feature = "worker-runtime"))]
+#[cfg(any(not(feature = "worker-runtime"), feature = "native-runtime"))]
 #[no_mangle]
 pub extern "C" fn __flushRenders() {
     Application::flush_renders();

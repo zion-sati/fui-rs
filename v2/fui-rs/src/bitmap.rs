@@ -12,9 +12,11 @@ use std::rc::Rc;
 const MAX_DIRTY_RECTS: usize = 16;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Event payload emitted when retained bitmap text is ready to rasterize.
 pub struct BitmapTextReadyEventArgs;
 
 impl BitmapTextReadyEventArgs {
+    /// The stateless readiness payload.
     pub const EMPTY: Self = Self;
 }
 
@@ -31,11 +33,27 @@ struct BitmapState {
 }
 
 #[derive(Clone)]
+/// A shared premultiplied-RGBA buffer, texture, and optional offscreen surface.
+///
+/// Clones share one resource. The final clone releases the texture and
+/// offscreen surface on browser and native hosts.
+///
+/// ```no_run
+/// use fui::prelude::*;
+///
+/// let bitmap = Bitmap::new(32, 32);
+/// {
+///     let mut pixels = bitmap.pixels();
+///     pixels[0..4].copy_from_slice(&[255, 96, 32, 255]);
+/// }
+/// bitmap.clear_dirty_rects().dirty_rect(0, 0, 1, 1).commit();
+/// ```
 pub struct Bitmap {
     inner: Rc<RefCell<BitmapState>>,
 }
 
 impl Bitmap {
+    /// Allocates a non-empty bitmap and its host texture/offscreen resources.
     pub fn new(width: u32, height: u32) -> Self {
         assert!(
             width > 0 && height > 0,
@@ -62,18 +80,24 @@ impl Bitmap {
         }
     }
 
+    /// Returns the physical pixel width.
     pub fn width(&self) -> u32 {
         self.inner.borrow().width
     }
 
+    /// Returns the physical pixel height.
     pub fn height(&self) -> u32 {
         self.inner.borrow().height
     }
 
+    /// Returns the texture ID accepted by [`DrawContext::draw_image`](crate::drawing::DrawContext::draw_image).
     pub fn texture_id(&self) -> u32 {
         self.inner.borrow().texture_id
     }
 
+    /// Mutably borrows premultiplied RGBA bytes.
+    ///
+    /// Drop the returned borrow before invoking any other bitmap method.
     pub fn pixels(&self) -> std::cell::RefMut<'_, Vec<u8>> {
         std::cell::RefMut::map(self.inner.borrow_mut(), |state| {
             assert!(!state.disposed, "Bitmap.pixels() called after dispose.");
@@ -81,6 +105,7 @@ impl Bitmap {
         })
     }
 
+    /// Returns the current pixel-buffer address for low-level host interop.
     pub fn pixel_ptr(&self) -> usize {
         let state = self.inner.borrow();
         if state.pixel_bytes.is_empty() {
@@ -90,6 +115,11 @@ impl Bitmap {
         }
     }
 
+    /// Returns the persistent offscreen drawing context.
+    ///
+    /// Once used, each [`commit`](Self::commit) flushes and reads this surface
+    /// over the pixel buffer before texture upload. Do not subsequently mix
+    /// direct pixel ownership into the same bitmap.
     pub fn canvas(&self) -> DrawContext {
         let mut state = self.inner.borrow_mut();
         assert!(!state.disposed, "Bitmap.canvas() called after dispose.");
@@ -103,6 +133,10 @@ impl Bitmap {
         context
     }
 
+    /// Rasterizes a built, laid-out retained node into the pixel buffer.
+    ///
+    /// Call this after layout, then call [`commit`](Self::commit). `scale`
+    /// maps logical node coordinates to physical bitmap pixels.
     pub fn render<T: Node>(&self, node: &T, x: f32, y: f32, scale: f32) {
         let state = self.inner.borrow();
         assert!(!state.disposed, "Bitmap.render() called after dispose.");
@@ -124,6 +158,7 @@ impl Bitmap {
         };
     }
 
+    /// Rasterizes a ready retained text layout into the pixel buffer.
     pub fn render_text_layout(&self, layout: &TextLayout, x: f32, y: f32, scale: f32) {
         if !layout.is_ready() {
             error(
@@ -136,11 +171,13 @@ impl Bitmap {
         self.render(&node, x, y, scale);
     }
 
+    /// Builds and prepares a retained text node for bitmap rasterization.
     pub fn prepare_text<T: Node>(node: &T) {
         node.build();
         crate::bindings::ui::prepare_node(node.handle().raw());
     }
 
+    /// Invokes `callback` once required fonts and initial app load are ready.
     pub fn on_text_ready<T: Node + Clone + 'static>(
         &self,
         node: &T,
@@ -162,6 +199,9 @@ impl Bitmap {
         self
     }
 
+    /// Adds a clipped dirty upload region for the next commit.
+    ///
+    /// Empty/outside regions are ignored and at most 16 regions are retained.
     pub fn dirty_rect(&self, x: u32, y: u32, w: u32, h: u32) -> &Self {
         let mut state = self.inner.borrow_mut();
         if w == 0 || h == 0 || x >= state.width || y >= state.height {
@@ -175,15 +215,20 @@ impl Bitmap {
         self
     }
 
+    /// Clears pending dirty regions so the next commit is a full upload unless
+    /// new regions are added.
     pub fn clear_dirty_rects(&self) -> &Self {
         self.inner.borrow_mut().dirty_rects.clear();
         self
     }
 
+    /// Reports whether the next commit contains partial upload regions.
     pub fn has_dirty_rects(&self) -> bool {
         !self.inner.borrow().dirty_rects.is_empty()
     }
 
+    /// Flushes offscreen drawing if used, uploads full or dirty pixels, consumes
+    /// dirty regions, marks the texture ready, and returns its texture ID.
     pub fn commit(&self) -> u32 {
         let mut state = self.inner.borrow_mut();
         assert!(!state.disposed, "Bitmap.commit() called after dispose.");
@@ -239,6 +284,10 @@ impl Bitmap {
         state.texture_id
     }
 
+    /// Releases the texture and offscreen surface early.
+    ///
+    /// This operation is idempotent. Drawing and pixel operations after
+    /// disposal are invalid.
     pub fn dispose(&self) {
         let mut state = self.inner.borrow_mut();
         if state.disposed {

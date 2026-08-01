@@ -4,6 +4,7 @@ import { listHostServiceMethods, type HostServiceTypeName } from "./registry";
 import { loadModuleExport, snakeCaseIdentifier, sourcePathForHeader } from "./common";
 
 type RustMode = "framework" | "app";
+type NativeMode = "unavailable" | "worker";
 
 function rustArgType(type: HostServiceTypeName): string {
   switch (type) {
@@ -169,12 +170,25 @@ function emitDecodeReturn(
   ];
 }
 
+function emitNativeValue(type: HostServiceTypeName, expression: string): string {
+  const owned = type === "string" ? `${expression}.to_owned()` :
+    type === "bytes" || type.endsWith("_array") ? `${expression}.to_vec()` : expression;
+  return `fui::worker_host_services::NativeWorkerHostServiceType::into_native_worker_host_service_value(${owned})`;
+}
+
+function emitNativeHandlerArg(type: HostServiceTypeName, expression: string): string {
+  if (type === "string") return `${expression}.as_str()`;
+  if (type === "bytes" || type.endsWith("_array")) return `${expression}.as_slice()`;
+  return expression;
+}
+
 export async function generateRustHostServicesFile(
   modulePath: string,
   exportName: string,
   outputPath: string,
   runtimePathArg: string | undefined,
   hostImportModule: string,
+  nativeMode: NativeMode = "unavailable",
 ): Promise<void> {
   const registry = await loadModuleExport(modulePath, exportName, "fui-rs-host-services-");
   const methods = listHostServiceMethods(registry as never);
@@ -239,6 +253,11 @@ export async function generateRustHostServicesFile(
     wrappers.push("    {");
     if (mode === "framework") {
       wrappers.push(...emitFrameworkNonWasmBody(method.importName, method.args));
+    } else if (nativeMode === "worker") {
+      const values = method.args.map((type, index) => emitNativeValue(type, `arg${String(index)}`));
+      wrappers.push(
+        `        fui::worker_host_services::invoke_native_worker_host_service("${method.importName}", vec![${values.join(", ")}])`,
+      );
     } else {
       wrappers.push(
         `        panic!("Host service ${method.importName} is only available in wasm/browser builds.");`,
@@ -247,6 +266,25 @@ export async function generateRustHostServicesFile(
     wrappers.push("    }");
     wrappers.push("}");
     wrappers.push("");
+    if (mode === "app" && nativeMode === "worker") {
+      const handlerReturn = rustReturnType(method.returns);
+      wrappers.push('#[cfg(not(target_arch = "wasm32"))]');
+      wrappers.push(`pub fn register_native_${wrapperName}(`);
+      wrappers.push(`    handler: impl Fn(${emitWrapperArgs(method.args).replace(/arg\d+: /g, "")}) -> Result<${handlerReturn}, String> + Send + Sync + 'static,`);
+      wrappers.push(") -> Result<fui::worker_host_services::NativeWorkerHostServiceRegistration, String> {");
+      wrappers.push(`    fui::worker_host_services::register_native_worker_host_service("${method.importName}", move |args| {`);
+      wrappers.push("        let mut args = args.into_iter();");
+      method.args.forEach((type, index) => {
+        wrappers.push(`        let arg${String(index)}: ${rustReturnType(type)} = fui::worker_host_services::native_worker_host_service_arg(&mut args, "${method.importName}", ${String(index)})?;`);
+      });
+      wrappers.push(`        if args.next().is_some() { return Err("Native Worker host service ${method.importName} received too many arguments.".to_owned()); }`);
+      const handlerArgs = method.args.map((type, index) => emitNativeHandlerArg(type, `arg${String(index)}`));
+      wrappers.push(`        let result = handler(${handlerArgs.join(", ")})?;`);
+      wrappers.push("        Ok(fui::worker_host_services::NativeWorkerHostServiceType::into_native_worker_host_service_value(result))");
+      wrappers.push("    })");
+      wrappers.push("}");
+      wrappers.push("");
+    }
   }
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(

@@ -56,12 +56,13 @@
     "test:crate-package": "bash scripts/test-crate-package.sh",
     "build": "npm run guard:runtime-dependency && npm run check:abi && bash scripts/build.sh",
     "test:unit": "npm run guard:runtime-dependency && npm run check:abi && npm run generate:host && bash -lc 'if [ -f \"$HOME/.cargo/env\" ]; then source \"$HOME/.cargo/env\"; fi; cargo test --manifest-path Cargo.toml'",
+    "test:docs": "bash -lc 'if [ -f \"$HOME/.cargo/env\" ]; then source \"$HOME/.cargo/env\"; fi; cargo test --manifest-path Cargo.toml --doc' && node scripts/check-public-docs.mjs",
     "test:integration": "npm run build && playwright test -c playwright.config.ts",
     "typecheck": "npm run guard:runtime-dependency && npm run check:abi && tsc -p tsconfig.json --noEmit",
-    "prepublishOnly": "npm run check:abi && npm run lint && npm run lint:rust && npm run typecheck && npm run test:crate-package"
+    "prepublishOnly": "npm run check:abi && npm run lint && npm run lint:rust && npm run typecheck && npm run test:docs && npm run test:crate-package"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.2.8"
+    "@effindomv2/runtime": "0.2.9"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

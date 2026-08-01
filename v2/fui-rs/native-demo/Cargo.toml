@@ -6,6 +6,7 @@ license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
 
 [dependencies]
 fui = { package = "fui-rs", path = "..", features = ["native-runtime"] }
+fui-rs-demo-worker = { path = "../crates/demo-worker", features = ["native-runtime"] }
 
 [lib]
 name = "effindom_native_fui_rs_app"

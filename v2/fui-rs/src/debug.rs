@@ -43,7 +43,7 @@ pub fn key_event(event_type: KeyEventType, key: &str, modifiers: u32) -> bool {
     event::dispatch_key_event(event_type, key.to_string(), modifiers)
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_debug_pointer_event(
     event_type: u32,
     handle: u64,
@@ -75,7 +75,7 @@ pub extern "C" fn __fui_debug_pointer_event(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `key_ptr` must be null for an empty key or point to `key_len` readable bytes.
 pub unsafe extern "C" fn __fui_debug_key_event(
@@ -100,12 +100,12 @@ pub unsafe extern "C" fn __fui_debug_key_event(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_debug_focus_changed(handle: u64, focused: bool) {
     event::dispatch_focus_changed(NodeHandle::from_raw(handle), focused);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_debug_scroll(
     handle: u64,
     offset_x: f32,

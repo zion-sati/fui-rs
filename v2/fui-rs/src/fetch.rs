@@ -337,7 +337,7 @@ pub fn reset_fetch_runtime() {
     });
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_fetch_complete(
@@ -363,7 +363,7 @@ pub unsafe extern "C" fn __fui_on_fetch_complete(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_fetch_error(

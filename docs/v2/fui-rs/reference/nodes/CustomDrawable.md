@@ -1,36 +1,40 @@
 # CustomDrawable
 
-Retained immediate-mode drawing surface. Its callback redraws current retained
-state; it does not rebuild the UI tree.
+`CustomDrawable` is a retained visual whose callback records immediate drawing
+commands. The same callback runs through shared Skia-backed drawing on web and
+native macOS, Windows, and Linux hosts.
 
-Keep paths, images, SVGs, text layouts, and other expensive resources outside
-the draw callback. Call `mark_dirty()` only when visible state changes, and use
-`DrawableInvalidator` from long-lived callbacks to avoid strongly retaining the
-drawable.
+## Construction
 
-Pointer-driven drawing must capture the pointer while active and release state
-on pointer-up and pointer-cancel, including when the pointer leaves the bounds.
+- `custom_drawable(|context| ...)`
+- `CustomDrawable::new(|context| ...)`
+
+The callback redraws current retained state and must not reconstruct the UI.
+The runtime saves canvas state, clips to the drawable's current rectangular or
+rounded bounds, invokes the callback, restores state, and flushes its batch.
+
+## Invalidating
+
+- `mark_dirty()` schedules a frame when retained drawing state changes.
+- `invalidator()` returns a weak `DrawableInvalidator`; use its `mark_dirty()`
+  from timers, font/image readiness callbacks, and model subscriptions without
+  keeping the drawable or page alive.
+
+## Drawing surface
+
+`DrawContext` supports save/restore, translate/scale/rotate, rectangular and
+rounded clips, rectangles, circles, lines, rounded rectangles, `Path`, retained
+and dynamic text layouts, texture images with sampling, and SVG resources.
+Keep referenced resources alive outside the callback.
+
+`CustomDrawable` implements normal retained visual capabilities, including
+layout, margin/padding, box styling, theming, pointer events, semantics,
+focusability, and `focus_now()`.
 
 See [Custom drawing and bitmaps](../../CUSTOM_DRAWING_AND_BITMAPS.md).
 
-Retained custom drawing surface.
-
-## Constructor
-
-- `custom_drawable(|ctx| ...)`, `CustomDrawable::new(...)`
-
-## Key APIs
-
-- `DrawContext` drawing commands, `mark_dirty`, inherited box styling.
-
-## Notes
-
-- This is retained SDK state or a retained runtime resource.
-- Prefer public constructors/helpers from `fui::prelude::*`.
-- Avoid raw runtime handles in app code; use public node/resource APIs.
-
 ## See also
 
-- [Per-type reference index](../README.md)
+- [Bitmap](./Bitmap.md)
 - [Controls and nodes](../../CONTROLS_AND_NODES.md)
 - [API reference](../../API_REFERENCE.md)

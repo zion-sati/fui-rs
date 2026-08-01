@@ -17,6 +17,18 @@ pub fn demo_worker_clock_wall_clock_since_epoch_ms() -> f64 {
     }
     #[cfg(not(target_family = "wasm"))]
     {
-        panic!("Host service demoWorkerClockWallClockSinceEpochMs is only available in wasm/browser builds.");
+        fui::worker_host_services::invoke_native_worker_host_service("demoWorkerClockWallClockSinceEpochMs", vec![])
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn register_native_demo_worker_clock_wall_clock_since_epoch_ms(
+    handler: impl Fn() -> Result<f64, String> + Send + Sync + 'static,
+) -> Result<fui::worker_host_services::NativeWorkerHostServiceRegistration, String> {
+    fui::worker_host_services::register_native_worker_host_service("demoWorkerClockWallClockSinceEpochMs", move |args| {
+        let mut args = args.into_iter();
+        if args.next().is_some() { return Err("Native Worker host service demoWorkerClockWallClockSinceEpochMs received too many arguments.".to_owned()); }
+        let result = handler()?;
+        Ok(fui::worker_host_services::NativeWorkerHostServiceType::into_native_worker_host_service_value(result))
+    })
 }

@@ -216,6 +216,13 @@ Optional `mount:` and `dispose:` callbacks are available when lifecycle work
 cannot be represented by normal Rust ownership. Prefer fields and RAII guards
 on the retained page for ordinary route-scoped resources.
 
+## Custom drawing on web and native
+
+`CustomDrawable`, `Bitmap`, `Path`, text layouts, offscreen composition, and
+timers use the same FUI-RS API in browser WASM and native desktop builds. Start
+with [Custom drawing and bitmaps](./CUSTOM_DRAWING_AND_BITMAPS.md) for lifecycle
+rules and complete examples.
+
 ## Common imports
 
 Application code should normally use:

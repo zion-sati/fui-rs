@@ -10,14 +10,29 @@ thread_local! {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Handle for one pending one-shot UI timer.
 pub struct TimerHandle(u32);
 
 impl TimerHandle {
+    /// Returns the opaque host timer ID.
     pub fn raw(self) -> u32 {
         self.0
     }
 }
 
+/// Schedules a one-shot callback on the application UI queue.
+///
+/// Store the returned handle when cancellation is required. Recurring work
+/// must schedule its next timeout explicitly.
+///
+/// ```no_run
+/// use fui::prelude::*;
+///
+/// let timer = set_timeout(250, || {
+///     // Mutate retained application state, then invalidate affected UI.
+/// });
+/// assert!(cancel_timeout(timer));
+/// ```
 pub fn set_timeout(delay_ms: i32, callback: impl Fn() + 'static) -> TimerHandle {
     let timer_id = NEXT_TIMER_ID.with(|next| {
         let timer_id = next.get();
@@ -46,6 +61,7 @@ pub(crate) fn cancel_internal_timer(timer_id: u32) -> bool {
     removed
 }
 
+/// Cancels a pending timeout, returning whether it was still registered.
 pub fn cancel_timeout(handle: TimerHandle) -> bool {
     let removed = ACTIVE_TIMERS.with(|timers| timers.borrow_mut().remove(&handle.0).is_some());
     if removed {
@@ -54,11 +70,12 @@ pub fn cancel_timeout(handle: TimerHandle) -> bool {
     removed
 }
 
+/// Clears all registered timer callbacks during application teardown.
 pub fn cancel_all_timers() {
     ACTIVE_TIMERS.with(|timers| timers.borrow_mut().clear());
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_timer(timer_id: u32) {
     let callback = ACTIVE_TIMERS.with(|timers| timers.borrow_mut().remove(&timer_id));
     if let Some(callback) = callback {

@@ -1157,7 +1157,7 @@ pub fn reset_file_runtime() {
     NEXT_FILE_REQUEST_ID.with(|slot| *slot.borrow_mut() = 1);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_pick_result(
@@ -1190,7 +1190,7 @@ pub unsafe extern "C" fn __fui_on_file_pick_result(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_read_result(
@@ -1228,7 +1228,7 @@ pub unsafe extern "C" fn __fui_on_file_read_result(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_save_result(
@@ -1267,7 +1267,7 @@ pub unsafe extern "C" fn __fui_on_file_save_result(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_writer_created(
@@ -1306,7 +1306,7 @@ pub unsafe extern "C" fn __fui_on_file_writer_created(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_write_result(
@@ -1339,7 +1339,7 @@ pub unsafe extern "C" fn __fui_on_file_write_result(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_finish_result(
@@ -1379,7 +1379,7 @@ pub unsafe extern "C" fn __fui_on_file_finish_result(
     );
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_worker_process_progress(
@@ -1409,7 +1409,7 @@ pub unsafe extern "C" fn __fui_on_file_worker_process_progress(
     }
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_worker_process_chunk(
@@ -1439,7 +1439,7 @@ pub unsafe extern "C" fn __fui_on_file_worker_process_chunk(
     }
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_worker_process_complete(
@@ -1466,7 +1466,7 @@ pub unsafe extern "C" fn __fui_on_file_worker_process_complete(
     }
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_file_worker_process_error(

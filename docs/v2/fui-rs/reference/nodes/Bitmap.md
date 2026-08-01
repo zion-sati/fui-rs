@@ -1,46 +1,55 @@
 # Bitmap
 
-Retained pixel buffer/GPU texture resource.
+`Bitmap` is an app-owned premultiplied-RGBA pixel buffer, native/WebAssembly
+texture, and optional offscreen drawing surface. Clones share one resource.
 
-The pixel buffer is four-byte-per-pixel **premultiplied RGBA**, not
-straight-alpha RGBA. Premultiply each color channel by alpha before storing it.
+## Construction and identity
 
-## Constructor
+- `Bitmap::new(width, height)` requires non-zero dimensions and checks byte-size overflow.
+- `width()` / `height()` return physical pixel dimensions.
+- `texture_id()` identifies the retained texture for `DrawContext::draw_image`.
+- `pixel_ptr()` exposes the current buffer address for low-level interop; normal application code should use `pixels()`.
 
-`Bitmap::new(width, height)` requires non-zero dimensions.
+## Direct updates
 
-## Updating pixels
+1. Borrow `pixels()` mutably and write premultiplied RGBA bytes.
+2. Drop the mutable borrow before calling another bitmap method.
+3. For a full upload, call `clear_dirty_rects().commit()`.
+4. For partial uploads, call `clear_dirty_rects()`, add up to 16
+   `dirty_rect(x, y, width, height)` regions, then `commit()`.
 
-Borrow `pixels()` mutably, update the required bytes, release the borrow, add
-dirty rectangles when partial upload is useful, and call `commit()`. With no
-dirty rectangles, commit uploads the complete bitmap.
+`dirty_rect` clips to bitmap bounds and ignores empty/outside regions.
+`has_dirty_rects()` reports whether the next commit is partial. A successful
+commit consumes pending dirty rectangles and returns `texture_id()`.
 
-`canvas()` provides an offscreen `DrawContext`. Commit after drawing to flush
-and upload its result.
+## Offscreen mode
 
-## Text readiness
+`canvas()` returns a retained offscreen `DrawContext`. Once used, every
+`commit()` flushes it and reads the complete offscreen surface into the pixel
+buffer before uploading. Do not mix later direct pixel writes into the same
+bitmap because readback will replace them.
 
-Text and fonts can become ready asynchronously. Use `on_text_ready(...)` before
-rasterizing text into the bitmap. Ordinary retained `Text` and `RichText` nodes
-track readiness automatically; this callback is for application-owned bitmap
-rasterization.
+## Retained rasterization and text
 
-See [Custom drawing and bitmaps](../../CUSTOM_DRAWING_AND_BITMAPS.md).
+- `render(node, x, y, scale)` rasterizes a built, laid-out retained node into
+  the pixel buffer; call `commit()` afterward.
+- `render_text_layout(layout, x, y, scale)` rasterizes a ready `TextLayout`.
+- `on_text_ready(node, callback)` waits for required fonts and initial app load,
+  prepares the node, and invokes the callback once.
+- `prepare_text(node)` explicitly builds/prepares a text node when integrating
+  a custom readiness flow.
 
-- `Bitmap` constructors
+## Lifecycle
 
-## Key APIs
+The final `Bitmap` clone calls `dispose()`, releasing the native/WebAssembly
+texture and offscreen surface. `dispose()` is idempotent and available for
+early release; pixel/canvas/commit operations after disposal are invalid.
 
-- pixel access and retained bitmap text rendering support.
-
-## Notes
-
-- This is retained SDK state or a retained runtime resource.
-- Prefer public constructors/helpers from `fui::prelude::*`.
-- Avoid raw runtime handles in app code; use public node/resource APIs.
+All operations above are implemented on web and native macOS, Windows, and
+Linux hosts. See [Custom drawing and bitmaps](../../CUSTOM_DRAWING_AND_BITMAPS.md).
 
 ## See also
 
-- [Per-type reference index](../README.md)
+- [CustomDrawable](./CustomDrawable.md)
 - [Controls and nodes](../../CONTROLS_AND_NODES.md)
 - [API reference](../../API_REFERENCE.md)

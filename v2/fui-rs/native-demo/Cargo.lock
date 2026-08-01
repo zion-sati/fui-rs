@@ -7,8 +7,16 @@ name = "effindom-native-fui-rs-app"
 version = "0.1.0"
 dependencies = [
  "fui-rs",
+ "fui-rs-demo-worker",
 ]
 
 [[package]]
 name = "fui-rs"
 version = "0.1.24"
+
+[[package]]
+name = "fui-rs-demo-worker"
+version = "0.1.0"
+dependencies = [
+ "fui-rs",
+]

@@ -1428,27 +1428,27 @@ pub(crate) fn dispatch_external_drop_event(
     })
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_key_buffer() -> *const u8 {
     std::ptr::addr_of_mut!(KEY_BUFFER).cast::<u8>()
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_key_buffer_size() -> u32 {
     256
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_text_buffer() -> *const u8 {
     std::ptr::addr_of_mut!(TEXT_BUFFER).cast::<u8>()
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_text_buffer_size() -> u32 {
     (16 * 1024) as u32
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_pointer_event_with_metadata(
     event_type: u32,
     handle: u64,
@@ -1493,7 +1493,7 @@ pub extern "C" fn __fui_on_pointer_event_with_metadata(
     )
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_wheel_event(
     handle: u64,
     x: f32,
@@ -1514,7 +1514,7 @@ pub extern "C" fn __fui_on_wheel_event(
     )
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `key_ptr` must be null for an empty key or point to `key_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_key_event(
@@ -1539,12 +1539,12 @@ pub unsafe extern "C" fn __fui_on_key_event(
     )
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_focus_changed(handle: u64, focused: bool) {
     dispatch_focus_changed(NodeHandle::from_raw(handle), focused);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for empty text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_text_changed(handle: u64, text_ptr: *const u8, text_len: u32) {
@@ -1557,7 +1557,7 @@ pub unsafe extern "C" fn __fui_on_text_changed(handle: u64, text_ptr: *const u8,
     dispatch_text_changed(NodeHandle::from_raw(handle), text);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for empty replacement text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_text_replaced(
@@ -1576,12 +1576,12 @@ pub unsafe extern "C" fn __fui_on_text_replaced(
     dispatch_text_replaced(NodeHandle::from_raw(handle), start, end, text);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_selection_changed(handle: u64, start: u32, end: u32) {
     dispatch_selection_changed(NodeHandle::from_raw(handle), start, end);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `text_ptr` must be null for empty text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_cross_selection_changed(
@@ -1598,17 +1598,17 @@ pub unsafe extern "C" fn __fui_on_cross_selection_changed(
     dispatch_cross_selection_changed(NodeHandle::from_raw(handle), text);
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_resolve_gesture_owner(handle: u64) -> u64 {
     resolve_gesture_owner(NodeHandle::from_raw(handle)).raw()
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_get_gesture_intent(handle: u64) -> u32 {
     get_gesture_intent(NodeHandle::from_raw(handle)) as u32
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_gesture_event(
     handle: u64,
     phase: u32,
@@ -1633,27 +1633,27 @@ pub extern "C" fn __fui_on_gesture_event(
     )
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_resolve_long_press_owner(handle: u64) -> u64 {
     resolve_long_press_owner(NodeHandle::from_raw(handle)).raw()
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_get_long_press_minimum_duration_ms(handle: u64) -> i32 {
     get_long_press_minimum_duration_ms(NodeHandle::from_raw(handle))
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_get_long_press_movement_tolerance(handle: u64) -> f32 {
     get_long_press_movement_tolerance(NodeHandle::from_raw(handle))
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_long_press_continues_pointer_events(handle: u64) -> bool {
     registered_node(handle).is_some_and(|node| node.has_drag_source())
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn __fui_on_long_press_event(
     handle: u64,
     scene_x: f32,
@@ -1674,7 +1674,7 @@ pub extern "C" fn __fui_on_long_press_event(
     )
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_external_drag_event(
@@ -1707,7 +1707,7 @@ pub unsafe extern "C" fn __fui_on_external_drag_event(
     effect as u32
 }
 
-#[cfg_attr(not(feature = "worker-runtime"), no_mangle)]
+#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
 pub extern "C" fn fui_dispatch_custom_draw(handle: u64, canvas_ptr: usize) {
     if let Some(node) = resolve_node(NodeHandle::from_raw(handle)) {
         node.handle_custom_draw(canvas_ptr);
