@@ -100,6 +100,12 @@ export const fuiHostImports = [
     returns: "void",
   },
   {
+    name: "fui_set_page_zoom_enabled",
+    importName: "fui_set_page_zoom_enabled",
+    args: [{ name: "enabled", type: "bool" }],
+    returns: "void",
+  },
+  {
     name: "fui_set_pointer_capture",
     importName: "fui_set_pointer_capture",
     args: [{ name: "handle", type: "u64" }],

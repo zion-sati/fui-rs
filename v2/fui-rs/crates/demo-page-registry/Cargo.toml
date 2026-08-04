@@ -1,0 +1,30 @@
+[package]
+name = "fui-rs-demo-page-registry"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
+
+[dependencies]
+fui-rs = { path = "../.." }
+fui-rs-demo-home = { path = "../demo-home", default-features = false }
+fui-rs-demo-immediate-drawing = { path = "../demo-immediate-drawing", default-features = false }
+fui-rs-demo-platform = { path = "../demo-platform" }
+fui-rs-demo-stage4 = { path = "../demo-stage4", default-features = false }
+fui-rs-demo-stage5 = { path = "../demo-stage5", default-features = false }
+fui-rs-demo-universal = { path = "../demo-universal" }
+fui-rs-demo-workbench = { path = "../demo-workbench", default-features = false }
+
+[features]
+native-runtime = [
+  "fui-rs/native-runtime",
+  "fui-rs-demo-home/native-runtime",
+  "fui-rs-demo-immediate-drawing/native-runtime",
+  "fui-rs-demo-platform/native-runtime",
+  "fui-rs-demo-stage4/native-runtime",
+  "fui-rs-demo-stage5/native-runtime",
+  "fui-rs-demo-universal/native-runtime",
+  "fui-rs-demo-workbench/native-runtime",
+]
+
+[lib]
+name = "fui_rs_demo_page_registry"

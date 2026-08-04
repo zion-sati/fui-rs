@@ -167,7 +167,7 @@ build_demo_route() {
   local wasm_name="$2"
   local wasm_out="$3"
 
-  cargo build --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "${package}" --target wasm32-unknown-unknown --target-dir "${PACKAGE_DIR}/target" --release
+  cargo rustc --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "${package}" --target wasm32-unknown-unknown --target-dir "${PACKAGE_DIR}/target" --release --lib --crate-type cdylib
   cp "${PACKAGE_DIR}/target/wasm32-unknown-unknown/release/${wasm_name}.wasm" "${wasm_out}"
   optimize_wasm "${wasm_out}"
 }
@@ -184,6 +184,9 @@ build_demo_route "fui-rs-demo-workbench" "fui_rs_demo_workbench" "${DEMO_OUT_DIR
 build_demo_route "fui-rs-demo-stage4" "fui_rs_demo_stage4" "${DEMO_OUT_DIR}/stage4.wasm"
 build_demo_route "fui-rs-demo-stage5" "fui_rs_demo_stage5" "${DEMO_OUT_DIR}/stage5.wasm"
 build_demo_route "fui-rs-demo-immediate-drawing" "fui_rs_demo_immediate_drawing" "${DEMO_OUT_DIR}/immediate-drawing.wasm"
+node "${PACKAGE_DIR}/scripts/check-demo-architecture.mjs" "${DEMO_OUT_DIR}"
+cargo test --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "fui-rs-demo-page-registry"
+cargo check --manifest-path "${PACKAGE_DIR}/crates/Cargo.toml" --package "fui-rs-demo-page-registry" --no-default-features --features native-runtime
 build_demo_worker "${DEMO_OUT_DIR}/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/workbench/workers.wasm"
 cp "${DEMO_OUT_DIR}/workers.wasm" "${DEMO_OUT_DIR}/stage4/workers.wasm"

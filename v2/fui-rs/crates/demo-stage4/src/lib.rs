@@ -1,24 +1,21 @@
+#[cfg(feature = "web-route")]
 mod generated;
 
 use fui::controls::{
-    clear_control_templates, use_control_templates, ButtonColors, ButtonPresenter, ButtonTemplate,
-    ButtonVisualState, CheckboxIndicatorPresenter, CheckboxIndicatorTemplate,
-    CheckboxIndicatorVisualState, ControlTemplateSet, LabeledControlColors, LabeledControlSizing,
-    PressableIndicatorMetrics, PressableIndicatorPresenter, RadioIndicatorPresenter,
-    RadioIndicatorTemplate, RadioIndicatorVisualState, SliderColors, SliderSizing,
-    DEFAULT_SLIDER_TEMPLATE,
+    ButtonColors, ButtonPresenter, ButtonTemplate, ButtonVisualState,
+    CheckboxIndicatorPresenter, CheckboxIndicatorTemplate, CheckboxIndicatorVisualState,
+    LabeledControlColors, LabeledControlSizing, PressableIndicatorMetrics,
+    PressableIndicatorPresenter, RadioIndicatorPresenter, RadioIndicatorTemplate,
+    RadioIndicatorVisualState, SliderColors, SliderSizing,
 };
 use fui::prelude::*;
 use fui_rs_demo_shared::clear_demo_shared_state;
+use fui_rs_demo_universal::design_system::{
+    demo_palette, hint_text, page_header, page_surface, section_card, status_text, vertical_space,
+    DemoTabSelector,
+};
+use fui_rs_demo_universal::{DemoEnvironment, DemoPageId, UniversalDemoPage};
 use std::rc::Rc;
-
-const SOURCE_DEMO_BASE: &str = "/v2/fui-rs/demo";
-const SOURCE_HOME_ROUTE: &str = "/v2/fui-rs/demo/index.html";
-const SOURCE_WORKBENCH_ROUTE: &str = "/v2/fui-rs/demo/workbench/";
-const SOURCE_STAGE4_ROUTE: &str = "/v2/fui-rs/demo/stage4/";
-const PUBLISHED_HOME_ROUTE: &str = "/";
-const PUBLISHED_WORKBENCH_ROUTE: &str = "/workbench/";
-const PUBLISHED_STAGE4_ROUTE: &str = "/stage4/";
 
 #[derive(Clone)]
 struct HouseButtonPresenter {
@@ -99,6 +96,70 @@ impl ButtonTemplate for HouseButtonTemplate {
     fn create(&self) -> Rc<dyn ButtonPresenter> {
         Rc::new(HouseButtonPresenter::new())
     }
+}
+
+fn nested_tab_panel(label: &'static str, color: Option<u32>) -> RetainedView {
+    let label_node = text(label);
+    if let Some(color) = color {
+        label_node.text_color(color);
+    }
+    retained_view(&ui! {
+        column().padding(14.0, 14.0, 14.0, 14.0) {
+            label_node,
+        }
+    })
+}
+
+fn nested_tabs(
+    items: impl IntoIterator<Item = TabItem>,
+    semantic_label: &str,
+) -> FlexBox {
+    let tabs = tab_view();
+    tabs.height(116.0, Unit::Pixel).semantic_label(semantic_label);
+    for item in items {
+        tabs.add_item(item);
+    }
+    let selector = DemoTabSelector::new(&tabs);
+    tabs.on_selection_changed({
+        let selector = selector.sync_handle();
+        move |event| selector.sync_selected(event.selected_index)
+    });
+    ui! {
+        column().fill_width().height_len(auto()) {
+            selector,
+            tabs,
+        }
+    }
+}
+
+fn default_nested_tabs() -> FlexBox {
+    nested_tabs(
+        tab_items![
+            tab_item("Inner A").content(|| nested_tab_panel("Default nested content", None)),
+            tab_item("Inner B").content(|| nested_tab_panel("State is retained across nested tabs", None)),
+        ],
+        "Default nested retained content",
+    )
+}
+
+fn wrapped_nested_tabs() -> FlexBox {
+    nested_tabs(
+        tab_items![
+            tab_item("Compact selector").content(|| nested_tab_panel("Selectors are ordinary demo-owned buttons", None)),
+            tab_item("Long selector wraps").content(|| nested_tab_panel("The selector row grows vertically on narrow windows", None)),
+        ],
+        "Responsive nested retained content",
+    )
+}
+
+fn composable_nested_tabs() -> FlexBox {
+    nested_tabs(
+        tab_items![
+            tab_item("Pills").content(|| nested_tab_panel("This demo chose pill buttons", None)),
+            tab_item("Composable").content(|| nested_tab_panel("Applications may use links, text, buttons, or custom drawing", None)),
+        ],
+        "Composable nested retained content",
+    )
 }
 
 #[derive(Clone)]
@@ -256,7 +317,7 @@ impl CheckboxIndicatorPresenter for LocalOverrideCheckboxIndicatorPresenter {
             .bg_color(if checked {
                 0xFEF3C7FF
             } else {
-                control_background_color()
+                demo_palette().control_background
             });
         self.stripe_node
             .corner_radius(if mixed { 2.0 } else { 5.0 })
@@ -387,6 +448,7 @@ struct Stage4PresentationShowcase {
     _switch: Switch,
     _slider: Slider,
     _large_slider: Slider,
+    _tabs: TabView,
     _override_status: TextNode,
     _radio_status: TextNode,
     _switch_status: TextNode,
@@ -397,22 +459,7 @@ struct Stage4PresentationShowcase {
 
 impl Stage4PresentationShowcase {
     fn new() -> Self {
-        use_control_templates(ControlTemplateSet {
-            button: Some(Rc::new(HouseButtonTemplate)),
-            checkbox_indicator: Some(Rc::new(HouseCheckboxIndicatorTemplate)),
-            radio_indicator: Some(Rc::new(HouseRadioIndicatorTemplate)),
-            slider: Some(Rc::new(DEFAULT_SLIDER_TEMPLATE)),
-            ..ControlTemplateSet::default()
-        });
-
-        let page = ui! {
-            column()
-                .fill_width()
-                .height_len(auto())
-                .padding(28.0, 28.0, 28.0, 48.0)
-                .bg_color(page_background_color())
-                .semantic_label("FUI-RS Stage 4 presentation page")
-        };
+        let page = page_surface("FUI-RS Stage 4 presentation page");
 
         let root = ui! {
             scroll_box()
@@ -425,27 +472,22 @@ impl Stage4PresentationShowcase {
         root.vertical_scrollbar()
             .track_width(12.0)
             .thumb_width(8.0)
-            .thumb_min_height(36.0)
-            .track_color(scrollbar_track_color())
-            .thumb_color(scrollbar_thumb_color());
+            .thumb_min_height(36.0);
         root.vertical_scrollbar()
             .render()
             .semantic_label("Stage 4 presentation vertical scrollbar");
 
-        page.children(children![
-            nav_bar(),
-            spacer(14.0),
-            title_block(),
-            spacer(18.0),
-        ]);
+        page.children(children![title_block(), vertical_space(18.0),]);
 
         let house_button = ui! {
         button("House template button")
+            .template(Rc::new(HouseButtonTemplate))
             .semantic_label("Stage 4 house template button")
             .node_id("stage4-template-house-button")
         };
         let house_checkbox = ui! {
         checkbox("House template checkbox")
+            .template(Rc::new(HouseCheckboxIndicatorTemplate))
             .colors(stage4_labeled_colors(0x0EA5E9FF))
             .checked(true)
             .semantic_label("Stage 4 house template checkbox")
@@ -454,17 +496,17 @@ impl Stage4PresentationShowcase {
         page.children(children![
             ui! {
                 showcase_card(
-                    "App-level ControlTemplateSet",
-                    "Button and Checkbox pick up route-wide templates before any per-instance calls.",
-                    "Stage 4 app-level template card",
+                    "Design-system templates",
+                    "Button and Checkbox receive their house templates explicitly from the demo design system.",
+                    "Stage 4 design-system template card",
                 ) {
                     house_button,
-                    spacer(10.0),
+                    vertical_space(10.0),
                     house_checkbox,
-                    hint("Expected: rose button chrome and blue rounded checkbox indicator come from app-level templates."),
+                    hint_text("Expected: rose button chrome and blue rounded checkbox indicator come from explicit design-system templates."),
                 }
             },
-            spacer(18.0),
+            vertical_space(18.0),
         ]);
 
         let override_checkbox = ui! {
@@ -494,19 +536,19 @@ impl Stage4PresentationShowcase {
         page.children(children![
             ui! {
                 showcase_card(
-                    "Per-instance template precedence",
-                    "This checkbox supplies a local template and remains visually distinct from the app-level house checkbox.",
+                    "Alternative local template",
+                    "This checkbox supplies a different local template and remains visually distinct from the house checkbox.",
                     "Stage 4 local template override card",
                 ) {
                     override_checkbox,
-                    spacer(8.0),
+                    vertical_space(8.0),
                     override_status,
-                    hint(
-                        "Click it: this one should toggle independently and keep the square amber override with an accent stripe, proving local template precedence.",
+                    hint_text(
+                        "Click it: this one should toggle independently and keep the square amber template with an accent stripe, proving explicit local template ownership.",
                     ),
                 }
             },
-            spacer(18.0),
+            vertical_space(18.0),
         ]);
 
         let sizing_card = showcase_card(
@@ -520,6 +562,7 @@ impl Stage4PresentationShowcase {
         let radio_alpha = radio_button("Compact radio sizing");
         let radio_beta = radio_button("Large radio sizing");
         radio_alpha
+            .template(Rc::new(HouseRadioIndicatorTemplate))
             .sizing(
                 LabeledControlSizing::new()
                     .indicator_size(16.0)
@@ -529,6 +572,7 @@ impl Stage4PresentationShowcase {
             .checked(true)
             .semantic_label("Stage 4 compact radio sizing");
         radio_beta
+            .template(Rc::new(HouseRadioIndicatorTemplate))
             .sizing(
                 LabeledControlSizing::new()
                     .indicator_size(30.0)
@@ -559,7 +603,7 @@ impl Stage4PresentationShowcase {
         switch("Large switch colors")
             .colors(
                 stage4_labeled_colors(0x16A34AFF)
-                    .background(control_background_color())
+                    .background(demo_palette().control_background)
                     .border(0x15803DFF),
             )
             .checked(true)
@@ -603,25 +647,25 @@ impl Stage4PresentationShowcase {
         });
         let sizing_card = ui! {
             sizing_card {
-                hint("The circles below use the default RadioButton presenter so LabeledControlSizing is visible: compact uses a 16px indicator, large uses a 30px indicator."),
-                spacer(8.0),
+                hint_text("The circles below use the house RadioButton template with LabeledControlSizing: compact uses a 16px indicator, large uses a 30px indicator."),
+                vertical_space(8.0),
                 radio_alpha,
-                spacer(8.0),
+                vertical_space(8.0),
                 radio_beta,
-                spacer(8.0),
+                vertical_space(8.0),
                 radio_status,
-                spacer(12.0),
+                vertical_space(12.0),
                 switch_control,
-                spacer(8.0),
+                vertical_space(8.0),
                 switch_status,
-                spacer(14.0),
+                vertical_space(14.0),
                 slider_control,
-                spacer(8.0),
+                vertical_space(8.0),
                 slider_status,
-                hint("Drag or click these controls: status text should update while the presenter-owned sizing and colors stay intact."),
+                hint_text("Drag or click these controls: status text should update while the presenter-owned sizing and colors stay intact."),
             }
         };
-        page.children(children![sizing_card, spacer(18.0)]);
+        page.children(children![sizing_card, vertical_space(18.0)]);
 
         let colors_card = showcase_card(
             "Presenter color overrides",
@@ -661,12 +705,89 @@ impl Stage4PresentationShowcase {
         let colors_card = ui! {
             colors_card {
                 color_button,
-                spacer(14.0),
+                vertical_space(14.0),
                 large_slider,
-                hint("Expected: color overrides flow through the same presenters, not through custom event behavior."),
+                hint_text("Expected: color overrides flow through the same presenters, not through custom event behavior."),
             }
         };
-        page.children(children![colors_card, spacer(18.0)]);
+        page.children(children![colors_card, vertical_space(18.0)]);
+
+        let tab_status = status_text("Selected tab: Overview");
+        let tabs = tab_view();
+        tabs.height(330.0, Unit::Pixel)
+            .items(tab_items![
+                tab_item("Overview").content(|| {
+                    retained_view(&ui! {
+                        column()
+                            .fill_size()
+                            .padding(16.0, 16.0, 16.0, 16.0) {
+                                text("Default presentation")
+                                    .font_size(18.0)
+                                    .font_weight(FontWeight::Bold)
+                                    .text_color(demo_palette().primary_text),
+                                vertical_space(8.0),
+                                text("The outer and inner controls both use the active application theme.")
+                                    .font_size(15.0)
+                                    .text_color(demo_palette().muted_text)
+                                    .text_limits(-1, 3),
+                                vertical_space(10.0),
+                                default_nested_tabs(),
+                            }
+                    })
+                }),
+                tab_item("Settings").content(|| {
+                    retained_view(&ui! {
+                        column()
+                            .fill_size()
+                            .padding(16.0, 16.0, 16.0, 16.0) {
+                                text("Responsive selector composition").font_weight(FontWeight::Bold),
+                                vertical_space(10.0),
+                                wrapped_nested_tabs(),
+                            }
+                    })
+                }),
+                tab_item("About").content(|| {
+                    retained_view(&ui! {
+                        column()
+                            .fill_size()
+                            .padding(16.0, 16.0, 16.0, 16.0) {
+                                text("Application-owned selector chrome").font_weight(FontWeight::Bold),
+                                vertical_space(10.0),
+                                composable_nested_tabs(),
+                            }
+                    })
+                }),
+            ]);
+        let tab_selector = DemoTabSelector::new(&tabs);
+        tabs.on_selection_changed({
+                let tab_selector = tab_selector.sync_handle();
+                let tab_status = tab_status.clone();
+                move |event| {
+                    tab_selector.sync_selected(event.selected_index);
+                    let label = event
+                        .selected_item
+                        .map(|item| item.label_text())
+                        .unwrap_or_else(|| "None".to_string());
+                    let value = format!("Selected tab: {label}");
+                    tab_status.text(&value).semantic_label(value);
+                }
+            });
+        page.children(children![
+            ui! {
+                showcase_card(
+                    "Retained TabView",
+                    "TabView retains and activates content while ordinary application controls own selector visuals, input, and semantics.",
+                    "Stage 4 retained TabView card",
+                ) {
+                    tab_selector.clone(),
+                    vertical_space(4.0),
+                    tabs,
+                    vertical_space(10.0),
+                    tab_status,
+                }
+            },
+            vertical_space(18.0),
+        ]);
 
         let dropdown_card = showcase_card(
             "Dropdown presenter contracts",
@@ -687,10 +808,10 @@ impl Stage4PresentationShowcase {
             &DropdownFieldVisualState::new(false, false, true, false, "Presenter field preview"),
             Some(
                 DropdownColors::new()
-                    .background(control_background_color())
+                    .background(demo_palette().control_background)
                     .border(0x0284C7FF)
                     .accent(0x0284C7FF)
-                    .text_primary(primary_text_color()),
+                    .text_primary(demo_palette().primary_text),
             ),
         );
         let dropdown_option = create_default_dropdown_option_row_presenter(Some(dropdown_sizing));
@@ -702,9 +823,9 @@ impl Stage4PresentationShowcase {
             DropdownOptionRowVisualState::new(true, true, true),
             Some(
                 DropdownColors::new()
-                    .background(selected_background_color())
+                    .background(demo_palette().selected_background)
                     .accent(0x0284C7FF)
-                    .text_primary(primary_text_color()),
+                    .text_primary(demo_palette().primary_text),
             ),
         );
         let dropdown_field_root = dropdown_field.root();
@@ -713,9 +834,9 @@ impl Stage4PresentationShowcase {
         dropdown_option_root.semantic_label("Stage 4 dropdown option row presenter preview");
         dropdown_card
             .child(&dropdown_field_root)
-            .child(&spacer(10.0))
+            .child(&vertical_space(10.0))
             .child(&dropdown_option_root)
-            .child(&hint("Expected: presenter contracts can be created and styled independently of the future Dropdown control."));
+            .child(&hint_text("Expected: presenter contracts can be created and styled independently of the future Dropdown control."));
         page.child(&dropdown_card);
 
         Self {
@@ -729,6 +850,7 @@ impl Stage4PresentationShowcase {
             _switch: switch_control,
             _slider: slider_control,
             _large_slider: large_slider,
+            _tabs: tabs,
             _override_status: override_status,
             _radio_status: radio_status,
             _switch_status: switch_status,
@@ -739,232 +861,73 @@ impl Stage4PresentationShowcase {
     }
 }
 
-fn page_background_color() -> u32 {
-    if is_dark_mode() {
-        0x0B1120FF
-    } else {
-        0xF7F4ECFF
-    }
-}
-
-fn card_background_color() -> u32 {
-    if is_dark_mode() {
-        0x111827FF
-    } else {
-        0xFFFFFFFF
-    }
-}
-
-fn card_border_color() -> u32 {
-    if is_dark_mode() {
-        0x334155FF
-    } else {
-        0xE5E7EBFF
-    }
-}
-
-fn control_background_color() -> u32 {
-    if is_dark_mode() {
-        0x1F2937FF
-    } else {
-        0xFFFFFFFF
-    }
-}
-
-fn selected_background_color() -> u32 {
-    if is_dark_mode() {
-        0x0C4A6EFF
-    } else {
-        0xE0F2FEFF
-    }
-}
-
-fn title_surface_color() -> u32 {
-    if is_dark_mode() {
-        0x1E293BFF
-    } else {
-        0x111827FF
-    }
-}
-
-fn title_text_color() -> u32 {
-    0xFFFFFFFF
-}
-
-fn title_muted_text_color() -> u32 {
-    if is_dark_mode() {
-        0xCBD5E1FF
-    } else {
-        0xD1D5DBFF
-    }
-}
-
-fn primary_text_color() -> u32 {
-    current_theme().colors.text_primary
-}
-
-fn muted_text_color() -> u32 {
-    current_theme().colors.text_muted
-}
-
-fn hint_text_color() -> u32 {
-    if is_dark_mode() {
-        0x94A3B8FF
-    } else {
-        0x64748BFF
-    }
-}
-
-fn scrollbar_track_color() -> u32 {
-    if is_dark_mode() {
-        0x1E293BFF
-    } else {
-        0xE2E8F0FF
-    }
-}
-
-fn scrollbar_thumb_color() -> u32 {
-    if is_dark_mode() {
-        0x64748BFF
-    } else {
-        0x64748BFF
-    }
-}
-
 fn stage4_labeled_colors(accent: u32) -> LabeledControlColors {
+    let palette = demo_palette();
     LabeledControlColors::new()
         .accent(accent)
-        .background(control_background_color())
-        .border(card_border_color())
-        .text_primary(primary_text_color())
-        .text_muted(muted_text_color())
-}
-
-fn is_source_demo_route(route: &str) -> bool {
-    route.is_empty() || route.starts_with(SOURCE_DEMO_BASE)
-}
-
-fn route_pair(source: &'static str, published: &'static str) -> &'static str {
-    let route = current_route();
-    if is_source_demo_route(&route) {
-        source
-    } else {
-        published
-    }
-}
-
-fn nav_bar() -> FlexBox {
-    ui! {
-        row()
-            .fill_width()
-            .height(44.0, Unit::Pixel)
-            .align_items(AlignItems::Center)
-            .padding(8.0, 0.0, 8.0, 0.0)
-            .semantic_label("Stage 4 presentation route nav") {
-                NavLink::with_label(
-                    route_pair(SOURCE_HOME_ROUTE, PUBLISHED_HOME_ROUTE),
-                    "Dashboard",
-                ).semantic_label("Dashboard"),
-                spacer_width(14.0),
-                NavLink::with_label(
-                    route_pair(SOURCE_WORKBENCH_ROUTE, PUBLISHED_WORKBENCH_ROUTE),
-                    "Workbench",
-                ).semantic_label("Workbench"),
-                spacer_width(14.0),
-                NavLink::with_label(
-                    route_pair(SOURCE_STAGE4_ROUTE, PUBLISHED_STAGE4_ROUTE),
-                    "Stage 4",
-                ).semantic_label("Stage 4"),
-        }
-    }
+        .background(palette.control_background)
+        .border(palette.card_border)
+        .text_primary(palette.primary_text)
+        .text_muted(palette.muted_text)
 }
 
 fn title_block() -> FlexBox {
-    ui! {
-        column()
-            .fill_width()
-            .padding(24.0, 24.0, 24.0, 24.0)
-            .corner_radius(24.0)
-            .bg_color(title_surface_color())
-            .semantic_label("FUI-RS Stage 4 presentation verification") {
-                text("FUI-RS Stage 4 presentation verification")
-                    .font_size(30.0)
-                    .font_weight(FontWeight::Bold)
-                    .text_color(title_text_color())
-                    .semantic_label("FUI-RS Stage 4 presentation verification"),
-                spacer(8.0),
-                text("Dedicated routed WASM for control sizing, app-level templates, per-instance template precedence, presenter color overrides, and dropdown presenter contracts.")
-                    .font_size(16.0)
-                    .text_color(title_muted_text_color())
-                    .text_limits(-1, 3),
-        }
-    }
+    page_header(
+        "FUI-RS Stage 4 presentation verification",
+        "Universal showcase for control sizing, explicit design-system templates, distinct per-control overrides, presenter color overrides, and dropdown presenter contracts.",
+    )
 }
 
 fn showcase_card(title: &str, description: &str, semantic_label: &str) -> FlexBox {
-    ui! {
-        column()
-            .fill_width()
-            .padding(20.0, 20.0, 20.0, 20.0)
-            .corner_radius(20.0)
-            .bg_color(card_background_color())
-            .border(1.0, card_border_color())
-            .semantic_label(semantic_label) {
-                text(title)
-                    .font_size(20.0)
-                    .font_weight(FontWeight::Bold)
-                    .text_color(primary_text_color())
-                    .semantic_label(title),
-                text(description)
-                    .font_size(15.0)
-                    .text_color(muted_text_color())
-                    .text_limits(-1, 3),
-                spacer(6.0),
-        }
-    }
+    let card = section_card(title, description);
+    card.semantic_label(semantic_label);
+    card
 }
 
-fn status_text(value: &str) -> TextNode {
-    let node = ui! {
-    text(value).font_size(14.0)
-        .font_weight(FontWeight::Bold)
-        .text_color(primary_text_color())
-        .text_limits(-1, 2)
-    };
-    node
-}
-
-fn hint(value: &str) -> TextNode {
-    let node = ui! {
-    text(value).font_size(13.0)
-        .text_color(hint_text_color())
-        .text_limits(-1, 2)
-    };
-    node
-}
-
-fn spacer(height: f32) -> FlexBox {
-    ui! { flex_box().height(height, Unit::Pixel) }
-}
-
-fn spacer_width(width: f32) -> FlexBox {
-    ui! { flex_box().width(width, Unit::Pixel) }
-}
-
-fn dispose_stage4_page(_: &Stage4PresentationShowcase) {
-    clear_control_templates();
-    clear_demo_shared_state();
+#[cfg(feature = "web-route")]
+fn dispose_stage4_page(page: &fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>) {
+    page.content().view().dispose();
 }
 
 fn build_stage4_page() -> Stage4PresentationShowcase {
-    Application::caption("EffinDOM FUI-RS Demo • Templated Controls");
     Stage4PresentationShowcase::new()
 }
 
+pub fn build_universal_page(_environment: &DemoEnvironment) -> UniversalDemoPage {
+    let page = build_stage4_page();
+    let root = page.root.clone();
+    UniversalDemoPage::new(
+        DemoPageId::BasicControls.metadata(),
+        retained_view(&root)
+            .keep_alive(page)
+            .on_dispose(clear_demo_shared_state),
+    )
+}
+
+#[cfg(feature = "web-route")]
+fn web_environment() -> DemoEnvironment {
+    DemoEnvironment::browser(
+        fui::platform::platform_family(),
+        fui_rs_demo_universal::DemoLinks::new(
+            "https://github.com/zion-sati/fui-rs",
+            "https://docs.rs/fui-rs/latest/fui",
+        ),
+    )
+}
+
+#[cfg(feature = "web-route")]
+fn build_web_page() -> fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage> {
+    Application::caption(DemoPageId::BasicControls.metadata().title);
+    let page = build_universal_page(&web_environment());
+    let root = page.view().root();
+    fui_rs_demo_shared::routed_demo_shell(page, root, DemoPageId::BasicControls)
+}
+
+#[cfg(feature = "web-route")]
 fui_managed_app!(
-    Stage4PresentationShowcase,
-    build_stage4_page,
-    |page: &Stage4PresentationShowcase| page.root.clone(),
+    fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>,
+    build_web_page,
+    |page: &fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>| page.root.clone(),
     dispose: dispose_stage4_page
 );
 
@@ -978,8 +941,8 @@ mod tests {
         ffi::test::reset();
         let presenter = HouseButtonPresenter::new();
         presenter.present(
-            current_theme(),
-            ButtonVisualState {
+            &current_theme(),
+            &ButtonVisualState {
                 enabled: true,
                 ..Default::default()
             },
@@ -994,8 +957,8 @@ mod tests {
         )));
 
         presenter.present(
-            current_theme(),
-            ButtonVisualState {
+            &current_theme(),
+            &ButtonVisualState {
                 hovered: true,
                 enabled: true,
                 ..Default::default()

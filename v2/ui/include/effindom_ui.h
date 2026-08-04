@@ -161,7 +161,10 @@ typedef enum UiSemanticRole {
     UI_SEMANTIC_RADIO_GROUP = 13,
     UI_SEMANTIC_SWITCH = 14,
     UI_SEMANTIC_SLIDER = 15,
-    UI_SEMANTIC_COMBOBOX = 16
+    UI_SEMANTIC_COMBOBOX = 16,
+    UI_SEMANTIC_TAB_LIST = 17,
+    UI_SEMANTIC_TAB = 18,
+    UI_SEMANTIC_TAB_PANEL = 19
 } UiSemanticRole;
 
 typedef enum UiSemanticCheckedState {

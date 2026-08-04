@@ -33,7 +33,7 @@ bitmap because readback will replace them.
 
 - `render(node, x, y, scale)` rasterizes a built, laid-out retained node into
   the pixel buffer; call `commit()` afterward.
-- `render_text_layout(layout, x, y, scale)` rasterizes a ready `TextLayout`.
+- `render_text_layout(layout, x, y, scale)` rasterizes a ready `TextLayout` and returns whether the prepared node was available to render.
 - `on_text_ready(node, callback)` waits for required fonts and initial app load,
   prepares the node, and invokes the callback once.
 - `prepare_text(node)` explicitly builds/prepares a text node when integrating

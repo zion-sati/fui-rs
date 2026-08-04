@@ -10,6 +10,7 @@ practical guide, start with [Controls and nodes](../CONTROLS_AND_NODES.md).
 - [Switch](./controls/Switch.md)
 - [RadioButton](./controls/RadioButton.md)
 - [RadioGroup](./controls/RadioGroup.md)
+- [TabView](./controls/TabView.md)
 - [ProgressBar](./controls/ProgressBar.md)
 - [Slider](./controls/Slider.md)
 - [Dropdown](./controls/Dropdown.md)

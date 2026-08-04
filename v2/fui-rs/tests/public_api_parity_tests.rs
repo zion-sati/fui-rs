@@ -69,7 +69,6 @@ fn public_prelude_exports_compile() {
     assert_type::<dyn CheckboxIndicatorPresenter>();
     assert_type::<dyn CheckboxIndicatorTemplate>();
     assert_type::<CheckboxIndicatorVisualState>();
-    assert_type::<ControlTemplateSet>();
     assert_type::<dyn DropdownChevronPresenter>();
     assert_type::<dyn DropdownChevronTemplate>();
     assert_type::<DropdownChevronVisualState>();
@@ -95,6 +94,10 @@ fn public_prelude_exports_compile() {
     assert_type::<dyn TextInputPresenter>();
     assert_type::<dyn TextInputTemplate>();
     assert_type::<TextInputVisualState>();
+    assert_type::<TabContentFactory>();
+    assert_type::<TabItem>();
+    assert_type::<TabSelectionChangedEventArgs>();
+    assert_type::<TabView>();
 
     let _ = default_dark_theme as fn() -> Theme;
     let _ = default_light_theme as fn() -> Theme;
@@ -117,9 +120,16 @@ fn public_prelude_exports_compile() {
     let _ = is_redo_shortcut as fn(&str, u32) -> bool;
     let _ = show_keyboard_focus_for_key_event as fn(KeyEventType, &str, u32);
 
-    let _ = clear_control_templates as fn();
-    let _ = get_control_templates as fn() -> Option<ControlTemplateSet>;
-    let _ = use_control_templates as fn(ControlTemplateSet);
+    let tabs = tab_view();
+    tabs.items(tab_items![
+        tab_item("First").content(|| retained_view(&text("First content"))),
+        tab_item("Second").content(|| retained_view(&column())),
+    ]);
+    let _tree = ui! {
+        column() {
+            tabs,
+        }
+    };
 }
 
 #[test]
@@ -142,6 +152,7 @@ fn universal_node_surface_matrix_covers_every_public_retained_visual_type() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();
@@ -180,6 +191,7 @@ fn layout_surface_matrix_matches_fui_as_flex_box_inheritance() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();
@@ -211,6 +223,7 @@ fn box_style_surface_matrix_matches_fui_as_flex_box_inheritance() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();
@@ -242,6 +255,7 @@ fn flex_layout_surface_matrix_matches_fui_as_flex_box_inheritance() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();
@@ -273,6 +287,7 @@ fn child_container_surface_matrix_matches_fui_as_flex_box_inheritance() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();
@@ -354,6 +369,7 @@ fn universal_control_host_style_surface_compiles_cohesively() {
     accepts_node(&text_input());
     accepts_node(&text_area());
     accepts_node(&nav_link("/next"));
+    accepts_node(&tab_view());
 
     let _ = SliderSizing::new().thumb_size(16.0).track_thickness(4.0);
     let _ = SliderColors::new()
@@ -400,6 +416,7 @@ fn every_visual_control_exposes_the_universal_inherited_surface() {
     assert_surface(&anti_selection_area());
     assert_surface(&form());
     assert_surface(&radio_group());
+    assert_surface(&tab_view());
     assert_surface(&popup());
     assert_surface(&dialog("Title", "Body"));
     assert_surface(&context_menu(Vec::<MenuItem>::new()));
@@ -427,6 +444,7 @@ fn every_composed_flex_box_control_exposes_the_complete_inherited_surface() {
     complete(&combo_box());
     complete(&nav_link("/next"));
     complete(&radio_group());
+    complete(&tab_view());
     complete(&form());
     complete(&popup());
     complete(&dialog("Title", "Body"));
@@ -1149,9 +1167,6 @@ fn control_configuration_uses_direct_values_and_explicit_clear_methods() {
     area.colors(TextInputColors::new())
         .clear_colors()
         .clear_template();
-
-    use_control_templates(ControlTemplateSet::default());
-    clear_control_templates();
 }
 
 #[test]
@@ -1412,6 +1427,7 @@ fn every_public_retained_visual_type_exposes_theme_binding() {
     require::<Checkbox>();
     require::<RadioButton>();
     require::<RadioGroup>();
+    require::<TabView>();
     require::<Switch>();
     require::<Slider>();
     require::<ProgressBar>();

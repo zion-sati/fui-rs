@@ -146,19 +146,23 @@ Default template constants and presenter helpers are exported for composition:
 - `DEFAULT_TEXT_INPUT_TEMPLATE`
 - `create_default_*_presenter(...)`
 
-## Global control template set
+## Design-system templates
 
-Use `ControlTemplateSet` to replace defaults app-wide:
+Apply templates explicitly to controls. A design-system constructor can share
+the same house template without introducing mutable application state:
 
 ```rust
-let templates = ControlTemplateSet::new()
-    .button(DEFAULT_BUTTON_TEMPLATE.clone())
-    .text_input(DEFAULT_TEXT_INPUT_TEMPLATE.clone());
+fn app_button(label: &str) -> Button {
+    button(label)
+        .template(Rc::new(AppButtonTemplate))
+        .clone()
+}
 
-use_control_templates(templates);
+let save = app_button("Save");
 ```
 
-Use `clear_control_templates()` to return to defaults.
+An explicit `.template(...)` on a control is always local to that control.
+Controls without one use the built-in presenter.
 
 ## Presenter boundaries
 

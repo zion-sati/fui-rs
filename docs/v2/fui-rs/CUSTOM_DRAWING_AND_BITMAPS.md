@@ -131,7 +131,9 @@ is complete.
 into the bitmap's RGBA buffer. Call it after the first layout (for example from
 `on_loaded` followed by deferred work or from an explicit user action), then
 call `commit()`. `scale` maps logical coordinates to physical bitmap pixels and
-should normally match the intended device-pixel ratio.
+should normally match the intended device-pixel ratio. It returns `true` when
+the prepared node was available for rasterization; retain retryable state when
+calling it during custom drawing because preparation may commit on the next frame.
 
 Use `on_text_ready(...)` before bitmap text rasterization. For a prepared
 `TextLayout`, `render_text_layout(...)` is the convenience equivalent.

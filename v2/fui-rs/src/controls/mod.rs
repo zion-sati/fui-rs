@@ -117,7 +117,6 @@ pub mod button;
 pub mod checkbox;
 pub mod combobox;
 pub mod context_menu;
-pub mod control_template_set;
 pub mod control_tokens;
 pub mod dialog;
 pub mod dropdown;
@@ -130,6 +129,7 @@ pub mod radio_group;
 pub mod selection_area;
 pub mod slider;
 pub mod switch;
+pub mod tab_view;
 pub mod templating;
 #[cfg(test)]
 mod tests;
@@ -149,9 +149,6 @@ pub use context_menu::{
     run_context_menu_action, ContextMenu, ContextMenuAction, ContextMenuVisibilityChangedEventArgs,
     MenuItem,
 };
-pub use control_template_set::{
-    clear_control_templates, get_control_templates, use_control_templates, ControlTemplateSet,
-};
 pub use control_tokens::{
     ButtonColors, DropdownColors, DropdownSizing, LabeledControlColors, LabeledControlSizing,
     ProgressBarColors, ProgressBarSizing, SliderColors, SliderSizing, TextInputColors,
@@ -167,6 +164,11 @@ pub use radio_group::RadioGroup;
 pub use selection_area::SelectionArea;
 pub use slider::Slider;
 pub use switch::Switch;
+pub use tab_view::{tab_view, TabContentFactory, TabItem, TabSelectionChangedEventArgs, TabView};
+
+pub fn tab_item(label: impl Into<String>) -> TabItem {
+    TabItem::new(label)
+}
 pub use templating::{
     create_default_button_presenter, create_default_checkbox_indicator_presenter,
     create_default_dropdown_chevron_presenter, create_default_dropdown_field_presenter,

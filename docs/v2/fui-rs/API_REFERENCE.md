@@ -25,6 +25,7 @@ Public lifecycle types and macros:
 - `Application`
 - `ApplicationRegistration`
 - `ManagedApplication<TPage>`
+- `PageZoomMode`
 - `fui_app!(PageType, build_page)`
 - `fui_managed_app!(PageType, build_page, get_root)`
 - `fui_managed_app!(PageType, build_page, get_root, mount: mount_page)`
@@ -51,6 +52,17 @@ fn build_page() -> FlexBox {
 
 fui_app!(FlexBox, build_page);
 ```
+
+Set application-owned page zoom with
+`Application::page_zoom(PageZoomMode::Enabled)` or
+`Application::page_zoom(PageZoomMode::Disabled)`. The packaged default can be
+set with `application.pageZoom` in `fui-config.json`; application code wins when
+both are present. Page zoom is enabled by default on web and native. Disabling
+it resets the application viewport to identity while preserving control-owned
+pinch gestures and ordinary wheel/scroll input. Native hosts use AppKit
+magnification on macOS, Windows zoom gestures, and SDL-supported desktop pinch
+events on Linux; touchscreen pinch follows the same control-first fallback
+contract.
 
 ## Retained node lifecycle
 
@@ -121,7 +133,7 @@ Constructors and helpers:
 - `custom_drawable(handler)`
 - `px(value)`, `pct(value)`, `auto()`, `fill()`
 - `viewport_width()`, `viewport_height()`
-- `children![...]`, `ui! { ... }`, `rich_text![...]`
+- `children![...]`, `tab_items![...]`, `ui! { ... }`, `rich_text![...]`
 - `fui_component!(Type => root)` for stateless wrappers
 - `fui_component!(Type => root, owner: state)` for one retained owner
 - `fui_component!(Type => root, owners: [state, subscriptions])` for multiple retained owners
@@ -152,6 +164,7 @@ Constructors and types:
 - `switch(label)`, `Switch`, `SwitchChangedEventArgs`
 - `radio_button(label)`, `RadioButton`, `RadioButtonChangedEventArgs`
 - `radio_group()`, `RadioGroup`, `RadioGroupChangedEventArgs`
+- `tab_view()`, `tab_item(label)`, `tab_items![...]`, `TabView`, `TabItem`, `TabSelectionChangedEventArgs`
 - `progress_bar()`, `ProgressBar`: `min`, `max`, `value`, `length`, `thickness`, `orientation`, `sizing`, `colors`
 - `slider()`, `Slider`, `SliderChangedEventArgs`
 - `dropdown()`, `Dropdown`, `DropdownItem`, `DropdownChangedEventArgs<T>`
@@ -171,8 +184,6 @@ Constructors and types:
 
 Public template/style types:
 
-- `ControlTemplateSet`
-- `use_control_templates(...)`, `get_control_templates()`, `clear_control_templates()`
 - `PresenterHostStyle`, `SurfaceAppearance`, `OverlayBackdropAppearance`
 - `ButtonTemplate`, `ButtonPresenter`, `ButtonVisualState`, `ButtonColors`
 - `CheckboxIndicatorTemplate`, `CheckboxIndicatorPresenter`, `CheckboxIndicatorVisualState`
@@ -192,6 +203,10 @@ See [Control customization and templating](./CONTROL_CUSTOMIZATION.md).
 Configuration setters take direct values. Use explicit `clear_colors()`,
 `clear_sizing()`, `clear_template()`, and `clear_appearance()` methods where
 available; there are no compatibility `Option<T>` setters.
+
+Template lookup is explicit: a per-control template is used when supplied;
+otherwise the control uses its built-in presenter. Share house templates through
+application design-system constructors.
 
 ## Events
 
@@ -407,6 +422,8 @@ persistence methods before reaching for low-level adapters.
 
 - `ui! { ... }` builds mixed retained child trees without `.into()` noise.
 - `children![...]` creates child vectors for APIs that accept child lists.
+- `tab_items![...]` creates tab item vectors from fluent or named items without
+  explicit cloning or conversion.
 - `rich_text![...]` creates `RichText` from fluent literal, dynamic, or prebuilt spans.
 - `Configure::configure(...)` lets retained controls receive multiple `&self`
   setters while still returning the owned handle:

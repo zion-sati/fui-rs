@@ -1,8 +1,12 @@
+mod demo_file;
+mod demo_http;
 mod external_drop_demo;
 pub mod generated;
 mod reorder_demo;
 
 use external_drop_demo::ExternalDropDemoPanel;
+use demo_file::{DemoFile, DemoFileCopyRequest, DemoFileRequestGuard, DemoPickedFile};
+use demo_http::{DemoHttp, DemoHttpRequest};
 use fui::prelude::*;
 use fui::{
     current_route, device_pixel_ratio, get_svg_asset_error, get_svg_asset_height,
@@ -11,6 +15,7 @@ use fui::{
     load_texture, on_loaded, AssetLoadState,
 };
 use reorder_demo::ReorderDemoPanel;
+use fui_rs_demo_universal::DemoPageId;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -43,6 +48,17 @@ const JSON_PLACEHOLDER_POST_BODY: &str =
 
 pub fn clear_demo_shared_state() {}
 
+pub struct RoutedDemoShell<T> {
+    pub root: FlexBox,
+    content: T,
+}
+
+impl<T> RoutedDemoShell<T> {
+    pub fn content(&self) -> &T {
+        &self.content
+    }
+}
+
 fn demo_card_color(theme: &Theme, color: u32) -> u32 {
     if is_dark_mode() {
         match color {
@@ -56,6 +72,17 @@ fn demo_card_color(theme: &Theme, color: u32) -> u32 {
         }
     } else {
         color
+    }
+}
+
+fn demo_card_tone(color: u32) -> fui_rs_demo_universal::design_system::CardTone {
+    use fui_rs_demo_universal::design_system::CardTone;
+    match color {
+        0xE0F2FEFF | 0xD7EAFEFF => CardTone::Accent,
+        0xDCFCE7FF => CardTone::Success,
+        0xFDE68AFF | 0xFEF3C7FF => CardTone::Warning,
+        0xEDE9FEFF | 0xF3E8FFFF | 0xFCE7F3FF => CardTone::Highlight,
+        _ => CardTone::Neutral,
     }
 }
 
@@ -169,9 +196,7 @@ impl Stage4Showcase {
             STAGE4_ROUTE_RELATIVE_TEXTURE_ID,
             STAGE4_ROUTE_RELATIVE_TEXTURE_URL,
         );
-        load_texture(STAGE4_MISSING_TEXTURE_ID, STAGE4_MISSING_TEXTURE_URL);
         load_svg(STAGE4_SAMPLE_SVG_ID, STAGE4_SAMPLE_SVG_URL);
-        load_svg(STAGE4_MISSING_SVG_ID, STAGE4_MISSING_SVG_URL);
         let custom_emoji_face =
             FontFace::load(&format!("{}/NotoColorEmoji.ttf", STAGE4_FONT_BASE_URL));
         let custom_body_stack =
@@ -591,7 +616,7 @@ impl Stage4Showcase {
             .semantic_label("Stage 4 app authored custom fonts card")
         };
         let custom_font_heading = ui! {
-        text("Custom DejaVu FontStack sample")
+        text("Custom DejaVu FontStack sample 🌍")
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
             .font_size(22.0)
@@ -599,7 +624,7 @@ impl Stage4Showcase {
             .semantic_label("Stage 4 custom font heading")
         };
         let custom_font_body = ui! {
-        text("Load DejaVu Sans through FontStack::load(...), use DejaVu Bold for heavier text, and keep fallback registration in the typed typography API without app-managed font IDs.")
+        text("Load DejaVu Sans through FontStack::load(...), use DejaVu Bold for heavier text, and keep color emoji fallback without dropping to bridge-specific APIs.")
             .font_family(custom_family.clone())
             .font_size(16.0)
             .wrapping(true)
@@ -608,13 +633,13 @@ impl Stage4Showcase {
             .semantic_label("Stage 4 custom font body")
         };
         let custom_font_direct_stack =
-            text("Apply a stack directly: TextNode::font_stack(custom_body_stack, 17)");
+            text("Apply a stack directly: TextNode::font_stack(custom_body_stack, 17) ✨");
         custom_font_direct_stack
             .font_stack(custom_body_stack.clone(), 17.0)
             .text_color(theme.colors.text_muted)
             .semantic_label("Stage 4 direct font stack text");
         let custom_font_comparison =
-            text("Bold family resolution stays intact: DejaVu Bold + fallback stack");
+            text("Bold family resolution stays intact: DejaVu Bold + emoji fallback 😄");
         custom_font_comparison
             .font_family(custom_family.clone())
             .font_weight(FontWeight::Bold)
@@ -648,6 +673,16 @@ impl Stage4Showcase {
             "text ".italic().text_color(0x60A5FAFF),
             "underline ".underline().text_color(0xFBBF24FF),
             "strike ".strikethrough().text_color(0xF87171FF),
+            "emoji- "
+                .background_color(rgb(30, 41, 59))
+                .text_color(rgb(167, 243, 208)),
+            "😄"
+                .font_family(FontFamily::with_regular_face(custom_emoji_face.clone()))
+                .background_color(rgb(30, 41, 59))
+                .text_color(rgb(167, 243, 208)),
+            " "
+                .background_color(rgb(30, 41, 59))
+                .text_color(rgb(167, 243, 208)),
             "helpers"
                 .bold()
                 .italic()
@@ -945,11 +980,16 @@ impl Stage4Showcase {
         demo_text("Stage 4 explicit SVG state: Loading", 14.0, 0x475569FF).semantic_label("Stage 4 explicit SVG state: Loading")
         };
         let missing_texture_state =
-            demo_text("Stage 4 missing texture state: Loading", 14.0, 0x475569FF);
-        missing_texture_state.semantic_label("Stage 4 missing texture state: Loading");
+            demo_text("Stage 4 missing texture state: Not requested", 14.0, 0x475569FF);
+        missing_texture_state.semantic_label("Stage 4 missing texture state: Not requested");
         let missing_svg_state = ui! {
-        demo_text("Stage 4 missing SVG state: Loading", 14.0, 0x475569FF).semantic_label("Stage 4 missing SVG state: Loading")
+        demo_text("Stage 4 missing SVG state: Not requested", 14.0, 0x475569FF).semantic_label("Stage 4 missing SVG state: Not requested")
         };
+        let missing_asset_button = button("Test missing asset handling");
+        missing_asset_button.on_click(|_| {
+            load_texture(STAGE4_MISSING_TEXTURE_ID, STAGE4_MISSING_TEXTURE_URL);
+            load_svg(STAGE4_MISSING_SVG_ID, STAGE4_MISSING_SVG_URL);
+        });
         let selectable_context_text = demo_text(
             "Select this sentence, then right-click or long-press it to expose the non-editable text context actions.",
             15.0,
@@ -1007,6 +1047,8 @@ impl Stage4Showcase {
             .child(&route_relative_state)
             .child(&spacer(6.0))
             .child(&explicit_svg_state)
+            .child(&spacer(6.0))
+            .child(&missing_asset_button)
             .child(&spacer(6.0))
             .child(&missing_texture_state)
             .child(&spacer(6.0))
@@ -1123,7 +1165,7 @@ impl Stage4Showcase {
         stage4_panel("Online Fetch sample", 0xFFFFFFFF).fill_width().semantic_label("Stage 4 fetch card")
         };
         let fetch_body = demo_text(
-            "Send real GET and POST requests through the shipped Fetch API to JSONPlaceholder without dropping to browser-specific networking code.",
+            "Send real GET and POST requests through an application networking adapter: FUI Fetch on the web and native Rust HTTP on desktop.",
             15.0,
             0x334155FF,
         );
@@ -1164,15 +1206,15 @@ impl Stage4Showcase {
         };
         fetch_result.semantic_label("Latest result: none yet");
         let fetch_hint = demo_text(
-            "This demo uses the shipped Fetch API against the live JSONPlaceholder service. The request is real and online; the current Fetch surface reports completion metadata rather than response bodies.",
+            "The retained page is shared. Only its networking service changes by host, keeping browser Fetch and native Rust networking out of common UI code.",
             14.0,
             0x475569FF,
         );
         fetch_hint.wrapping(true).text_limits(i32::MAX, 6);
-        let active_fetch_request = Rc::new(RefCell::new(None::<FetchRequest>));
+        let active_fetch_request = Rc::new(RefCell::new(None::<DemoHttpRequest>));
         let active_fetch_label = Rc::new(RefCell::new(String::new()));
         fetch_card
-            .child(&demo_text("HTTP fetch bridge", 18.0, 0x111827FF))
+            .child(&demo_text("HTTP service adapter", 18.0, 0x111827FF))
             .child(&spacer(8.0))
             .child(&fetch_body)
             .child(&spacer(12.0))
@@ -1196,9 +1238,9 @@ impl Stage4Showcase {
             .fill_width()
             .semantic_label("Stage 4 file bridge card")
         };
-        let file_capabilities = File::capabilities();
+        let file_capabilities = DemoFile::capabilities();
         let file_capability_label = format!(
-            "Capabilities: open={} read={} save={} read-chunks={} write-chunks={} native-picker={} worker-process-save={}",
+            "Capabilities: open={} read={} save={} read-chunks={} write-chunks={} native-picker={} background-copy={}",
             if file_capabilities.can_pick_open { "yes" } else { "no" },
             if file_capabilities.can_read { "yes" } else { "no" },
             if file_capabilities.can_save { "yes" } else { "no" },
@@ -1232,7 +1274,7 @@ impl Stage4Showcase {
             .child(&spacer(14.0))
             .child(&copy_file_button);
         file_card
-            .child(&demo_text("File picker and worker copy", 18.0, 0x111827FF))
+            .child(&demo_text("File picker and background copy", 18.0, 0x111827FF))
             .child(&spacer(8.0))
             .child(&demo_text(
                 "This mirrors the FUI-AS file bridge shape: open picker, save requests, first-class BrowserFile handles, and worker-side chunk read plus picked-file write.",
@@ -1565,9 +1607,9 @@ impl Stage4Showcase {
                 start_fail_worker_action();
             });
         }
-        let pending_file_guards = Rc::new(RefCell::new(Vec::<FileRequestGuard>::new()));
-        let active_file_copy = Rc::new(RefCell::new(None::<FileWorkerProcessRequest>));
-        let picked_file = Rc::new(RefCell::new(None::<BrowserFile>));
+        let pending_file_guards = Rc::new(RefCell::new(Vec::<DemoFileRequestGuard>::new()));
+        let active_file_copy = Rc::new(RefCell::new(None::<DemoFileCopyRequest>));
+        let picked_file = Rc::new(RefCell::new(None::<DemoPickedFile>));
         let set_file_status: Rc<dyn Fn(String)> = {
             let file_status = file_status.clone();
             Rc::new(move |label: String| {
@@ -1619,7 +1661,7 @@ impl Stage4Showcase {
                     .semantic_label("Latest result: waiting for JSONPlaceholder to respond...");
                 fetch_get_button_for_get.enabled(false);
                 fetch_post_button_for_get.enabled(false);
-                let request = Fetch::request(JSON_PLACEHOLDER_GET_URL)
+                let request = DemoHttp::request(JSON_PLACEHOLDER_GET_URL)
                     .on_complete({
                         let active_fetch_request = active_fetch_request.clone();
                         let active_fetch_label = active_fetch_label.clone();
@@ -1722,7 +1764,7 @@ impl Stage4Showcase {
                     .semantic_label("Latest result: waiting for JSONPlaceholder to respond...");
                 fetch_get_button_for_post.enabled(false);
                 fetch_post_button_for_post.enabled(false);
-                let request = Fetch::request(JSON_PLACEHOLDER_POST_URL)
+                let request = DemoHttp::request(JSON_PLACEHOLDER_POST_URL)
                     .method("POST")
                     .header("Content-Type", "application/json; charset=UTF-8")
                     .body_text(JSON_PLACEHOLDER_POST_BODY)
@@ -1807,9 +1849,9 @@ impl Stage4Showcase {
             pick_file_button.on_click(move |_event| {
                 set_file_status(String::from("Stage 4 file status: opening picker"));
                 set_file_detail(String::from(
-                    "Stage 4 file detail: waiting for browser selection",
+                    "Stage 4 file detail: waiting for file selection",
                 ));
-                let guard = File::open().multiple(false).pick_with_error(
+                let guard = DemoFile::open().multiple(false).pick_with_error(
                     {
                         let picked_file = picked_file.clone();
                         let set_file_status = set_file_status.clone();
@@ -1827,7 +1869,7 @@ impl Stage4Showcase {
                                 set_picked_file_label(label);
                                 set_file_status(String::from("Stage 4 file status: picked"));
                                 set_file_detail(String::from(
-                                    "Stage 4 file detail: BrowserFile handle ready for worker copy",
+                                    "Stage 4 file detail: selected file ready for background copy",
                                 ));
                             } else {
                                 set_file_status(String::from("Stage 4 file status: idle"));
@@ -1858,7 +1900,7 @@ impl Stage4Showcase {
                 set_file_detail(String::from(
                     "Stage 4 file detail: sample text save request started",
                 ));
-                let guard = File::save()
+                let guard = DemoFile::save()
                     .suggested_name("stage4-note")
                     .mime_type("text/plain")
                     .file_extension(".txt")
@@ -1899,7 +1941,7 @@ impl Stage4Showcase {
                     "Stage 4 file detail: sample bytes save request started",
                 ));
                 let bytes = b"stage4-bytes".to_vec();
-                let guard = File::save()
+                let guard = DemoFile::save()
                     .suggested_name("stage4-bytes")
                     .mime_type("application/octet-stream")
                     .file_extension(".bin")
@@ -1953,7 +1995,7 @@ impl Stage4Showcase {
                     "Stage 4 file detail: starting worker copy for {}",
                     file.name()
                 ));
-                let request = File::process_file_in_worker(file.clone())
+                let request = DemoFile::process_file_in_worker(file.clone())
                     .worker("./workers.wasm", "stage4FileProcessorWorker")
                     .save_to_picked_file(format!("{}-copy", file.name()))
                     .on_progress({
@@ -2263,43 +2305,43 @@ fn demo_route_nav_link(href: &str, label: &str, active: bool) -> NavLink {
     link
 }
 
-pub fn demo_page_root(title: &str) -> FlexBox {
-    let theme = current_theme();
-    let root = ui! {
-        column().width_len(fill())
-        .height_len(fill())
-        .padding(32.0, 32.0, 32.0, 32.0)
-    };
+fn demo_route_is_active(current: DemoPageId, candidate: DemoPageId) -> bool {
+    current == candidate
+}
 
+fn demo_route_nav(current_page: DemoPageId) -> FlexBox {
     let nav = ui! {
         row().width_len(fill())
         .align_items(AlignItems::Center)
-        .margin(0.0, 0.0, 0.0, 18.0)
+        .padding(32.0, 32.0, 32.0, 0.0)
     };
-    let dashboard_link =
-        demo_route_nav_link(demo_home_route(), "Dashboard", title.contains("dashboard"));
+    let dashboard_link = demo_route_nav_link(
+        demo_home_route(),
+        "Dashboard",
+        demo_route_is_active(current_page, DemoPageId::Dashboard),
+    );
     let workbench_link = demo_route_nav_link(
         demo_workbench_route(),
         "Workbench",
-        title.contains("workbench"),
+        demo_route_is_active(current_page, DemoPageId::TextAndFonts),
     );
     workbench_link.margin(10.0, 0.0, 0.0, 0.0);
     let stage4_link = demo_route_nav_link(
         demo_stage4_route(),
         "Stage 4",
-        title.contains("Stage 4") || title.contains("stage 4"),
+        demo_route_is_active(current_page, DemoPageId::BasicControls),
     );
     stage4_link.margin(10.0, 0.0, 0.0, 0.0);
     let stage5_link = demo_route_nav_link(
         demo_stage5_route(),
         "Stage 5",
-        title.contains("Stage 5") || title.contains("stage 5"),
+        demo_route_is_active(current_page, DemoPageId::Advanced),
     );
     stage5_link.margin(10.0, 0.0, 0.0, 0.0);
     let immediate_drawing_link = demo_route_nav_link(
         demo_immediate_drawing_route(),
         "Immediate Drawing",
-        title.contains("Immediate Drawing"),
+        demo_route_is_active(current_page, DemoPageId::ImmediateDrawing),
     );
     immediate_drawing_link.margin(10.0, 0.0, 0.0, 0.0);
     nav.child(&dashboard_link)
@@ -2307,70 +2349,51 @@ pub fn demo_page_root(title: &str) -> FlexBox {
         .child(&stage4_link)
         .child(&stage5_link)
         .child(&immediate_drawing_link);
-    root.child(&nav);
+    nav
+}
 
-    let title_node = ui! {
-    text(title)
-        .font_family(theme.fonts.heading_family.clone())
-        .font_size(28.0)
-        .text_color(theme.colors.text_primary)
-    };
-    root.child(&title_node);
-    root.bind_theme({
-        let title_node = title_node.clone();
-        move |_root, theme| {
-            title_node
-                .font_family(theme.fonts.heading_family.clone())
-                .font_size(28.0)
-                .text_color(theme.colors.text_primary);
+pub fn routed_demo_shell<T>(
+    content: T,
+    content_root: fui::node::NodeRef,
+    current_page: DemoPageId,
+) -> RoutedDemoShell<T> {
+    let root = ui! { column().fill_size() };
+    root.child(&demo_route_nav(current_page));
+    root.append_surface_child(content_root);
+    RoutedDemoShell { root, content }
+}
+
+#[cfg(test)]
+mod route_nav_tests {
+    use super::*;
+
+    #[test]
+    fn route_selection_uses_page_identity_instead_of_display_titles() {
+        let pages = [
+            DemoPageId::Dashboard,
+            DemoPageId::TextAndFonts,
+            DemoPageId::BasicControls,
+            DemoPageId::Advanced,
+            DemoPageId::ImmediateDrawing,
+        ];
+        for current in pages {
+            for candidate in pages {
+                assert_eq!(demo_route_is_active(current, candidate), current == candidate);
+            }
         }
-    });
+    }
+}
+
+pub fn demo_page_root(title: &str) -> FlexBox {
+    use fui_rs_demo_universal::design_system::{heading_text, page_surface, vertical_space};
+    let root = page_surface(title);
+    root.child(&heading_text(title, 28.0))
+        .child(&vertical_space(18.0));
     root
 }
 
 pub fn demo_card(title: &str, body: &str, color: u32) -> FlexBox {
-    let theme = current_theme();
-    let card = ui! {
-        column().width_len(fill())
-        .padding(18.0, 20.0, 18.0, 20.0)
-        .bg_color(demo_card_color(&theme, color))
-        .corner_radius(18.0)
-        .border(1.0, theme.colors.border)
-    };
-
-    let title_node = ui! {
-    text(title)
-        .font_family(theme.fonts.body_family.clone())
-        .font_size(18.0)
-        .text_color(theme.colors.text_primary)
-    };
-    card.child(&title_node);
-
-    let body_node = ui! {
-    text(body)
-        .font_family(theme.fonts.body_family.clone())
-        .font_size(15.0)
-        .text_color(theme.colors.text_muted)
-    };
-    card.child(&spacer(8.0)).child(&body_node);
-    card.bind_theme({
-        let title_node = title_node.clone();
-        let body_node = body_node.clone();
-        move |card, theme| {
-            card.bg_color(demo_card_color(&theme, color))
-                .border(1.0, theme.colors.border);
-            title_node
-                .font_family(theme.fonts.body_family.clone())
-                .font_size(18.0)
-                .text_color(theme.colors.text_primary);
-            body_node
-                .font_family(theme.fonts.body_family.clone())
-                .font_size(15.0)
-                .text_color(theme.colors.text_muted);
-        }
-    });
-
-    card
+    fui_rs_demo_universal::design_system::section_card_with_tone(title, body, demo_card_tone(color))
 }
 
 pub(crate) fn stage4_panel(title: &str, color: u32) -> FlexBox {

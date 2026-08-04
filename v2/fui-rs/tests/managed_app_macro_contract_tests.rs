@@ -16,11 +16,9 @@ fn build_page() -> ProjectedPage {
     }
 }
 
-fui_managed_app!(
-    ProjectedPage,
-    build_page,
-    |page: &ProjectedPage| page.mounted_root.clone()
-);
+fui_managed_app!(ProjectedPage, build_page, |page: &ProjectedPage| page
+    .mounted_root
+    .clone());
 
 #[test]
 fn managed_app_supports_custom_root_projection() {

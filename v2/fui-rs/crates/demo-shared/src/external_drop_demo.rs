@@ -61,26 +61,28 @@ struct ExternalDropDemoState {
     active_copy_request: RefCell<Option<FileWorkerProcessRequest>>,
 }
 
+struct ExternalDropDemoParts {
+    drop_target: FlexBox,
+    drop_title_text: TextNode,
+    drop_body_text: TextNode,
+    status_text: TextNode,
+    items_text: TextNode,
+    capability_text: TextNode,
+    hint_text: TextNode,
+    copy_button: Button,
+}
+
 impl ExternalDropDemoState {
-    fn new(
-        drop_target: FlexBox,
-        drop_title_text: TextNode,
-        drop_body_text: TextNode,
-        status_text: TextNode,
-        items_text: TextNode,
-        capability_text: TextNode,
-        hint_text: TextNode,
-        copy_button: Button,
-    ) -> Self {
+    fn new(parts: ExternalDropDemoParts) -> Self {
         Self {
-            drop_target,
-            drop_title_text,
-            drop_body_text,
-            status_text,
-            items_text,
-            capability_text,
-            hint_text,
-            copy_button,
+            drop_target: parts.drop_target,
+            drop_title_text: parts.drop_title_text,
+            drop_body_text: parts.drop_body_text,
+            status_text: parts.status_text,
+            items_text: parts.items_text,
+            capability_text: parts.capability_text,
+            hint_text: parts.hint_text,
+            copy_button: parts.copy_button,
             last_items: RefCell::new(Vec::new()),
             hovering_accepted: RefCell::new(false),
             ignore_next_leave: RefCell::new(false),
@@ -394,16 +396,16 @@ impl ExternalDropDemoPanel {
             .child(&spacer(10.0))
             .child(&hint_text);
 
-        let state = Rc::new(ExternalDropDemoState::new(
-            drop_target.clone(),
+        let state = Rc::new(ExternalDropDemoState::new(ExternalDropDemoParts {
+            drop_target: drop_target.clone(),
             drop_title_text,
             drop_body_text,
             status_text,
             items_text,
             capability_text,
             hint_text,
-            copy_button.clone(),
-        ));
+            copy_button: copy_button.clone(),
+        }));
         state.sync_capabilities();
         state.sync_items();
         state.apply_theme(&current_theme());

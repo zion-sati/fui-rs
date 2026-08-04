@@ -248,6 +248,9 @@ export const canonicalEnumSpecs: readonly EnumSpec[] = [
       { name: "Switch", source: "UI_SEMANTIC_SWITCH" },
       { name: "Slider", source: "UI_SEMANTIC_SLIDER" },
       { name: "ComboBox", source: "UI_SEMANTIC_COMBOBOX" },
+      { name: "TabList", source: "UI_SEMANTIC_TAB_LIST" },
+      { name: "Tab", source: "UI_SEMANTIC_TAB" },
+      { name: "TabPanel", source: "UI_SEMANTIC_TAB_PANEL" },
     ],
   },
   {

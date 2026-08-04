@@ -606,6 +606,11 @@ mod tests {
             1.0,
             1.0,
             1,
+            true,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
         );
         let cross_selection = "cross-selected text";
         unsafe {

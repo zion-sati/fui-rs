@@ -19,11 +19,6 @@ fn create_indicator_presenter(
     if let Some(template) = template {
         return template.create(sizing);
     }
-    if let Some(template_set) = get_control_templates() {
-        if let Some(template) = template_set.radio_indicator {
-            return template.create(sizing);
-        }
-    }
     create_default_radio_indicator_presenter(sizing)
 }
 

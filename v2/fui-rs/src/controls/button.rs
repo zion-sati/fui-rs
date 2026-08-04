@@ -412,11 +412,6 @@ fn create_button_presenter(template: Option<Rc<dyn ButtonTemplate>>) -> Rc<dyn B
     if let Some(template) = template {
         return template.create();
     }
-    if let Some(template_set) = get_control_templates() {
-        if let Some(template) = template_set.button {
-            return template.create();
-        }
-    }
     DEFAULT_BUTTON_TEMPLATE.create()
 }
 

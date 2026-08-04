@@ -18,6 +18,7 @@ For the complete export list, see:
 | `Checkbox` | Boolean or tri-state check control | `checkbox(label)`, `check(...)`, `tri_state(...)`, `mixed(...)`, `on_changed(...)`, `on_click(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Switch` | On/off toggle control | `switch(label)`, `check(...)`, `on_changed(...)`, `on_click(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `RadioButton` / `RadioGroup` | Single-choice grouped options | radio `on_click(...)`; group `add_option(...)`, `add_options(...)`, `select_index(...)`, `on_changed(...)` |
+| `TabView` / `TabItem` | Headless retained content switching with lazy content | `tab_view()`, `tab_item(label)`, `tab_items![...]`, `add_item(...)`, `select_index(...)`, `on_selection_changed(...)`; compose any controls as selectors |
 | `ProgressBar` | Determinate horizontal or vertical progress visualization | `value(...)`, `min(...)`, `max(...)`, `length(...)`, `thickness(...)`, `orientation(...)`, `sizing(...)`, `clear_sizing()`, `colors(...)`, `clear_colors()` |
 | `Slider` | Single-value range control | `min(...)`, `max(...)`, `step(...)`, `orientation(...)`, `on_changed(...)`, `template(...)`, `sizing(...)`, `colors(...)` |
 | `Dropdown` | Non-editable selection popup control | `items(...)`, `select_index(...)`, `on_changed(...)`, `max_visible_items(...)`, templates and colors |
@@ -74,6 +75,7 @@ For the complete export list, see:
 - `auto()`
 - `fill()`
 - `children![...]`
+- `tab_items![...]`
 - `ui! { ... }`
 
 ## Core layout concept

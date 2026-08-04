@@ -20,8 +20,10 @@ fn next_host_event_subscription_id() -> u64 {
     })
 }
 
+type HostEventHandler0 = Option<(u64, Rc<dyn Fn(u32)>)>;
+
 thread_local! {
-    static DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(u32)>)>> = const { RefCell::new(None) };
+    static DEMO_SHELL_ACCENT_COLOR_CHANGED_HANDLER: RefCell<HostEventHandler0> = const { RefCell::new(None) };
 }
 
 pub fn on_demo_shell_accent_color_changed(callback: impl Fn(u32) + 'static) -> HostEventSubscription {
@@ -52,8 +54,10 @@ pub extern "C" fn __fui_host_event_demoShellAccentColorChanged(arg0: u32) {
         callback(arg0);
 }
 
+type HostEventHandler1 = Option<(u64, Rc<dyn Fn(i32)>)>;
+
 thread_local! {
-    static DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(i32)>)>> = const { RefCell::new(None) };
+    static DEMO_SHELL_CLOCK_TICK_CHANGED_HANDLER: RefCell<HostEventHandler1> = const { RefCell::new(None) };
 }
 
 pub fn on_demo_shell_clock_tick_changed(callback: impl Fn(i32) + 'static) -> HostEventSubscription {
@@ -84,8 +88,10 @@ pub extern "C" fn __fui_host_event_demoShellClockTickChanged(arg0: i32) {
         callback(arg0);
 }
 
+type HostEventHandler2 = Option<(u64, Rc<dyn Fn(bool)>)>;
+
 thread_local! {
-    static DEMO_SHELL_DARK_MODE_CHANGED_HANDLER: RefCell<Option<(u64, Rc<dyn Fn(bool)>)>> = const { RefCell::new(None) };
+    static DEMO_SHELL_DARK_MODE_CHANGED_HANDLER: RefCell<HostEventHandler2> = const { RefCell::new(None) };
 }
 
 pub fn on_demo_shell_dark_mode_changed(callback: impl Fn(bool) + 'static) -> HostEventSubscription {

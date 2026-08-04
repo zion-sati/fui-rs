@@ -2,7 +2,10 @@
 members = [
   "demo-home",
   "demo-immediate-drawing",
+  "demo-page-registry",
+  "demo-platform",
   "demo-shared",
+  "demo-universal",
   "demo-stage4",
   "demo-stage5",
   "demo-worker",

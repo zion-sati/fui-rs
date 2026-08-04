@@ -466,7 +466,7 @@ pub fn animate_color_with<Owner: 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bridge_callbacks::__fui_on_frame;
+    use crate::bridge_callbacks::{__fui_needs_animation_frame, __fui_on_frame};
     use crate::ffi::{self, Call};
     use crate::frame_scheduler::reset_commit_state;
     use std::cell::Cell;
@@ -532,6 +532,7 @@ mod tests {
             AnimationTiming::new(80.0),
             |owner, value| owner.set(value),
         );
+        assert!(__fui_needs_animation_frame());
         animate_color_with(
             color_owner.clone(),
             0x000000FF,
@@ -605,6 +606,9 @@ mod tests {
 
         __fui_on_frame(1050.0);
         assert_eq!(owner.get(), 4.0);
+        assert!(__fui_needs_animation_frame());
+        reset_animations();
+        assert!(!__fui_needs_animation_frame());
     }
 
     #[test]

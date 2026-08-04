@@ -3,7 +3,6 @@ use fui::bindings::ui;
 use fui::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
-use {AlignItems, CursorStyle, JustifyContent, PositionType, Visibility};
 
 const REORDER_DRAG_FORMAT: &str = "application/x-effindom-reorder-item-id";
 const REORDER_MARKER_HEIGHT_PX: f32 = 8.0;
@@ -545,13 +544,12 @@ impl ReorderDemoState {
                 return;
             }
             let item_count = state.items.borrow().len() as i32;
-            let values = (
+            (
                 state.scroll_box.scroll_state().offset_y(),
                 state.auto_scroll_delta_y.get(),
                 item_count,
                 state.read_viewport_height(),
-            );
-            values
+            )
         };
         let next_offset = compute_next_reorder_auto_scroll_offset(
             current_offset,
@@ -938,7 +936,9 @@ impl ReorderDemoPanel {
                 };
 
                 let grip_label = ui! {
-                demo_text("Drag", 14.0, 0x475569FF).cursor(CursorStyle::Grab)
+                demo_text("Drag", 14.0, 0x475569FF)
+                    .selectable(false)
+                    .cursor(CursorStyle::Grab)
                 };
                 grip_label
                     .drag_data({

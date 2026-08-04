@@ -1,4 +1,3 @@
-use super::control_template_set::get_control_templates;
 use super::internal::dropdown_chevron_presenter::{
     create_default_dropdown_chevron_presenter, DropdownChevronPresenter, DropdownChevronTemplate,
     DropdownChevronVisualState,
@@ -41,9 +40,6 @@ fn create_field_presenter(
     if let Some(template) = template {
         return template.create(sizing);
     }
-    if let Some(template) = get_control_templates().and_then(|set| set.dropdown_field) {
-        return template.create(sizing);
-    }
     create_default_dropdown_field_presenter(sizing)
 }
 
@@ -52,9 +48,6 @@ fn create_chevron_presenter(
     sizing: Option<DropdownSizing>,
 ) -> Rc<dyn DropdownChevronPresenter> {
     if let Some(template) = template {
-        return template.create(sizing);
-    }
-    if let Some(template) = get_control_templates().and_then(|set| set.dropdown_chevron) {
         return template.create(sizing);
     }
     create_default_dropdown_chevron_presenter(sizing)
@@ -1054,18 +1047,10 @@ impl DropdownShared {
     }
 
     fn uses_default_field_presenter(&self) -> bool {
-        if self.field_template_value.borrow().is_some() {
-            return false;
-        }
-        let template_set = get_control_templates();
-        template_set.is_none() || template_set.is_some_and(|set| set.dropdown_field.is_none())
+        self.field_template_value.borrow().is_none()
     }
 
     fn uses_default_chevron_presenter(&self) -> bool {
-        if self.chevron_template_value.borrow().is_some() {
-            return false;
-        }
-        let template_set = get_control_templates();
-        template_set.is_none() || template_set.is_some_and(|set| set.dropdown_chevron.is_none())
+        self.chevron_template_value.borrow().is_none()
     }
 }

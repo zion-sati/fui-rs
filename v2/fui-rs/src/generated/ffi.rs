@@ -186,6 +186,9 @@ pub enum SemanticRole {
     Switch = 14,
     Slider = 15,
     ComboBox = 16,
+    TabList = 17,
+    Tab = 18,
+    TabPanel = 19,
 }
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -595,6 +598,7 @@ unsafe extern "C" {
     pub fn get_viewport_height() -> f32;
     pub fn get_device_pixel_ratio() -> f32;
     pub fn fui_set_application_caption(captionPtr: usize, captionLen: u32);
+    pub fn fui_set_page_zoom_enabled(enabled: bool);
     pub fn fui_set_pointer_capture(handle: u64);
     pub fn fui_release_pointer_capture();
     pub fn fui_reload_page();

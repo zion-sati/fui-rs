@@ -142,12 +142,15 @@ export async function generateRustHostEventsFile(
     "}",
     "",
   ];
-  methods.forEach((method) => {
+  methods.forEach((method, index) => {
     const handlerName = snakeCaseIdentifier(method.eventName);
     const callbackTy = callbackType(method.args);
+    const handlerType = `HostEventHandler${String(index)}`;
+    lines.push(`type ${handlerType} = Option<(u64, ${callbackTy})>;`);
+    lines.push("");
     lines.push("thread_local! {");
     lines.push(
-      `    static ${handlerName.toUpperCase()}_HANDLER: RefCell<Option<(u64, ${callbackTy})>> = const { RefCell::new(None) };`,
+      `    static ${handlerName.toUpperCase()}_HANDLER: RefCell<${handlerType}> = const { RefCell::new(None) };`,
     );
     lines.push("}");
     lines.push("");

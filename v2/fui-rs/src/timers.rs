@@ -75,7 +75,10 @@ pub fn cancel_all_timers() {
     ACTIVE_TIMERS.with(|timers| timers.borrow_mut().clear());
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_timer(timer_id: u32) {
     let callback = ACTIVE_TIMERS.with(|timers| timers.borrow_mut().remove(&timer_id));
     if let Some(callback) = callback {

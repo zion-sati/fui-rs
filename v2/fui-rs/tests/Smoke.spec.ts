@@ -808,7 +808,7 @@ test('routes the fui-rs demo scaffold through the shared routed harness', async 
     return await page.evaluate(() => {
       const text = document.body.innerText;
       return text.includes('FUI-RS Stage 4 presentation verification')
-        && text.includes('App-level ControlTemplateSet')
+        && text.includes('Design-system templates')
         && text.includes('Per-instance template precedence')
         && text.includes('Control sizing tokens')
         && text.includes('Presenter color overrides')
@@ -1022,7 +1022,16 @@ test('reorders a routed workbench row by dragging without hanging the app', asyn
   await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);
   const sceneSurface = page.locator('canvas').first();
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  const sceneBounds = await sceneSurface.boundingBox();
+  expect(sceneBounds).not.toBeNull();
+  if (sceneBounds === null) {
+    throw new Error('Expected routed workbench canvas bounds.');
+  }
+  await page.mouse.move(
+    sceneBounds.x + (sceneBounds.width * 0.5),
+    sceneBounds.y + (sceneBounds.height * 0.5),
+  );
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     const hasVisibleGrip = await page.evaluate(async () => {
       const debug = window.__fui_debug;
       if (debug === undefined || typeof debug.getDebugTree !== 'function') {
@@ -1039,18 +1048,25 @@ test('reorders a routed workbench row by dragging without hanging the app', asyn
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(120);
   }
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(1200);
 
   const sourceBounds = await debugNodeScreenBounds(page, sceneSurface, 'Drag grip for Document Core rename');
   const source = {
-    x: sourceBounds.x + 10,
+    x: Math.floor(sourceBounds.x + (sourceBounds.width * 0.5)),
     y: Math.floor(sourceBounds.y + (sourceBounds.height * 0.5)),
   };
-  const viewport = await debugNodeCenter(page, sceneSurface, 'Reorder demo viewport');
+  const target = await debugNodeCenter(page, sceneSurface, 'Reorder item 3: Add drag reorder demo');
   await page.mouse.move(source.x, source.y);
   await page.mouse.down();
-  await page.mouse.move(source.x + 4, source.y + 58, { steps: 12 });
-  await page.mouse.move(viewport.x, viewport.y + 95, { steps: 12 });
+  await page.mouse.move(source.x + 8, source.y, { steps: 6 });
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      return /Reorder drag status:[^\n]*/.exec(document.body.innerText)?.[0] ?? '';
+    });
+  }).toMatch(/preview slot|auto-scrolling/);
+
   await page.mouse.up();
 
   await expect.poll(async () => {
@@ -1075,7 +1091,16 @@ test('reorders a routed workbench row by touch long press and release', async ({
   await page.goto(`${baseUrl}/v2/fui-rs/demo/workbench/index.html`);
   await page.waitForFunction(() => window.__fuiReady === true);
   const sceneSurface = page.locator('canvas').first();
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  const sceneBounds = await sceneSurface.boundingBox();
+  expect(sceneBounds).not.toBeNull();
+  if (sceneBounds === null) {
+    throw new Error('Expected routed workbench canvas bounds.');
+  }
+  await page.mouse.move(
+    sceneBounds.x + (sceneBounds.width * 0.5),
+    sceneBounds.y + (sceneBounds.height * 0.5),
+  );
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     const visible = await page.evaluate(async () => {
       const tree = await window.__fui_debug?.getDebugTree();
       return tree?.nodes.find((entry) => entry.semanticLabel === 'Drag grip for Document Core rename')?.visibleBounds.height ?? 0;
@@ -1084,16 +1109,17 @@ test('reorders a routed workbench row by touch long press and release', async ({
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(120);
   }
+  await page.waitForTimeout(1200);
 
   const sourceBounds = await debugNodeScreenBounds(page, sceneSurface, 'Drag grip for Document Core rename');
-  const viewport = await debugNodeCenter(page, sceneSurface, 'Reorder demo viewport');
+  const target = await debugNodeCenter(page, sceneSurface, 'Reorder item 3: Add drag reorder demo');
   const start = {
     x: sourceBounds.x + sourceBounds.width * 0.5,
     y: sourceBounds.y + sourceBounds.height * 0.5,
   };
   const end = {
-    x: viewport.x,
-    y: viewport.y + 95,
+    x: target.x,
+    y: target.y,
   };
   const client = await page.context().newCDPSession(page);
   await client.send('Input.dispatchTouchEvent', {
@@ -1116,11 +1142,19 @@ test('reorders a routed workbench row by touch long press and release', async ({
     });
     await page.waitForTimeout(35);
   }
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => /Reorder drag status:[^\n]*/.exec(document.body.innerText)?.[0] ?? '');
+  }).toMatch(/preview slot|auto-scrolling/);
+
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
   await expect.poll(async () => {
     return await page.evaluate(() => /Reorder drag status:[^\n]*/.exec(document.body.innerText)?.[0] ?? '');
   }).toContain('moved Document Core rename');
+  await expect.poll(async () => {
+    return await page.evaluate(() => /Reorder order:[^\n]*/.exec(document.body.innerText)?.[0] ?? '');
+  }).toContain('Audit font shard cache | Document Core rename');
 });
 
 test('accepts metadata-first external file drops on the routed workbench target', async ({ page }) => {

@@ -1,0 +1,20 @@
+[package]
+name = "fui-rs-demo-platform"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only OR LicenseRef-EffinDom-Commercial"
+
+[dependencies]
+fui-rs = { path = "../.." }
+fui-rs-demo-shared = { path = "../demo-shared" }
+fui-rs-demo-universal = { path = "../demo-universal" }
+
+[features]
+native-runtime = [
+  "fui-rs/native-runtime",
+  "fui-rs-demo-shared/native-runtime",
+  "fui-rs-demo-universal/native-runtime",
+]
+
+[lib]
+name = "fui_rs_demo_platform"

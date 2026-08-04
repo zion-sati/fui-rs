@@ -20,6 +20,76 @@ use crate::TextNode;
 use std::cell::Cell;
 use std::rc::Rc;
 
+#[allow(clippy::too_many_arguments)]
+fn dispatch_pointer_event_with_defaults(
+    event_type: u32,
+    handle: u64,
+    x: f32,
+    y: f32,
+    modifiers: u32,
+    pointer_id: i32,
+    pointer_type: u32,
+    button: i32,
+    buttons: u32,
+    pressure: f32,
+    width: f32,
+    height: f32,
+    click_count: i32,
+) -> bool {
+    event::__fui_on_pointer_event_with_metadata(
+        event_type,
+        handle,
+        x,
+        y,
+        modifiers,
+        pointer_id,
+        pointer_type,
+        button,
+        buttons,
+        pressure,
+        width,
+        height,
+        click_count,
+        true,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    )
+}
+
+#[test]
+fn pointer_event_args_preserve_rich_pen_metadata() {
+    let event = PointerEventArgs::new_with_metadata(
+        crate::node::NodeHandle::INVALID,
+        PointerEventType::Move,
+        12.0,
+        24.0,
+        0,
+        42,
+        PointerType::Pen,
+        -1,
+        1,
+        0.75,
+        3.0,
+        4.0,
+        0,
+        crate::event::PointerExtendedMetadata {
+            is_primary: false,
+            tangential_pressure: -0.2,
+            tilt_x: 18.0,
+            tilt_y: -12.0,
+            twist: 90.0,
+        },
+    );
+
+    assert!(!event.is_primary);
+    assert_eq!(event.tangential_pressure, -0.2);
+    assert_eq!(event.tilt_x, 18.0);
+    assert_eq!(event.tilt_y, -12.0);
+    assert_eq!(event.twist, 90.0);
+}
+
 #[derive(Clone)]
 struct TestButtonPresenter {
     content_root: FlexBox,
@@ -102,39 +172,6 @@ impl TextInputTemplate for TestTextInputTemplate {
         Rc::new(TestTextInputPresenter {
             last_state: self.last_state.clone(),
         })
-    }
-}
-
-struct TestDropdownFieldTemplate {
-    created: Rc<Cell<u32>>,
-}
-
-impl DropdownFieldTemplate for TestDropdownFieldTemplate {
-    fn create(&self, _sizing: Option<DropdownSizing>) -> Rc<dyn DropdownFieldPresenter> {
-        self.created.set(self.created.get() + 1);
-        create_default_dropdown_field_presenter(None)
-    }
-}
-
-struct TestDropdownChevronTemplate {
-    created: Rc<Cell<u32>>,
-}
-
-impl DropdownChevronTemplate for TestDropdownChevronTemplate {
-    fn create(&self, _sizing: Option<DropdownSizing>) -> Rc<dyn DropdownChevronPresenter> {
-        self.created.set(self.created.get() + 1);
-        create_default_dropdown_chevron_presenter(None)
-    }
-}
-
-struct TestDropdownOptionRowTemplate {
-    created: Rc<Cell<u32>>,
-}
-
-impl DropdownOptionRowTemplate for TestDropdownOptionRowTemplate {
-    fn create(&self, _sizing: Option<DropdownSizing>) -> Rc<dyn DropdownOptionRowPresenter> {
-        self.created.set(self.created.get() + 1);
-        create_default_dropdown_option_row_presenter(None)
     }
 }
 
@@ -321,49 +358,6 @@ fn button_enabled_state_reflects_semantic_disabled_and_blocks_activation() {
         Call::SetLayerEffect { handle, opacity, .. }
             if *handle == button_handle.raw() && (*opacity - 0.38).abs() < f32::EPSILON
     )));
-}
-
-#[test]
-fn dropdown_presenter_templates_create_once_and_are_stored_in_template_set() {
-    let field_created = Rc::new(Cell::new(0));
-    let chevron_created = Rc::new(Cell::new(0));
-    let option_created = Rc::new(Cell::new(0));
-    let templates = ControlTemplateSet {
-        dropdown_field: Some(Rc::new(TestDropdownFieldTemplate {
-            created: field_created.clone(),
-        })),
-        dropdown_chevron: Some(Rc::new(TestDropdownChevronTemplate {
-            created: chevron_created.clone(),
-        })),
-        dropdown_option_row: Some(Rc::new(TestDropdownOptionRowTemplate {
-            created: option_created.clone(),
-        })),
-        ..ControlTemplateSet::default()
-    };
-    use_control_templates(templates);
-    let active = get_control_templates().expect("templates should be installed");
-    assert!(active.dropdown_field.is_some());
-    assert!(active.dropdown_chevron.is_some());
-    assert!(active.dropdown_option_row.is_some());
-    active
-        .dropdown_field
-        .as_ref()
-        .expect("field template")
-        .create(None);
-    active
-        .dropdown_chevron
-        .as_ref()
-        .expect("chevron template")
-        .create(None);
-    active
-        .dropdown_option_row
-        .as_ref()
-        .expect("option row template")
-        .create(None);
-    assert_eq!(field_created.get(), 1);
-    assert_eq!(chevron_created.get(), 1);
-    assert_eq!(option_created.get(), 1);
-    clear_control_templates();
 }
 
 #[test]
@@ -725,7 +719,6 @@ fn button_host_geometry_overrides_survive_hover_and_pressed_presenter_updates() 
 #[test]
 fn button_host_geometry_overrides_survive_theme_and_template_replacement() {
     ffi::test::reset();
-    clear_control_templates();
     let created = Rc::new(Cell::new(0));
     let button = button("Stable host style");
     button
@@ -752,7 +745,6 @@ fn button_host_geometry_overrides_survive_theme_and_template_replacement() {
     assert_no_button_host_geometry_calls(handle, &ffi::test::take_calls());
 
     use_system_theme();
-    clear_control_templates();
 }
 
 fn assert_button_host_override_style(button: &Button, expected_border: Border) {
@@ -991,7 +983,6 @@ fn clearing_presenter_host_style_restores_defaults_and_identical_updates_are_sil
 #[test]
 fn configuration_clear_methods_restore_live_theme_and_builtin_presenters() {
     ffi::test::reset();
-    clear_control_templates();
     let theme = current_theme();
 
     let button_created = Rc::new(Cell::new(0));
@@ -1714,38 +1705,8 @@ fn retained_visual_subscription_fires_once_per_theme_change() {
 }
 
 #[test]
-fn button_uses_app_level_template_when_no_local_template_is_set() {
-    ffi::test::reset();
-    clear_control_templates();
-    let created = Rc::new(Cell::new(0));
-    use_control_templates(ControlTemplateSet {
-        button: Some(Rc::new(TestButtonTemplate {
-            created: created.clone(),
-            border_color: 0xAABBCCFF,
-        })),
-        ..Default::default()
-    });
-
-    let button = button("Template action");
-    Application::mount(button.clone());
-    let calls = ffi::test::take_calls();
-    let button_handle = button.retained_node_ref().handle().raw();
-    assert_eq!(created.get(), 1);
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetBoxStyle { handle, border_width, border_color, .. }
-            if *handle == button_handle
-                && (*border_width - 3.0).abs() < f32::EPSILON
-                && *border_color == 0xAABBCCFF
-    )));
-
-    clear_control_templates();
-}
-
-#[test]
 fn button_local_template_replaces_presenter_tree_and_retains_label_updates() {
     ffi::test::reset();
-    clear_control_templates();
     let button = button("Before");
     Application::mount(button.clone());
     let _ = ffi::test::take_calls();
@@ -1917,7 +1878,7 @@ fn pointer_focus_hides_focus_adorner_until_keyboard_input() {
         .iter()
         .any(|call| matches!(call, Call::NodeAddChild { .. })));
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         button_handle,
         10.0,
@@ -2455,6 +2416,24 @@ impl RadioIndicatorTemplate for TestRadioIndicatorTemplate {
     }
 }
 
+#[test]
+fn radio_button_uses_explicit_local_template_and_sizing() {
+    ffi::test::reset();
+    let created = Rc::new(Cell::new(0));
+    let checked = Rc::new(Cell::new(false));
+    let radio = radio_button("alpha");
+    radio
+        .template(Rc::new(TestRadioIndicatorTemplate {
+            created: created.clone(),
+            checked: checked.clone(),
+        }))
+        .sizing(LabeledControlSizing::new().label_font_size(19.0))
+        .check(true);
+
+    assert_eq!(created.get(), 2);
+    assert!(checked.get());
+}
+
 #[derive(Clone)]
 struct TestSwitchIndicatorPresenter {
     root: FlexBox,
@@ -2580,37 +2559,8 @@ impl SliderTemplate for TestSliderTemplate {
 }
 
 #[test]
-fn checkbox_template_and_sizing_follow_fui_as_surface() {
-    ffi::test::reset();
-    clear_control_templates();
-    let created = Rc::new(Cell::new(0));
-    let applied_checked_state = Rc::new(Cell::new(SemanticCheckedState::False));
-    let applied_state = Rc::new(RefCell::new(None));
-    let applied_colors = Rc::new(Cell::new(None));
-    let templates = ControlTemplateSet {
-        checkbox_indicator: Some(Rc::new(TestCheckboxIndicatorTemplate {
-            created: created.clone(),
-            applied_checked_state: applied_checked_state.clone(),
-            applied_state: applied_state.clone(),
-            applied_colors: applied_colors.clone(),
-        })),
-        ..Default::default()
-    };
-    use_control_templates(templates);
-    let checkbox = checkbox("Agree");
-
-    checkbox.sizing(LabeledControlSizing::new().label_font_size(21.0));
-    checkbox.check(true);
-
-    assert_eq!(created.get(), 2);
-    assert_eq!(applied_checked_state.get(), SemanticCheckedState::True);
-    clear_control_templates();
-}
-
-#[test]
 fn checkbox_local_template_replaces_indicator_before_mount() {
     ffi::test::reset();
-    clear_control_templates();
     let created = Rc::new(Cell::new(0));
     let applied_checked_state = Rc::new(Cell::new(SemanticCheckedState::False));
     let applied_state = Rc::new(RefCell::new(None));
@@ -2630,25 +2580,14 @@ fn checkbox_local_template_replaces_indicator_before_mount() {
     assert_eq!(created.get(), 1);
     assert_eq!(applied_checked_state.get(), SemanticCheckedState::True);
     assert!(applied_state.borrow().is_some());
+    Application::unmount();
 }
 
 #[test]
-fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
+fn checkbox_local_template_receives_interaction_state_and_colors() {
     ffi::test::reset();
-    clear_control_templates();
-    let created = Rc::new(Cell::new(0));
-    let applied_checked_state = Rc::new(Cell::new(SemanticCheckedState::False));
     let applied_state = Rc::new(RefCell::new(None));
     let applied_colors = Rc::new(Cell::new(None));
-    use_control_templates(ControlTemplateSet {
-        checkbox_indicator: Some(Rc::new(TestCheckboxIndicatorTemplate {
-            created,
-            applied_checked_state,
-            applied_state: applied_state.clone(),
-            applied_colors: applied_colors.clone(),
-        })),
-        ..Default::default()
-    });
     let colors = LabeledControlColors::new()
         .accent(0xAA00AAFF)
         .background(0x111111FF)
@@ -2656,7 +2595,15 @@ fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
         .text_primary(0x333333FF)
         .text_muted(0x444444FF);
     let checkbox = checkbox("Agree");
-    checkbox.tri_state(true).colors(colors);
+    checkbox
+        .template(Rc::new(TestCheckboxIndicatorTemplate {
+            created: Rc::new(Cell::new(0)),
+            applied_checked_state: Rc::new(Cell::new(SemanticCheckedState::False)),
+            applied_state: applied_state.clone(),
+            applied_colors: applied_colors.clone(),
+        }))
+        .tri_state(true)
+        .colors(colors);
     Application::mount(checkbox.clone());
     let node_ref = checkbox.retained_node_ref();
 
@@ -2682,9 +2629,7 @@ fn checkbox_presenter_receives_fui_as_visual_state_and_colors() {
     assert!(!state.hovered);
     assert!(!state.pressed);
     assert!(!state.enabled);
-
     Application::unmount();
-    clear_control_templates();
 }
 
 #[test]
@@ -2745,57 +2690,8 @@ fn labeled_control_sizing_and_label_colors_reach_host_calls() {
 }
 
 #[test]
-fn radio_button_template_and_sizing_follow_fui_as_surface() {
-    ffi::test::reset();
-    clear_control_templates();
-    let created = Rc::new(Cell::new(0));
-    let checked = Rc::new(Cell::new(false));
-    let templates = ControlTemplateSet {
-        radio_indicator: Some(Rc::new(TestRadioIndicatorTemplate {
-            created: created.clone(),
-            checked: checked.clone(),
-        })),
-        ..Default::default()
-    };
-    use_control_templates(templates);
-    let radio = radio_button("alpha");
-
-    radio
-        .sizing(LabeledControlSizing::new().label_font_size(19.0))
-        .check(true);
-
-    assert_eq!(created.get(), 2);
-    assert!(checked.get());
-    clear_control_templates();
-}
-
-#[test]
-fn switch_template_surface_follows_fui_as() {
-    ffi::test::reset();
-    clear_control_templates();
-    let created = Rc::new(Cell::new(0));
-    let checked = Rc::new(Cell::new(false));
-    let templates = ControlTemplateSet {
-        switch_indicator: Some(Rc::new(TestSwitchIndicatorTemplate {
-            created: created.clone(),
-            checked: checked.clone(),
-        })),
-        ..Default::default()
-    };
-    use_control_templates(templates);
-    let toggle = switch("Toggle");
-
-    toggle.check(true);
-
-    assert_eq!(created.get(), 1);
-    assert!(checked.get());
-    clear_control_templates();
-}
-
-#[test]
 fn switch_sizing_updates_default_indicator_and_recreates_custom_template() {
     ffi::test::reset();
-    clear_control_templates();
     let toggle = switch("Sized switch");
     toggle.sizing(
         LabeledControlSizing::new()
@@ -2861,7 +2757,6 @@ fn slider_default_presenter_uses_sizing_for_geometry() {
 #[test]
 fn slider_template_replacement_and_colors_follow_fui_as_surface() {
     ffi::test::reset();
-    clear_control_templates();
     let created = Rc::new(Cell::new(0));
     let last_layout_state = Rc::new(RefCell::new(None));
     let last_layout_length = Rc::new(Cell::new(0.0));
@@ -2903,66 +2798,11 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
     assert!(calls
         .iter()
         .any(|call| matches!(call, Call::NodeRemoveChild { .. })));
-
-    clear_control_templates();
-}
-
-#[test]
-fn slider_control_template_set_and_local_template_precedence_follow_fui_as() {
-    ffi::test::reset();
-    clear_control_templates();
-    let app_created = Rc::new(Cell::new(0));
-    let local_created = Rc::new(Cell::new(0));
-    let app_layout_state = Rc::new(RefCell::new(None));
-    let app_layout_length = Rc::new(Cell::new(0.0));
-    let app_apply_state = Rc::new(RefCell::new(None));
-    let app_apply_colors = Rc::new(Cell::new(None));
-    use_control_templates(ControlTemplateSet {
-        slider: Some(Rc::new(TestSliderTemplate {
-            created: app_created.clone(),
-            metrics: SliderPresenterMetrics::new(22.0, 7.0),
-            last_layout_state: app_layout_state,
-            last_layout_length: app_layout_length,
-            last_apply_state: app_apply_state,
-            last_apply_colors: app_apply_colors,
-        })),
-        ..Default::default()
-    });
-
-    let slider = slider();
-    slider.sizing(SliderSizing::new().thumb_size(30.0));
-    assert_eq!(app_created.get(), 2);
-
-    let local_layout_state = Rc::new(RefCell::new(None));
-    let local_layout_length = Rc::new(Cell::new(0.0));
-    let local_apply_state = Rc::new(RefCell::new(None));
-    let local_apply_colors = Rc::new(Cell::new(None));
-    slider.template(Rc::new(TestSliderTemplate {
-        created: local_created.clone(),
-        metrics: SliderPresenterMetrics::new(28.0, 9.0),
-        last_layout_state: local_layout_state.clone(),
-        last_layout_length: local_layout_length,
-        last_apply_state: local_apply_state,
-        last_apply_colors: local_apply_colors,
-    }));
-    slider
-        .sizing(SliderSizing::new().thumb_size(36.0))
-        .length(160.0)
-        .value(40.0);
-
-    assert_eq!(app_created.get(), 2);
-    assert_eq!(local_created.get(), 2);
-    let state = local_layout_state
-        .borrow()
-        .expect("local slider template layout state");
-    assert_eq!(state.value, 40.0);
-    clear_control_templates();
 }
 
 #[test]
 fn slider_presenter_receives_hover_drag_and_disabled_state() {
     ffi::test::reset();
-    clear_control_templates();
     let last_layout_state = Rc::new(RefCell::new(None));
     let last_layout_length = Rc::new(Cell::new(0.0));
     let last_apply_state = Rc::new(RefCell::new(None));
@@ -3894,7 +3734,7 @@ fn dropdown_pointer_selection_and_escape_close_match_fui_as() {
         .nth(1)
         .expect("dropdown open should create list item semantics");
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Enter as u32,
         list_item_handle,
         10.0,
@@ -3909,7 +3749,7 @@ fn dropdown_pointer_selection_and_escape_close_match_fui_as() {
         0.0,
         0,
     );
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Up as u32,
         list_item_handle,
         10.0,
@@ -4225,7 +4065,7 @@ fn combobox_pointer_option_selection_survives_blur_during_popup_click() {
         })
         .expect("expected Sydney option semantic label");
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         option_handle,
         30.0,
@@ -4246,7 +4086,7 @@ fn combobox_pointer_option_selection_survives_blur_during_popup_click() {
         Call::SetPointerCapture { handle } if *handle == option_handle
     )));
     blur(&combo.retained_node_ref());
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Up as u32,
         option_handle,
         30.0,
@@ -4292,7 +4132,7 @@ fn combobox_closes_after_popup_pointer_cancel_when_editor_blur_was_deferred() {
         })
         .expect("expected Sydney option semantic label");
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         option_handle,
         30.0,
@@ -4313,7 +4153,7 @@ fn combobox_closes_after_popup_pointer_cancel_when_editor_blur_was_deferred() {
         Call::SetPointerCapture { handle } if *handle == option_handle
     )));
     blur(&combo.retained_node_ref());
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Cancel as u32,
         option_handle,
         30.0,
@@ -4633,7 +4473,7 @@ fn text_input_shell_pointer_down_preserves_existing_selection_in_mock_path() {
     Application::mount(input.clone());
     let _ = ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         input.retained_node_ref().handle().raw(),
         220.0,
@@ -4675,7 +4515,7 @@ fn text_input_editor_pointer_down_does_not_bubble_into_shell_document_end_path()
         })
         .expect("expected text input editor node id to be applied");
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         editor_handle,
         12.0,
@@ -4928,42 +4768,32 @@ fn text_area_readonly_disabled_placeholder_and_line_height_follow_text_input_cor
 }
 
 #[test]
-fn text_area_reports_internal_scroll_offsets_and_uses_text_area_template_slot() {
+fn text_area_local_template_and_internal_scroll_offsets_remain_independent() {
     ffi::test::reset();
-    clear_control_templates();
-    let text_input_created = Rc::new(Cell::new(0));
-    let text_area_created = Rc::new(Cell::new(0));
-    let text_input_state = Rc::new(RefCell::new(None));
-    let text_area_state = Rc::new(RefCell::new(None));
-    use_control_templates(ControlTemplateSet {
-        text_input: Some(Rc::new(TestTextInputTemplate {
-            created: text_input_created.clone(),
-            last_state: text_input_state,
-        })),
-        text_area: Some(Rc::new(TestTextInputTemplate {
-            created: text_area_created.clone(),
-            last_state: text_area_state.clone(),
-        })),
-        ..Default::default()
-    });
-
+    let created = Rc::new(Cell::new(0));
+    let last_state = Rc::new(RefCell::new(None));
     let input = text_area();
     input
-        .node_id("text-area-template")
+        .template(Rc::new(TestTextInputTemplate {
+            created: created.clone(),
+            last_state: last_state.clone(),
+        }))
+        .node_id("text-area-local-template")
         .height(120.0, Unit::Pixel);
     Application::mount(input.clone());
     let calls = ffi::test::take_calls();
     let editor_handle = calls
         .iter()
         .find_map(|call| match call {
-            Call::SetNodeId { handle, node_id } if node_id == "text-area-template" => Some(*handle),
+            Call::SetNodeId { handle, node_id } if node_id == "text-area-local-template" => {
+                Some(*handle)
+            }
             _ => None,
         })
         .expect("expected text area editor node id to be applied");
 
-    assert_eq!(text_input_created.get(), 0);
-    assert_eq!(text_area_created.get(), 1);
-    assert!(text_area_state
+    assert_eq!(created.get(), 1);
+    assert!(last_state
         .borrow()
         .as_ref()
         .is_some_and(|state| state.multiline));
@@ -4980,7 +4810,6 @@ fn text_area_reports_internal_scroll_offsets_and_uses_text_area_template_slot() 
     )));
     assert!(editor_handle > 0);
     Application::unmount();
-    clear_control_templates();
 }
 
 #[test]
@@ -5004,7 +4833,7 @@ fn text_area_shell_pointer_down_preserves_existing_selection_path() {
         })
         .expect("expected text area editor node id to be applied");
 
-    event::__fui_on_pointer_event_with_metadata(
+    dispatch_pointer_event_with_defaults(
         PointerEventType::Down as u32,
         input.retained_node_ref().handle().raw(),
         8.0,

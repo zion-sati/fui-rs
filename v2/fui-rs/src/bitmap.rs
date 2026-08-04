@@ -137,38 +137,38 @@ impl Bitmap {
     ///
     /// Call this after layout, then call [`commit`](Self::commit). `scale`
     /// maps logical node coordinates to physical bitmap pixels.
-    pub fn render<T: Node>(&self, node: &T, x: f32, y: f32, scale: f32) {
-        let state = self.inner.borrow();
+    pub fn render<T: Node>(&self, node: &T, x: f32, y: f32, scale: f32) -> bool {
+        let mut state = self.inner.borrow_mut();
         assert!(!state.disposed, "Bitmap.render() called after dispose.");
         let handle = node.handle().raw();
         if handle == 0 {
-            return;
+            return false;
         }
         unsafe {
             ffi::fui_render_node_to_rgba(
                 handle,
                 state.width,
                 state.height,
-                state.pixel_bytes.as_ptr() as usize,
+                state.pixel_bytes.as_mut_ptr() as usize,
                 state.pixel_bytes.len() as u32,
                 scale,
                 x,
                 y,
-            )
-        };
+            ) != 0
+        }
     }
 
     /// Rasterizes a ready retained text layout into the pixel buffer.
-    pub fn render_text_layout(&self, layout: &TextLayout, x: f32, y: f32, scale: f32) {
+    pub fn render_text_layout(&self, layout: &TextLayout, x: f32, y: f32, scale: f32) -> bool {
         if !layout.is_ready() {
             error(
                 "TextLayout",
                 "Bitmap.render_text_layout() called before the TextLayout was ready; register on_ready and render after the callback.",
             );
-            return;
+            return false;
         }
         let node = layout.draw_node();
-        self.render(&node, x, y, scale);
+        self.render(&node, x, y, scale)
     }
 
     /// Builds and prepares a retained text node for bitmap rasterization.
@@ -398,5 +398,23 @@ mod tests {
         assert!(calls
             .iter()
             .any(|call| matches!(call, Call::PrepareNode { .. })));
+    }
+
+    #[test]
+    fn bitmap_render_retains_host_written_pixels_for_the_next_upload() {
+        ffi::test::reset();
+        let bitmap = Bitmap::new(2, 2);
+        let text = TextNode::new("Rich bitmap text");
+        text.build();
+
+        assert!(bitmap.render(&text, 0.0, 0.0, 1.0));
+        bitmap.commit();
+
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::BitmapCommit { bytes, .. }
+                if bytes.chunks_exact(4).any(|pixel| pixel == [0x3a, 0xc5, 0x6c, 0xff])
+        )));
     }
 }

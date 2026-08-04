@@ -41,6 +41,7 @@ pub mod persisted;
 pub mod platform;
 #[doc(hidden)]
 pub mod popup_presenter;
+pub mod retained_view;
 pub(crate) mod selection_handle_adorner;
 #[doc(hidden)]
 pub mod signal;
@@ -55,9 +56,9 @@ pub mod typography;
 pub mod viewport;
 pub mod worker;
 #[cfg(feature = "worker-runtime")]
-pub mod worker_job;
-#[cfg(feature = "worker-runtime")]
 pub mod worker_host_services;
+#[cfg(feature = "worker-runtime")]
+pub mod worker_job;
 #[cfg(feature = "worker-runtime")]
 pub mod worker_runtime;
 
@@ -65,6 +66,14 @@ pub mod worker_runtime;
 macro_rules! children {
     ($($child:expr),* $(,)?) => {
         vec![$($crate::Child::from_node(&$child)),*]
+    };
+}
+
+/// Builds a `Vec<TabItem>` from owned fluent items or borrowed named items.
+#[macro_export]
+macro_rules! tab_items {
+    ($($item:expr),* $(,)?) => {
+        vec![$($crate::TabItem::from($item)),*]
     };
 }
 
@@ -499,25 +508,24 @@ pub mod prelude {
         get_animation_manager, reset_animations, tick_animations, Animation, AnimationManager,
         AnimationTiming, Easing, Easings,
     };
-    pub use crate::app::{Application, ApplicationRegistration, ManagedApplication};
+    pub use crate::app::{Application, ApplicationRegistration, ManagedApplication, PageZoomMode};
     pub use crate::bitmap::{Bitmap, BitmapTextReadyEventArgs};
     pub use crate::bridge_callbacks::current_route;
     pub use crate::color::{hsl_to_color, mix_color, rgb, rgba, with_alpha};
     pub use crate::controls::{
-        anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
+        anti_selection_area, button, checkbox, combo_box, context_menu,
         create_default_button_presenter, create_default_checkbox_indicator_presenter,
         create_default_dropdown_chevron_presenter, create_default_dropdown_field_presenter,
         create_default_dropdown_option_row_presenter, create_default_radio_indicator_presenter,
         create_default_slider_presenter, create_default_switch_indicator_presenter,
-        create_default_text_input_presenter, dialog, dropdown, form, get_control_templates,
-        nav_link, popup, progress_bar, radio_button, radio_group, selection_area, slider, switch,
-        text_area, text_input, use_control_templates, AntiSelectionArea, Button, ButtonColors,
-        ButtonPresenter, ButtonTemplate, ButtonVisualState, CheckState, Checkbox,
-        CheckboxChangedEventArgs, CheckboxIndicatorPresenter, CheckboxIndicatorTemplate,
-        CheckboxIndicatorVisualState, ClickEventArgs, Clickable, ComboBox,
-        ComboBoxChangedEventArgs, ComboBoxCommitMode, ComboBoxFilterMode, ComboBoxItem,
-        ContextMenu, ContextMenuAction, ContextMenuAppearance, ContextMenuItemAppearance,
-        ContextMenuVisibilityChangedEventArgs, ControlTemplateSet, DefaultButtonTemplate,
+        create_default_text_input_presenter, dialog, dropdown, form, nav_link, popup, progress_bar,
+        radio_button, radio_group, selection_area, slider, switch, tab_item, tab_view, text_area,
+        text_input, AntiSelectionArea, Button, ButtonColors, ButtonPresenter, ButtonTemplate,
+        ButtonVisualState, CheckState, Checkbox, CheckboxChangedEventArgs,
+        CheckboxIndicatorPresenter, CheckboxIndicatorTemplate, CheckboxIndicatorVisualState,
+        ClickEventArgs, Clickable, ComboBox, ComboBoxChangedEventArgs, ComboBoxCommitMode,
+        ComboBoxFilterMode, ComboBoxItem, ContextMenu, ContextMenuAction, ContextMenuAppearance,
+        ContextMenuItemAppearance, ContextMenuVisibilityChangedEventArgs, DefaultButtonTemplate,
         DefaultCheckboxIndicatorTemplate, DefaultDropdownChevronTemplate,
         DefaultDropdownFieldTemplate, DefaultDropdownOptionRowTemplate,
         DefaultRadioIndicatorTemplate, DefaultSliderTemplate, DefaultSwitchIndicatorTemplate,
@@ -535,8 +543,9 @@ pub mod prelude {
         RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
         SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
         SurfaceAppearance, Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter,
-        SwitchIndicatorTemplate, SwitchIndicatorVisualState, TextArea, TextEditorSurface,
-        TextInput, TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
+        SwitchIndicatorTemplate, SwitchIndicatorVisualState, TabContentFactory, TabItem,
+        TabSelectionChangedEventArgs, TabView, TextArea, TextEditorSurface, TextInput,
+        TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
         DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
         DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
         DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
@@ -593,6 +602,7 @@ pub mod prelude {
     pub use crate::persisted;
     pub use crate::platform;
     pub use crate::popup_presenter::PopupPlacement;
+    pub use crate::retained_view::{retained_view, RetainedView};
     pub use crate::signal::Subscription;
     pub use crate::text::{
         span, DynamicTextLayout, DynamicTextOverflow, RichText, RichTextSpan, TextLayout,
@@ -621,7 +631,7 @@ pub mod prelude {
     pub use crate::worker_job::{WorkerJob, WorkerJobState};
     #[cfg(feature = "worker-runtime")]
     pub use crate::worker_runtime::{file_read_chunk, file_worker_write_chunk, WorkerRuntime};
-    pub use crate::{children, fui_app, fui_managed_app, rich_text, ui, Configure};
+    pub use crate::{children, fui_app, fui_managed_app, rich_text, tab_items, ui, Configure};
 }
 
 pub use animation::{
@@ -629,32 +639,32 @@ pub use animation::{
     reset_animations, tick_animations, Animation, AnimationManager, AnimationTiming, Easing,
     Easings,
 };
-pub use app::{Application, ApplicationRegistration, ManagedApplication};
+pub use app::{Application, ApplicationRegistration, ManagedApplication, PageZoomMode};
 pub use assets::*;
 pub use bitmap::{Bitmap, BitmapTextReadyEventArgs};
 pub use bridge_callbacks::current_route;
 pub use color::{hsl_to_color, mix_color, rgb, rgba, with_alpha};
 pub use controls::{
-    anti_selection_area, button, checkbox, clear_control_templates, combo_box, context_menu,
+    anti_selection_area, button, checkbox, combo_box, context_menu,
     create_default_button_presenter, create_default_checkbox_indicator_presenter,
     create_default_dropdown_chevron_presenter, create_default_dropdown_field_presenter,
     create_default_dropdown_option_row_presenter, create_default_radio_indicator_presenter,
     create_default_slider_presenter, create_default_switch_indicator_presenter,
-    create_default_text_input_presenter, dialog, dropdown, form, get_control_templates, nav_link,
-    popup, progress_bar, radio_button, radio_group, selection_area, slider, switch, text_area,
-    text_input, use_control_templates, AntiSelectionArea, Button, ButtonColors, ButtonPresenter,
-    ButtonTemplate, ButtonVisualState, CheckState, Checkbox, CheckboxChangedEventArgs,
-    CheckboxIndicatorPresenter, CheckboxIndicatorTemplate, CheckboxIndicatorVisualState,
-    ClickEventArgs, ComboBox, ComboBoxChangedEventArgs, ComboBoxCommitMode, ComboBoxFilterMode,
-    ComboBoxItem, ContextMenu, ContextMenuAction, ContextMenuAppearance, ContextMenuItemAppearance,
-    ContextMenuVisibilityChangedEventArgs, ControlTemplateSet, DefaultButtonTemplate,
-    DefaultCheckboxIndicatorTemplate, DefaultDropdownChevronTemplate, DefaultDropdownFieldTemplate,
-    DefaultDropdownOptionRowTemplate, DefaultRadioIndicatorTemplate, DefaultSliderTemplate,
-    DefaultSwitchIndicatorTemplate, DefaultTextInputTemplate, Dialog, DialogAppearance,
-    DialogShownEventArgs, Dropdown, DropdownChangedEventArgs, DropdownChevronMetrics,
-    DropdownChevronPresenter, DropdownChevronTemplate, DropdownChevronVisualState, DropdownColors,
-    DropdownFieldMetrics, DropdownFieldPresenter, DropdownFieldTemplate, DropdownFieldVisualState,
-    DropdownItem, DropdownOptionRowMetrics, DropdownOptionRowPresenter, DropdownOptionRowTemplate,
+    create_default_text_input_presenter, dialog, dropdown, form, nav_link, popup, progress_bar,
+    radio_button, radio_group, selection_area, slider, switch, tab_item, tab_view, text_area,
+    text_input, AntiSelectionArea, Button, ButtonColors, ButtonPresenter, ButtonTemplate,
+    ButtonVisualState, CheckState, Checkbox, CheckboxChangedEventArgs, CheckboxIndicatorPresenter,
+    CheckboxIndicatorTemplate, CheckboxIndicatorVisualState, ClickEventArgs, ComboBox,
+    ComboBoxChangedEventArgs, ComboBoxCommitMode, ComboBoxFilterMode, ComboBoxItem, ContextMenu,
+    ContextMenuAction, ContextMenuAppearance, ContextMenuItemAppearance,
+    ContextMenuVisibilityChangedEventArgs, DefaultButtonTemplate, DefaultCheckboxIndicatorTemplate,
+    DefaultDropdownChevronTemplate, DefaultDropdownFieldTemplate, DefaultDropdownOptionRowTemplate,
+    DefaultRadioIndicatorTemplate, DefaultSliderTemplate, DefaultSwitchIndicatorTemplate,
+    DefaultTextInputTemplate, Dialog, DialogAppearance, DialogShownEventArgs, Dropdown,
+    DropdownChangedEventArgs, DropdownChevronMetrics, DropdownChevronPresenter,
+    DropdownChevronTemplate, DropdownChevronVisualState, DropdownColors, DropdownFieldMetrics,
+    DropdownFieldPresenter, DropdownFieldTemplate, DropdownFieldVisualState, DropdownItem,
+    DropdownOptionRowMetrics, DropdownOptionRowPresenter, DropdownOptionRowTemplate,
     DropdownOptionRowVisualState, DropdownSizing, Form, LabeledControlColors, LabeledControlSizing,
     MenuItem, NavLink, NavigateEventArgs, OverlayBackdropAppearance, Popup, PopupAppearance,
     PressableIndicatorMetrics, PressableIndicatorPresenter, PressableIndicatorVisualState,
@@ -663,12 +673,13 @@ pub use controls::{
     RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
     SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
     SurfaceAppearance, Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter,
-    SwitchIndicatorTemplate, SwitchIndicatorVisualState, TextArea, TextEditorSurface, TextInput,
-    TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
-    DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
-    DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
-    DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
-    DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
+    SwitchIndicatorTemplate, SwitchIndicatorVisualState, TabContentFactory, TabItem,
+    TabSelectionChangedEventArgs, TabView, TextArea, TextEditorSurface, TextInput, TextInputColors,
+    TextInputPresenter, TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
+    DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
+    DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
+    DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE,
+    DEFAULT_TEXT_INPUT_TEMPLATE,
 };
 pub use debug::*;
 pub use drag_drop::{
@@ -717,6 +728,7 @@ pub use persisted::*;
 pub use platform::*;
 #[doc(hidden)]
 pub use popup_presenter::{PopupPlacement, PopupPresenter};
+pub use retained_view::{retained_view, RetainedView};
 pub use signal::Subscription;
 pub use text::{
     span, DynamicTextLayout, DynamicTextOverflow, RichText, RichTextSpan, TextLayout,

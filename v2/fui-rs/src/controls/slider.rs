@@ -25,11 +25,6 @@ fn create_slider_presenter(
     if let Some(template) = template {
         return template.create(sizing);
     }
-    if let Some(template_set) = get_control_templates() {
-        if let Some(template) = template_set.slider {
-            return template.create(sizing);
-        }
-    }
     create_default_slider_presenter(sizing)
 }
 

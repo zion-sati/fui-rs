@@ -16,11 +16,6 @@ fn create_indicator_presenter(
     if let Some(template) = template {
         return template.create(sizing);
     }
-    if let Some(template_set) = get_control_templates() {
-        if let Some(template) = template_set.switch_indicator {
-            return template.create(sizing);
-        }
-    }
     create_default_switch_indicator_presenter(sizing)
 }
 

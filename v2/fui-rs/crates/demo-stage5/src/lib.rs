@@ -1,11 +1,13 @@
+#[cfg(feature = "web-route")]
 mod generated;
 
 use fui::prelude::*;
 use fui::TextInputColors;
 use fui_rs_demo_shared::{clear_demo_shared_state, demo_card, demo_page_root};
+use fui_rs_demo_universal::design_system::{body_text, demo_palette, muted_text};
+use fui_rs_demo_universal::{DemoEnvironment, DemoPageId, UniversalDemoPage};
 use std::cell::Cell;
 use std::rc::Rc;
-use AlignItems;
 
 const COMBOBOX_FIELD_WIDTH: f32 = 220.0;
 
@@ -39,11 +41,11 @@ impl DropdownOptionRowTemplate for Stage5DropdownTemplate {
                     .padding(14.0, 0.0, 14.0, 0.0)
                     .corner_radius(10.0)
                     .bg_color(if state.highlighted {
-                        if is_dark_mode() {
-                            0x3F2B16FF
-                        } else {
-                            0xFEF3C7FF
-                        }
+                        fui::color::mix_color(
+                            theme.colors.surface,
+                            fui::color::rgb(245, 158, 11),
+                            0.16,
+                        )
                     } else {
                         0x00000000
                     });
@@ -106,54 +108,34 @@ fn make_items(values: &[&str]) -> Vec<DropdownItem> {
 }
 
 fn themed_text(content: &str, muted: bool) -> TextNode {
-    let theme = current_theme();
-    let node = ui! {
-    text(content).text_color(if muted {
-        theme.colors.text_muted
+    if muted {
+        muted_text(content)
     } else {
-        theme.colors.text_primary
-    })
-    };
-    node.bind_theme({
-        move |node, theme| {
-            node.text_color(if muted {
-                theme.colors.text_muted
-            } else {
-                theme.colors.text_primary
-            });
-        }
-    });
-    node
-}
-
-fn disabled_text_input_colors(theme: &Theme) -> TextInputColors {
-    if is_dark_mode() {
-        TextInputColors::new()
-            .background(0x182238FF)
-            .border(0x475569FF)
-            .text_muted(theme.colors.text_muted)
-            .placeholder(theme.colors.text_muted)
-    } else {
-        TextInputColors::new()
-            .background(0xF8FAFCFF)
-            .border(0xCBD5E1FF)
-            .text_muted(theme.colors.text_muted)
-            .placeholder(theme.colors.text_muted)
+        body_text(content)
     }
 }
 
+fn disabled_text_input_colors(theme: &Theme) -> TextInputColors {
+    TextInputColors::new()
+        .background(fui::color::mix_color(
+            theme.colors.background,
+            theme.colors.surface,
+            0.5,
+        ))
+        .border(theme.colors.border)
+        .text_muted(theme.colors.text_muted)
+        .placeholder(theme.colors.text_muted)
+}
+
 fn build_page() -> FlexBox {
-    Application::caption("EffinDOM FUI-RS Demo • Editable Controls");
     let page = ui! {
     demo_page_root("FUI-RS Stage 5 controls").height_len(auto())
     };
     let scroll = ui! {
         scroll_box()
             .fill_size()
-            .bg_color(if is_dark_mode() {
-                0x0F172AFF
-            } else {
-                0xF8FAFCFF
+            .bind_theme(|node, theme| {
+                node.bg_color(theme.colors.background);
             })
             .persist_scroll(false) {
                 page,
@@ -162,10 +144,8 @@ fn build_page() -> FlexBox {
     let root = ui! {
         column()
             .fill_size()
-            .bg_color(if is_dark_mode() {
-                0x0F172AFF
-            } else {
-                0xF8FAFCFF
+            .bind_theme(|node, theme| {
+                node.bg_color(theme.colors.background);
             }) {
                 scroll,
             }
@@ -238,11 +218,7 @@ fn build_page() -> FlexBox {
                 .text_primary(0x92400EFF)
                 .accent(0xD97706FF),
         )
-        .popup_panel_color(if is_dark_mode() {
-            0x1F2937FF
-        } else {
-            0xFFFBEBFF
-        })
+        .popup_panel_color(demo_palette().card_background)
         .popup_panel_background_blur(0.0)
         .popup_width(280.0)
     };
@@ -456,19 +432,20 @@ fn build_page() -> FlexBox {
             }
     });
 
-    let themed_combo_colors = if is_dark_mode() {
-        DropdownColors::new()
-            .background(0x3F2B16FF)
-            .border(0xF59E0BFF)
-            .text_primary(0xFFFBEBFF)
-            .accent(0xFBBF24FF)
-    } else {
-        DropdownColors::new()
-            .background(0xFFF7EDFF)
-            .border(0xF59E0BFF)
-            .text_primary(0x92400EFF)
-            .accent(0xD97706FF)
-    };
+    let theme = current_theme();
+    let themed_combo_colors = DropdownColors::new()
+        .background(fui::color::mix_color(
+            theme.colors.surface,
+            fui::color::rgb(245, 158, 11),
+            0.16,
+        ))
+        .border(fui::color::mix_color(
+            theme.colors.border,
+            fui::color::rgb(245, 158, 11),
+            0.45,
+        ))
+        .text_primary(theme.colors.text_primary)
+        .accent(theme.colors.accent);
     page.child(    &ui! {
             demo_card(
                 "Themed ComboBox",
@@ -481,11 +458,7 @@ fn build_page() -> FlexBox {
                         .width(COMBOBOX_FIELD_WIDTH, Unit::Pixel)
                         .items(vec!["Ocean", "Forest", "Amber"])
                         .colors(themed_combo_colors)
-                        .popup_panel_color(if is_dark_mode() {
-                            0x1F2937FF
-                        } else {
-                            0xFFFBEBFF
-                        })
+                        .popup_panel_color(demo_palette().card_background)
                         .popup_panel_background_blur(0.0)
                         .popup_width(280.0)
                 },
@@ -1276,11 +1249,7 @@ fn build_page() -> FlexBox {
         .height(72.0, Unit::Pixel)
         .corner_radius(12.0)
         .border(1.0, current_theme().colors.border)
-        .bg_color(if is_dark_mode() {
-            0x1E293BFF
-        } else {
-            0xEFF6FFFF
-        })
+        .bg_color(demo_palette().selected_background)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
         .child(&themed_text(
@@ -1321,11 +1290,11 @@ fn build_page() -> FlexBox {
         move |_page, theme| {
             gesture_probe
                 .border(1.0, theme.colors.border)
-                .bg_color(if is_dark_mode() {
-                    0x1E293BFF
-                } else {
-                    0xEFF6FFFF
-                });
+                .bg_color(fui::color::mix_color(
+                    theme.colors.surface,
+                    theme.colors.accent,
+                    0.16,
+                ));
         }
     });
 
@@ -1359,13 +1328,42 @@ fn build_page() -> FlexBox {
     root
 }
 
-fn dispose_stage5_page(_: &FlexBox) {
-    clear_demo_shared_state();
+pub fn build_universal_page(_environment: &DemoEnvironment) -> UniversalDemoPage {
+    let root = build_page();
+    UniversalDemoPage::new(
+        DemoPageId::Advanced.metadata(),
+        retained_view(&root).on_dispose(clear_demo_shared_state),
+    )
 }
 
+#[cfg(feature = "web-route")]
+fn web_environment() -> DemoEnvironment {
+    DemoEnvironment::browser(
+        fui::platform::platform_family(),
+        fui_rs_demo_universal::DemoLinks::new(
+            "https://github.com/zion-sati/fui-rs",
+            "https://docs.rs/fui-rs/latest/fui",
+        ),
+    )
+}
+
+#[cfg(feature = "web-route")]
+fn build_web_page() -> fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage> {
+    Application::caption(DemoPageId::Advanced.metadata().title);
+    let page = build_universal_page(&web_environment());
+    let root = page.view().root();
+    fui_rs_demo_shared::routed_demo_shell(page, root, DemoPageId::Advanced)
+}
+
+#[cfg(feature = "web-route")]
+fn dispose_stage5_page(page: &fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>) {
+    page.content().view().dispose();
+}
+
+#[cfg(feature = "web-route")]
 fui_managed_app!(
-    FlexBox,
-    build_page,
-    |page: &FlexBox| page.clone(),
+    fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>,
+    build_web_page,
+    |page: &fui_rs_demo_shared::RoutedDemoShell<UniversalDemoPage>| page.root.clone(),
     dispose: dispose_stage5_page
 );

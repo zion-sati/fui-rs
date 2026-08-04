@@ -43,7 +43,3 @@ pub use super::internal::text_input_presenter::{
     create_default_text_input_presenter, DefaultTextInputTemplate, TextInputPresenter,
     TextInputTemplate, TextInputVisualState, DEFAULT_TEXT_INPUT_TEMPLATE,
 };
-
-pub use super::control_template_set::{
-    clear_control_templates, get_control_templates, use_control_templates, ControlTemplateSet,
-};

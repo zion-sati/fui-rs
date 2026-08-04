@@ -104,16 +104,24 @@ fn layout_edge_signatures_match_fui_as_order() {
 }
 
 #[test]
-fn application_caption_crosses_the_host_boundary_as_utf8() {
+fn application_settings_cross_the_host_boundary() {
     ffi::test::reset();
 
     Application::caption("EffinDOM • FUI-RS");
+    Application::page_zoom(PageZoomMode::Enabled);
+    Application::page_zoom(PageZoomMode::Disabled);
 
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetApplicationCaption { caption } if caption == "EffinDOM • FUI-RS"
     )));
+    assert!(calls
+        .iter()
+        .any(|call| matches!(call, Call::SetPageZoomEnabled { enabled: true })));
+    assert!(calls
+        .iter()
+        .any(|call| matches!(call, Call::SetPageZoomEnabled { enabled: false })));
 }
 
 #[test]
@@ -277,6 +285,44 @@ fn primary_click(handle: u64, click_count: i32) {
     primary_click_at(handle, 10.0, 10.0, click_count);
 }
 
+#[allow(clippy::too_many_arguments)]
+fn pointer_event_with_metadata_defaults(
+    event_type: u32,
+    handle: u64,
+    scene_x: f32,
+    scene_y: f32,
+    modifiers: u32,
+    pointer_type: i32,
+    pointer_id: u32,
+    button: i32,
+    buttons: u32,
+    pressure: f32,
+    width: f32,
+    height: f32,
+    click_count: i32,
+) -> bool {
+    event::__fui_on_pointer_event_with_metadata(
+        event_type,
+        handle,
+        scene_x,
+        scene_y,
+        modifiers,
+        pointer_type,
+        pointer_id,
+        button,
+        buttons,
+        pressure,
+        width,
+        height,
+        click_count,
+        true,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    )
+}
+
 fn pointer_event(
     event_type: PointerEventType,
     handle: u64,
@@ -286,7 +332,7 @@ fn pointer_event(
     buttons: u32,
     click_count: i32,
 ) {
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         event_type as u32,
         handle,
         scene_x,
@@ -875,7 +921,7 @@ fn touch_drag_waits_for_long_press_then_drops_on_release() {
         event::__fui_resolve_long_press_owner(source.handle().raw()),
         source.handle().raw()
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         source.handle().raw(),
         10.0,
@@ -890,7 +936,7 @@ fn touch_drag_waits_for_long_press_then_drops_on_release() {
         0.0,
         0,
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Move as u32,
         source.handle().raw(),
         20.0,
@@ -905,7 +951,7 @@ fn touch_drag_waits_for_long_press_then_drops_on_release() {
         0.0,
         0,
     );
-    assert!(!event::__fui_on_pointer_event_with_metadata(
+    assert!(!pointer_event_with_metadata_defaults(
         PointerEventType::Move as u32,
         target.handle().raw(),
         30.0,
@@ -929,7 +975,7 @@ fn touch_drag_waits_for_long_press_then_drops_on_release() {
         0,
         500,
     ));
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Move as u32,
         target.handle().raw(),
         30.0,
@@ -944,7 +990,7 @@ fn touch_drag_waits_for_long_press_then_drops_on_release() {
         0.0,
         0,
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Up as u32,
         target.handle().raw(),
         30.0,
@@ -1490,7 +1536,7 @@ fn pointer_click_bubbles_to_parent() {
     Application::mount(root);
     ffi::test::take_calls();
     let child_handle = child.handle().raw();
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         1,
         child_handle,
         10.0,
@@ -1505,7 +1551,7 @@ fn pointer_click_bubbles_to_parent() {
         0.0,
         1,
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         2,
         child_handle,
         10.0,
@@ -1534,12 +1580,8 @@ fn pointer_click_uses_pending_down_click_count_when_up_has_zero_count() {
     ffi::test::take_calls();
     let handle = root.handle().raw();
 
-    event::__fui_on_pointer_event_with_metadata(
-        1, handle, 10.0, 10.0, 0, 1, 1, 0, 1, 0.0, 0.0, 0.0, 1,
-    );
-    event::__fui_on_pointer_event_with_metadata(
-        2, handle, 10.0, 10.0, 0, 1, 1, 0, 0, 0.0, 0.0, 0.0, 0,
-    );
+    pointer_event_with_metadata_defaults(1, handle, 10.0, 10.0, 0, 1, 1, 0, 1, 0.0, 0.0, 0.0, 1);
+    pointer_event_with_metadata_defaults(2, handle, 10.0, 10.0, 0, 1, 1, 0, 0, 0.0, 0.0, 0.0, 0);
 
     assert_eq!(clicked.get(), 1);
 }
@@ -1848,9 +1890,7 @@ fn pointer_capture_calls_host_capture_api() {
     Application::mount(root.clone());
     ffi::test::take_calls();
     let handle = root.handle().raw();
-    event::__fui_on_pointer_event_with_metadata(
-        1, handle, 10.0, 10.0, 0, 1, 1, 0, 1, 0.0, 0.0, 0.0, 1,
-    );
+    pointer_event_with_metadata_defaults(1, handle, 10.0, 10.0, 0, 1, 1, 0, 1, 0.0, 0.0, 0.0, 1);
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(
         |call| matches!(call, Call::SetPointerCapture { handle: captured } if *captured == handle)
@@ -2221,7 +2261,7 @@ fn slider_keyboard_changes_value_and_semantic_range() {
             .count(),
         1
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Enter as u32,
         handle,
         10.0,
@@ -2265,7 +2305,7 @@ fn slider_pointer_drag_horizontal_updates_value_and_pointer_capture() {
     let calls = ffi::test::take_calls();
     let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         handle,
         170.0,
@@ -2280,7 +2320,7 @@ fn slider_pointer_drag_horizontal_updates_value_and_pointer_capture() {
         0.0,
         1,
     );
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Up as u32,
         handle,
         170.0,
@@ -2324,7 +2364,7 @@ fn slider_pointer_drag_vertical_updates_value() {
     let calls = ffi::test::take_calls();
     let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         handle,
         15.0,
@@ -2367,7 +2407,7 @@ fn disabled_slider_ignores_pointer_and_keyboard() {
     let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
     event::__fui_on_focus_changed(handle, true);
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         handle,
         170.0,
@@ -2400,7 +2440,7 @@ fn disabling_slider_during_drag_releases_pointer_capture() {
     let calls = ffi::test::take_calls();
     let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         handle,
         120.0,
@@ -2862,7 +2902,7 @@ fn mobile_selection_teardrop_touch_down_starts_endpoint_drag() {
         .expect("start selection handle");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         start_handle,
         100.0,
@@ -2968,7 +3008,7 @@ fn mobile_selection_clears_teardrops_when_dragged_endpoints_meet() {
         .expect("start selection handle");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         start_handle,
         100.0,
@@ -2990,7 +3030,7 @@ fn mobile_selection_clears_teardrops_when_dragged_endpoints_meet() {
     assert!(!calls
         .iter()
         .any(|call| matches!(call, Call::ReleasePointerCapture)));
-    let move_handled = event::__fui_on_pointer_event_with_metadata(
+    let move_handled = pointer_event_with_metadata_defaults(
         PointerEventType::Move as u32,
         HandleValue::Invalid as u64,
         108.0,
@@ -3008,7 +3048,7 @@ fn mobile_selection_clears_teardrops_when_dragged_endpoints_meet() {
     assert!(move_handled);
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Up as u32,
         HandleValue::Invalid as u64,
         108.0,
@@ -3035,7 +3075,7 @@ fn mobile_selection_clears_teardrops_when_dragged_endpoints_meet() {
         } if *handle == start_handle
     )));
 
-    let move_after_up_handled = event::__fui_on_pointer_event_with_metadata(
+    let move_after_up_handled = pointer_event_with_metadata_defaults(
         PointerEventType::Move as u32,
         HandleValue::Invalid as u64,
         108.0,
@@ -3096,7 +3136,7 @@ fn mobile_selection_drag_uses_captured_visual_side_when_selection_is_reversed() 
         .expect("end selection handle");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         start_handle,
         100.0,
@@ -3191,7 +3231,7 @@ fn mobile_selection_drag_start_keeps_single_text_handle_positions_before_crossov
         .expect("end selection handle");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         start_handle,
         100.0,
@@ -3279,7 +3319,7 @@ fn mobile_selection_toolbar_reappears_after_teardrop_drag_on_single_text() {
         .expect("start selection handle");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Down as u32,
         start_handle,
         100.0,
@@ -3299,7 +3339,7 @@ fn mobile_selection_toolbar_reappears_after_teardrop_drag_on_single_text() {
     event::__fui_on_selection_changed(target.handle().raw(), 2, 10);
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Up as u32,
         HandleValue::Invalid as u64,
         108.0,
@@ -3338,7 +3378,7 @@ fn mobile_selection_toolbar_item_activates_on_pointer_up() {
     let copy_handle = handle_with_semantic_label(&calls, "Copy");
     ffi::test::take_calls();
 
-    event::__fui_on_pointer_event_with_metadata(
+    pointer_event_with_metadata_defaults(
         PointerEventType::Up as u32,
         copy_handle,
         20.0,
@@ -3637,10 +3677,7 @@ fn context_menu_primary_pointer_down_on_owner_outside_panel_dismisses() {
     ffi::test::reset();
     let root = portal();
     let owner = flex_box();
-    let menu = context_menu(vec![MenuItem::new(
-        "Primary",
-        ContextMenuAction::OpenLink,
-    )]);
+    let menu = context_menu(vec![MenuItem::new("Primary", ContextMenuAction::OpenLink)]);
     root.child(&owner).child(&menu);
     Application::mount(root);
     ffi::test::take_calls();

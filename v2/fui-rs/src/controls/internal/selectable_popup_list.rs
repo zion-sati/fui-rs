@@ -2,7 +2,6 @@ use super::dropdown_option_row_presenter::{
     create_default_dropdown_option_row_presenter, DropdownOptionRowPresenter,
     DropdownOptionRowTemplate, DropdownOptionRowVisualState,
 };
-use crate::controls::control_template_set::get_control_templates;
 use crate::controls::{DropdownColors, DropdownSizing};
 use crate::ffi::{CursorStyle, FlexDirection, HandleValue, PositionType, SemanticRole, Unit};
 use crate::logger;
@@ -39,13 +38,7 @@ fn create_option_row_presenter(
     if let Some(template) = template {
         return template.create(sizing);
     }
-    let template_set = get_control_templates();
-    let app_template = template_set.and_then(|set| set.dropdown_option_row);
-    if let Some(app_template) = app_template {
-        app_template.create(sizing)
-    } else {
-        create_default_dropdown_option_row_presenter(sizing)
-    }
+    create_default_dropdown_option_row_presenter(sizing)
 }
 
 #[derive(Clone)]

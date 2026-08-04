@@ -3,7 +3,6 @@ use super::text_input_presenter::{
     TextInputVisualState,
 };
 use crate::bindings::ui;
-use crate::controls::control_template_set::get_control_templates;
 use crate::controls::TextInputColors;
 use crate::event::{
     FocusChangedEventArgs, KeyEventArgs, SelectionChangedEventArgs, TextChangedEventArgs,
@@ -58,21 +57,8 @@ impl TextInputProfile {
     }
 }
 
-fn create_presenter(
-    profile: TextInputProfile,
-    template: Option<Rc<dyn TextInputTemplate>>,
-) -> Rc<dyn TextInputPresenter> {
+fn create_presenter(template: Option<Rc<dyn TextInputTemplate>>) -> Rc<dyn TextInputPresenter> {
     if let Some(template) = template {
-        return template.create();
-    }
-    let app_template = get_control_templates().and_then(|set| {
-        if profile.multiline {
-            set.text_area
-        } else {
-            set.text_input
-        }
-    });
-    if let Some(template) = app_template {
         return template.create();
     }
     create_default_text_input_presenter()
@@ -164,7 +150,7 @@ impl TextInputCore {
             root.child(&editor_text);
             None
         };
-        let presenter = create_presenter(profile, None);
+        let presenter = create_presenter(None);
         presenter.bind(editor_text.clone(), placeholder_host.clone());
 
         let this = Self {
@@ -414,7 +400,7 @@ impl TextInputCore {
 
     fn set_template(&self, template: Option<Rc<dyn TextInputTemplate>>) -> &Self {
         *self.template.borrow_mut() = template.clone();
-        let presenter = create_presenter(self.profile, template);
+        let presenter = create_presenter(template);
         presenter.bind(self.editor_text.clone(), self.placeholder_host.clone());
         *self.presenter.borrow_mut() = presenter;
         self.sync_theme_state();

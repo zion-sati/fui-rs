@@ -186,7 +186,10 @@ fn with_active_worker(worker_id: u32, callback: impl FnOnce(&mut WorkerInner)) {
     callback(&mut inner);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_progress(
@@ -210,7 +213,10 @@ pub unsafe extern "C" fn __fui_on_worker_progress(
     });
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for an empty result or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_complete(
@@ -240,7 +246,10 @@ pub unsafe extern "C" fn __fui_on_worker_complete(
     }
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for an empty message or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_worker_error(worker_id: u32, text_ptr: *const u8, text_len: u32) {
@@ -384,7 +393,9 @@ mod tests {
         assert_eq!(
             calls
                 .iter()
-                .filter(|call| matches!(call, Call::WorkerCancel { worker_id: id } if *id == worker_id))
+                .filter(
+                    |call| matches!(call, Call::WorkerCancel { worker_id: id } if *id == worker_id)
+                )
                 .count(),
             1
         );

@@ -473,6 +473,9 @@ pub enum Call {
     SetApplicationCaption {
         caption: String,
     },
+    SetPageZoomEnabled {
+        enabled: bool,
+    },
     HasTextSelectionSnapshot {
         handle: u64,
     },
@@ -2115,6 +2118,11 @@ pub unsafe fn fui_set_application_caption(ptr: usize, len: u32) {
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn fui_set_page_zoom_enabled(enabled: bool) {
+    push_call(Call::SetPageZoomEnabled { enabled });
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
 pub unsafe fn fui_has_text_selection_snapshot(handle: u64) -> bool {
     push_call(Call::HasTextSelectionSnapshot { handle });
     HAS_TEXT_SELECTION_SNAPSHOT.with(|value| value.get())
@@ -2516,12 +2524,19 @@ pub unsafe fn fui_render_node_to_rgba(
     handle: u64,
     width: u32,
     height: u32,
-    _out_ptr: usize,
+    out_ptr: usize,
     out_capacity: u32,
     scale: f32,
     x: f32,
     y: f32,
 ) -> u32 {
+    if out_ptr != 0 && out_capacity >= 4 {
+        let output =
+            unsafe { std::slice::from_raw_parts_mut(out_ptr as *mut u8, out_capacity as usize) };
+        for pixel in output.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[0x3a, 0xc5, 0x6c, 0xff]);
+        }
+    }
     push_call(Call::RenderNodeToRgba {
         handle,
         width,

@@ -477,12 +477,18 @@ trait Pipe: Sized {
 
 impl<T> Pipe for T {}
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_system_dark_mode_changed(is_dark: bool) {
     handle_system_dark_mode_changed(is_dark);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_system_accent_color_changed(color: u32) {
     handle_system_accent_color_changed(color);
 }

@@ -1,4 +1,3 @@
-use super::control_template_set::get_control_templates;
 use super::internal::dropdown_chevron_presenter::{
     create_default_dropdown_chevron_presenter, DropdownChevronPresenter, DropdownChevronTemplate,
     DropdownChevronVisualState,
@@ -51,9 +50,6 @@ fn create_chevron_presenter(
     sizing: Option<DropdownSizing>,
 ) -> Rc<dyn DropdownChevronPresenter> {
     if let Some(template) = template {
-        return template.create(sizing);
-    }
-    if let Some(template) = get_control_templates().and_then(|set| set.dropdown_chevron) {
         return template.create(sizing);
     }
     create_default_dropdown_chevron_presenter(sizing)

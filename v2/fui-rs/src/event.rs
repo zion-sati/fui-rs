@@ -167,7 +167,33 @@ pub struct PointerEventArgs {
     pub width: f32,
     pub height: f32,
     pub click_count: i32,
+    pub is_primary: bool,
+    pub tangential_pressure: f32,
+    pub tilt_x: f32,
+    pub tilt_y: f32,
+    pub twist: f32,
     pub handled: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct PointerExtendedMetadata {
+    pub is_primary: bool,
+    pub tangential_pressure: f32,
+    pub tilt_x: f32,
+    pub tilt_y: f32,
+    pub twist: f32,
+}
+
+impl Default for PointerExtendedMetadata {
+    fn default() -> Self {
+        Self {
+            is_primary: true,
+            tangential_pressure: 0.0,
+            tilt_x: 0.0,
+            tilt_y: 0.0,
+            twist: 0.0,
+        }
+    }
 }
 
 impl PointerEventArgs {
@@ -187,6 +213,41 @@ impl PointerEventArgs {
         height: f32,
         click_count: i32,
     ) -> Self {
+        Self::new_with_metadata(
+            target_handle,
+            event_type,
+            scene_x,
+            scene_y,
+            modifiers,
+            pointer_id,
+            pointer_type,
+            button,
+            buttons,
+            pressure,
+            width,
+            height,
+            click_count,
+            PointerExtendedMetadata::default(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new_with_metadata(
+        target_handle: NodeHandle,
+        event_type: PointerEventType,
+        scene_x: f32,
+        scene_y: f32,
+        modifiers: u32,
+        pointer_id: i32,
+        pointer_type: PointerType,
+        button: i32,
+        buttons: u32,
+        pressure: f32,
+        width: f32,
+        height: f32,
+        click_count: i32,
+        extended: PointerExtendedMetadata,
+    ) -> Self {
         Self {
             target_handle,
             event_type,
@@ -203,6 +264,11 @@ impl PointerEventArgs {
             width,
             height,
             click_count,
+            is_primary: extended.is_primary,
+            tangential_pressure: extended.tangential_pressure,
+            tilt_x: extended.tilt_x,
+            tilt_y: extended.tilt_y,
+            twist: extended.twist,
             handled: false,
         }
     }
@@ -497,6 +563,42 @@ impl EventRouter {
         height: f32,
         click_count: i32,
     ) -> bool {
+        self.dispatch_pointer_event_with_metadata(
+            handle,
+            event_type,
+            scene_x,
+            scene_y,
+            modifiers,
+            pointer_id,
+            pointer_type,
+            button,
+            buttons,
+            pressure,
+            width,
+            height,
+            click_count,
+            PointerExtendedMetadata::default(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dispatch_pointer_event_with_metadata(
+        &self,
+        handle: NodeHandle,
+        event_type: PointerEventType,
+        scene_x: f32,
+        scene_y: f32,
+        modifiers: u32,
+        pointer_id: i32,
+        pointer_type: PointerType,
+        button: i32,
+        buttons: u32,
+        pressure: f32,
+        width: f32,
+        height: f32,
+        click_count: i32,
+        extended: PointerExtendedMetadata,
+    ) -> bool {
         context_menu_manager::track_pointer_event(event_type, handle.raw());
         selection_handle_adorner::record_pointer_event(event_type, pointer_type);
         let pointed_node = self.resolve_node(handle);
@@ -556,6 +658,7 @@ impl EventRouter {
                         width,
                         height,
                         click_count,
+                        extended,
                     );
                     let captured_after_dispatch = *self.captured_pointer.borrow();
                     if matches!(event_type, PointerEventType::Up | PointerEventType::Cancel)
@@ -581,7 +684,7 @@ impl EventRouter {
             event_type,
             PointerEventType::Move | PointerEventType::Up | PointerEventType::Cancel
         ) {
-            let mut selection_event = PointerEventArgs::new(
+            let mut selection_event = PointerEventArgs::new_with_metadata(
                 handle,
                 event_type,
                 scene_x,
@@ -595,6 +698,7 @@ impl EventRouter {
                 width,
                 height,
                 click_count,
+                extended,
             );
             if selection_handle_adorner::route_active_handle_drag_event(&mut selection_event) {
                 drag_drop::handle_pointer_event(
@@ -646,6 +750,7 @@ impl EventRouter {
             width,
             height,
             click_count,
+            extended,
         );
         drag_drop::handle_pointer_event(pointed_node, event_type, scene_x, scene_y, modifiers);
         self.apply_current_cursor();
@@ -669,8 +774,9 @@ impl EventRouter {
         width: f32,
         height: f32,
         click_count: i32,
+        extended: PointerExtendedMetadata,
     ) -> bool {
-        let mut event = PointerEventArgs::new(
+        let mut event = PointerEventArgs::new_with_metadata(
             target_handle,
             event_type,
             scene_x,
@@ -684,6 +790,7 @@ impl EventRouter {
             width,
             height,
             click_count,
+            extended,
         );
         node.handle_pointer_event(&mut event);
         let mut parent = node.parent();
@@ -1208,6 +1315,51 @@ pub(crate) fn release_pointer(handle: NodeHandle) {
     with_event_router(|router| router.release_pointer(handle));
 }
 
+pub(crate) fn deactivate_subtree(root: &NodeRef) {
+    fn belongs_to_subtree(node: &NodeRef, root: &NodeRef) -> bool {
+        let mut current = Some(node.clone());
+        while let Some(value) = current {
+            if value.ptr_eq(root) {
+                return true;
+            }
+            current = value.parent();
+        }
+        false
+    }
+    with_event_router(|router| {
+        if router
+            .captured_pointer
+            .borrow()
+            .and_then(|handle| router.resolve_node(handle))
+            .is_some_and(|node| belongs_to_subtree(&node, root))
+        {
+            router.captured_pointer.replace(None);
+        }
+        if router
+            .focused
+            .borrow()
+            .and_then(|handle| router.resolve_node(handle))
+            .is_some_and(|node| belongs_to_subtree(&node, root))
+        {
+            router.focused.replace(None);
+            crate::bindings::ui::request_focus(NodeHandle::INVALID.raw());
+        }
+        router.hover_stack.borrow_mut().retain(|handle| {
+            router
+                .resolve_node(*handle)
+                .is_none_or(|node| !belongs_to_subtree(&node, root))
+        });
+        router.selection_cursor_owner.replace(None);
+        drag_drop::reset();
+        external_drop::reset();
+        router.apply_current_cursor();
+    });
+    crate::context_menu_manager::hide_active_menu();
+    crate::tool_tip_manager::ToolTipManager::clear();
+    crate::selection_handle_adorner::clear();
+    crate::mobile_text_selection_toolbar::clear();
+}
+
 pub(crate) fn handle_cursor_style_changed(handle: NodeHandle) {
     with_event_router(|router| router.handle_cursor_style_changed(handle));
 }
@@ -1255,6 +1407,44 @@ pub(crate) fn dispatch_pointer_event(
             width,
             height,
             click_count,
+        )
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_pointer_event_with_metadata(
+    handle: NodeHandle,
+    event_type: PointerEventType,
+    scene_x: f32,
+    scene_y: f32,
+    modifiers: u32,
+    pointer_id: i32,
+    pointer_type: PointerType,
+    button: i32,
+    buttons: u32,
+    pressure: f32,
+    width: f32,
+    height: f32,
+    click_count: i32,
+    extended: PointerExtendedMetadata,
+) -> bool {
+    focus_visibility::show_keyboard_focus_for_pointer_event(event_type);
+    with_event_router(|router| {
+        router.dispatch_pointer_event_with_metadata(
+            handle,
+            event_type,
+            scene_x,
+            scene_y,
+            modifiers,
+            pointer_id,
+            pointer_type,
+            button,
+            buttons,
+            pressure,
+            width,
+            height,
+            click_count,
+            extended,
         )
     })
 }
@@ -1428,27 +1618,42 @@ pub(crate) fn dispatch_external_drop_event(
     })
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_key_buffer() -> *const u8 {
     std::ptr::addr_of_mut!(KEY_BUFFER).cast::<u8>()
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_key_buffer_size() -> u32 {
     256
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_text_buffer() -> *const u8 {
     std::ptr::addr_of_mut!(TEXT_BUFFER).cast::<u8>()
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_text_buffer_size() -> u32 {
     (16 * 1024) as u32
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_pointer_event_with_metadata(
     event_type: u32,
     handle: u64,
@@ -1463,6 +1668,11 @@ pub extern "C" fn __fui_on_pointer_event_with_metadata(
     width: f32,
     height: f32,
     click_count: i32,
+    is_primary: bool,
+    tangential_pressure: f32,
+    tilt_x: f32,
+    tilt_y: f32,
+    twist: f32,
 ) -> bool {
     let routed_event_type = match event_type {
         1 => PointerEventType::Down,
@@ -1476,7 +1686,7 @@ pub extern "C" fn __fui_on_pointer_event_with_metadata(
         routed_event_type == PointerEventType::Down,
         handle,
     );
-    dispatch_pointer_event(
+    dispatch_pointer_event_with_metadata(
         NodeHandle::from_raw(handle),
         routed_event_type,
         x,
@@ -1490,10 +1700,20 @@ pub extern "C" fn __fui_on_pointer_event_with_metadata(
         width,
         height,
         click_count,
+        PointerExtendedMetadata {
+            is_primary,
+            tangential_pressure,
+            tilt_x,
+            tilt_y,
+            twist,
+        },
     )
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_wheel_event(
     handle: u64,
     x: f32,
@@ -1514,7 +1734,10 @@ pub extern "C" fn __fui_on_wheel_event(
     )
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `key_ptr` must be null for an empty key or point to `key_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_key_event(
@@ -1539,12 +1762,18 @@ pub unsafe extern "C" fn __fui_on_key_event(
     )
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_focus_changed(handle: u64, focused: bool) {
     dispatch_focus_changed(NodeHandle::from_raw(handle), focused);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for empty text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_text_changed(handle: u64, text_ptr: *const u8, text_len: u32) {
@@ -1557,7 +1786,10 @@ pub unsafe extern "C" fn __fui_on_text_changed(handle: u64, text_ptr: *const u8,
     dispatch_text_changed(NodeHandle::from_raw(handle), text);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for empty replacement text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_text_replaced(
@@ -1576,12 +1808,18 @@ pub unsafe extern "C" fn __fui_on_text_replaced(
     dispatch_text_replaced(NodeHandle::from_raw(handle), start, end, text);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_selection_changed(handle: u64, start: u32, end: u32) {
     dispatch_selection_changed(NodeHandle::from_raw(handle), start, end);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `text_ptr` must be null for empty text or point to `text_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_cross_selection_changed(
@@ -1598,17 +1836,26 @@ pub unsafe extern "C" fn __fui_on_cross_selection_changed(
     dispatch_cross_selection_changed(NodeHandle::from_raw(handle), text);
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_resolve_gesture_owner(handle: u64) -> u64 {
     resolve_gesture_owner(NodeHandle::from_raw(handle)).raw()
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_get_gesture_intent(handle: u64) -> u32 {
     get_gesture_intent(NodeHandle::from_raw(handle)) as u32
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_gesture_event(
     handle: u64,
     phase: u32,
@@ -1633,27 +1880,42 @@ pub extern "C" fn __fui_on_gesture_event(
     )
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_resolve_long_press_owner(handle: u64) -> u64 {
     resolve_long_press_owner(NodeHandle::from_raw(handle)).raw()
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_get_long_press_minimum_duration_ms(handle: u64) -> i32 {
     get_long_press_minimum_duration_ms(NodeHandle::from_raw(handle))
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_get_long_press_movement_tolerance(handle: u64) -> f32 {
     get_long_press_movement_tolerance(NodeHandle::from_raw(handle))
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_long_press_continues_pointer_events(handle: u64) -> bool {
     registered_node(handle).is_some_and(|node| node.has_drag_source())
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn __fui_on_long_press_event(
     handle: u64,
     scene_x: f32,
@@ -1674,7 +1936,10 @@ pub extern "C" fn __fui_on_long_press_event(
     )
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 /// # Safety
 /// `payload_ptr` must be null for an empty payload or point to `payload_len` readable bytes.
 pub unsafe extern "C" fn __fui_on_external_drag_event(
@@ -1707,7 +1972,10 @@ pub unsafe extern "C" fn __fui_on_external_drag_event(
     effect as u32
 }
 
-#[cfg_attr(any(not(feature = "worker-runtime"), feature = "native-runtime"), no_mangle)]
+#[cfg_attr(
+    any(not(feature = "worker-runtime"), feature = "native-runtime"),
+    no_mangle
+)]
 pub extern "C" fn fui_dispatch_custom_draw(handle: u64, canvas_ptr: usize) {
     if let Some(node) = resolve_node(NodeHandle::from_raw(handle)) {
         node.handle_custom_draw(canvas_ptr);

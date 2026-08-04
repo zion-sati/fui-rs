@@ -38,6 +38,7 @@ projection only.
 | `Switch` | Switch | constructor label | checked false/true |
 | `RadioButton` | Radio | constructor label | checked false/true |
 | `RadioGroup` | RadioGroup | group container | child radios carry checked state |
+| `TabView` | TabPanel | selected item label on the active panel | selector controls are application-owned and must project truthful roles and selected state |
 | `ProgressBar` | inherited container semantics | generated value/range label unless overridden | value range and orientation |
 | `Slider` | Slider | generated value/range label unless overridden | value range and orientation |
 | `Dropdown` | ComboBox | selected option label | expanded/collapsed and options |

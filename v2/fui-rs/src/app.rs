@@ -251,6 +251,12 @@ impl<TPage: 'static> ManagedApplication<TPage> {
 
 pub struct Application;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PageZoomMode {
+    Disabled,
+    Enabled,
+}
+
 impl Application {
     pub fn caption(value: &str) {
         let bytes = value.as_bytes();
@@ -263,6 +269,12 @@ impl Application {
                 },
                 bytes.len() as u32,
             );
+        }
+    }
+
+    pub fn page_zoom(value: PageZoomMode) {
+        unsafe {
+            ffi::fui_set_page_zoom_enabled(matches!(value, PageZoomMode::Enabled));
         }
     }
 
