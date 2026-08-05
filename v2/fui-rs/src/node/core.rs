@@ -1208,6 +1208,7 @@ impl NodeRef {
                         core.drag_click_pending_count = event.click_count;
                         core.click_pending = false;
                         core.click_pending_count = 0;
+                        event.handled = true;
                         return;
                     }
                 }

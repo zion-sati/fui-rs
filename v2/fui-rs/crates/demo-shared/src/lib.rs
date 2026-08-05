@@ -25,7 +25,13 @@ const STAGE4_SAMPLE_SVG_URL: &str = "data:image/svg+xml;utf8,<svg xmlns='http://
 const STAGE4_ROUTE_RELATIVE_TEXTURE_ID: u32 = 4103;
 const STAGE4_MISSING_TEXTURE_ID: u32 = 4104;
 const STAGE4_MISSING_SVG_ID: u32 = 4105;
+const STAGE4_REMOTE_TEXTURE_ID: u32 = 4106;
+const STAGE4_REMOTE_SVG_ID: u32 = 4107;
 const STAGE4_ROUTE_RELATIVE_TEXTURE_URL: &str = "./demo-texture.png";
+const STAGE4_REMOTE_TEXTURE_URL: &str =
+    "https://placehold.co/640x360/1D4ED8/FFFFFF/png?text=Remote+HTTPS+asset";
+const STAGE4_REMOTE_SVG_URL: &str =
+    "https://placehold.co/640x360.svg?text=Remote+HTTPS+SVG";
 const STAGE4_MISSING_TEXTURE_URL: &str = "./missing-stage4-texture.png";
 const STAGE4_MISSING_SVG_URL: &str = "./missing-stage4-icon.svg";
 const STAGE4_FONT_BASE_URL: &str = "/v2/fui-rs/fonts";
@@ -1017,6 +1023,23 @@ impl Stage4Showcase {
                 .height(180.0, Unit::Pixel)
                 .source(STAGE4_ROUTE_RELATIVE_TEXTURE_URL)
                 .alt_text("Stage 4 sample image")
+            })
+            .child(&spacer(16.0))
+            .child(&ui! {
+            image(STAGE4_REMOTE_TEXTURE_ID)
+                .width(320.0, Unit::Pixel)
+                .height(180.0, Unit::Pixel)
+                .object_fit(ObjectFit::Cover)
+                .source(STAGE4_REMOTE_TEXTURE_URL)
+                .alt_text("Stage 4 remote HTTPS image")
+            })
+            .child(&spacer(16.0))
+            .child(&ui! {
+            svg(STAGE4_REMOTE_SVG_ID)
+                .width(320.0, Unit::Pixel)
+                .height(180.0, Unit::Pixel)
+                .source(STAGE4_REMOTE_SVG_URL)
+                .alt_text("Stage 4 remote HTTPS SVG")
             })
             .child(&spacer(16.0))
             .child(&ui! {

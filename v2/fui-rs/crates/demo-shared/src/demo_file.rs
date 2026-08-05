@@ -5,7 +5,8 @@ mod implementation {
         NativeFileDialogRequest, NativeFileDialogResult, NativeFileFilter, UiDispatcher,
     };
     use fui::{
-        FileCapabilities, FileErrorEventArgs, FileSaveMode, FileSaveResult,
+        ExternalDropItemInfo, ExternalDropItemKind, FileCapabilities, FileErrorEventArgs,
+        FileSaveMode, FileSaveResult,
         FileWorkerProcessProgress, FileWorkerProcessResult,
     };
     use std::cell::RefCell;
@@ -331,6 +332,13 @@ mod implementation {
     pub struct DemoFile;
 
     impl DemoFile {
+        pub fn from_external_drop_item(item: &ExternalDropItemInfo) -> Option<DemoPickedFile> {
+            if item.kind != ExternalDropItemKind::File || item.id.is_empty() {
+                return None;
+            }
+            picked_file(PathBuf::from(&item.id))
+        }
+
         pub fn capabilities() -> FileCapabilities {
             FileCapabilities {
                 can_pick_open: true,
@@ -369,6 +377,12 @@ mod implementation {
     pub struct DemoFile;
 
     impl DemoFile {
+        pub fn from_external_drop_item(
+            item: &fui::ExternalDropItemInfo,
+        ) -> Option<DemoPickedFile> {
+            item.file.clone()
+        }
+
         pub fn capabilities() -> fui::FileCapabilities {
             fui::File::capabilities()
         }

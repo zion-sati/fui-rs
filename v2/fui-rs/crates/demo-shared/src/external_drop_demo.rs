@@ -1,3 +1,4 @@
+use crate::demo_file::{DemoFile, DemoFileCopyRequest, DemoPickedFile};
 use crate::{demo_text, spacer, stage4_panel};
 use fui::prelude::*;
 use std::cell::RefCell;
@@ -35,7 +36,7 @@ fn worker_result_hash_label(worker_result: &Option<String>) -> String {
     }
 }
 
-fn resolve_copy_file_name(file: &BrowserFile) -> String {
+fn resolve_copy_file_name(file: &DemoPickedFile) -> String {
     let name = file.name();
     if let Some((base, ext)) = name.rsplit_once('.') {
         if !base.is_empty() && !ext.is_empty() {
@@ -57,8 +58,8 @@ struct ExternalDropDemoState {
     last_items: RefCell<Vec<ExternalDropItemInfo>>,
     hovering_accepted: RefCell<bool>,
     ignore_next_leave: RefCell<bool>,
-    dropped_file: RefCell<Option<BrowserFile>>,
-    active_copy_request: RefCell<Option<FileWorkerProcessRequest>>,
+    dropped_file: RefCell<Option<DemoPickedFile>>,
+    active_copy_request: RefCell<Option<DemoFileCopyRequest>>,
 }
 
 struct ExternalDropDemoParts {
@@ -94,7 +95,7 @@ impl ExternalDropDemoState {
     fn can_copy_dropped_file(&self) -> bool {
         self.dropped_file.borrow().is_some()
             && self.active_copy_request.borrow().is_none()
-            && File::capabilities().can_process_in_worker_to_picked_file
+            && DemoFile::capabilities().can_process_in_worker_to_picked_file
     }
 
     fn sync_status(&self, label: impl Into<String>) {
@@ -122,7 +123,7 @@ impl ExternalDropDemoState {
     }
 
     fn sync_capabilities(&self) {
-        let capabilities = File::capabilities();
+        let capabilities = DemoFile::capabilities();
         let label = format!(
             "File bridge capabilities: open={} • chunk-read={} • save={} • native-save-picker={} • worker-process-save={}",
             if capabilities.can_pick_open { "yes" } else { "no" },
@@ -195,17 +196,26 @@ impl ExternalDropDemoState {
     fn handle_external_drag(&self, args: ExternalDropEventArgs) -> DropProposal {
         self.ignore_next_leave.replace(false);
         self.replace_items(args.items.clone());
-        if args.items.is_empty() {
+        if !args.items.is_empty()
+            && !args
+                .items
+                .iter()
+                .any(|item| item.kind == ExternalDropItemKind::File)
+        {
             self.hovering_accepted.replace(false);
             self.sync_status("External drop status: ignoring non-file drag");
             self.apply_theme(&current_theme());
             return DropProposal::none();
         }
         self.hovering_accepted.replace(true);
-        self.sync_status(format!(
-            "External drop status: hovering {} • effect Copy",
-            format_item_count(args.items.len())
-        ));
+        self.sync_status(if args.items.is_empty() {
+            "External drop status: hovering external file • metadata available on drop".to_string()
+        } else {
+            format!(
+                "External drop status: hovering {} • effect Copy",
+                format_item_count(args.items.len())
+            )
+        });
         self.apply_theme(&current_theme());
         DropProposal::new(DragDropEffects::Copy, false)
     }
@@ -228,8 +238,11 @@ impl ExternalDropDemoState {
         self.hovering_accepted.replace(false);
         self.ignore_next_leave.replace(true);
         self.replace_items(args.items.clone());
-        self.dropped_file
-            .replace(args.items.iter().find_map(|item| item.file.clone()));
+        self.dropped_file.replace(
+            args.items
+                .iter()
+                .find_map(DemoFile::from_external_drop_item),
+        );
         self.sync_status(format!(
             "External drop status: dropped {} • effect Copy",
             format_item_count(args.items.len())
@@ -275,13 +288,13 @@ impl ExternalDropDemoState {
             self.sync_status("External drop status: worker copy already running");
             return;
         }
-        if !File::capabilities().can_process_in_worker_to_picked_file {
+        if !DemoFile::capabilities().can_process_in_worker_to_picked_file {
             self.sync_status("External drop status: this browser needs worker plus native save-picker support for the worker copy demo");
             return;
         }
         let suggested_name = resolve_copy_file_name(&file);
         let weak_state = Rc::downgrade(self);
-        let request = File::process_file_in_worker(file.clone())
+        let request = DemoFile::process_file_in_worker(file.clone())
             .worker("./workers.wasm", "stage4FileProcessorWorker")
             .save_to_picked_file(suggested_name.clone())
             .on_progress({

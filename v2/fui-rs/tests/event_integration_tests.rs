@@ -892,6 +892,82 @@ fn drag_drop_session_updates_target_and_completes_drop() {
 }
 
 #[test]
+fn same_target_drop_finishes_before_a_later_pointer_move() {
+    ffi::test::reset();
+    let drag_data_calls = Rc::new(Cell::new(0));
+    let parent_drag_data_calls = Rc::new(Cell::new(0));
+    let drag_over_calls = Rc::new(Cell::new(0));
+    let completed_calls = Rc::new(Cell::new(0));
+    let source = flex_box();
+    let target = flex_box();
+
+    source
+        .interactive(true)
+        .drag_allowed_effects(DragDropEffects::Move)
+        .drag_data({
+            let drag_data_calls = drag_data_calls.clone();
+            move || {
+                drag_data_calls.set(drag_data_calls.get() + 1);
+                Some(DragDataObject::new().set_text("same-slot"))
+            }
+        })
+        .on_drag_completed({
+            let completed_calls = completed_calls.clone();
+            move |_event| completed_calls.set(completed_calls.get() + 1)
+        });
+    target
+        .interactive(true)
+        .drag_allowed_effects(DragDropEffects::Move)
+        .drag_data({
+            let parent_drag_data_calls = parent_drag_data_calls.clone();
+            move || {
+                parent_drag_data_calls.set(parent_drag_data_calls.get() + 1);
+                Some(DragDataObject::new().set_text("parent"))
+            }
+        })
+        .allow_drop(true)
+        .on_drag_over({
+            let drag_over_calls = drag_over_calls.clone();
+            move |_args| {
+                drag_over_calls.set(drag_over_calls.get() + 1);
+                DropProposal::new(DragDropEffects::Move, true)
+            }
+        });
+    target.child(&source);
+    Application::mount(target.clone());
+    ffi::test::take_calls();
+
+    pointer_event(
+        PointerEventType::Down,
+        source.handle().raw(),
+        10.0,
+        10.0,
+        0,
+        1,
+        1,
+    );
+    pointer_move(source.handle().raw(), 20.0, 20.0);
+    pointer_event(
+        PointerEventType::Up,
+        source.handle().raw(),
+        20.0,
+        20.0,
+        0,
+        0,
+        0,
+    );
+
+    assert_eq!(drag_data_calls.get(), 1);
+    assert_eq!(parent_drag_data_calls.get(), 0);
+    assert_eq!(completed_calls.get(), 1);
+    let drag_over_calls_after_drop = drag_over_calls.get();
+    pointer_move(source.handle().raw(), 24.0, 24.0);
+    assert_eq!(drag_data_calls.get(), 1);
+    assert_eq!(parent_drag_data_calls.get(), 0);
+    assert_eq!(drag_over_calls.get(), drag_over_calls_after_drop);
+}
+
+#[test]
 fn touch_drag_waits_for_long_press_then_drops_on_release() {
     ffi::test::reset();
     let source = flex_box();
