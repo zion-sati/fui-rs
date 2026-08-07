@@ -2,6 +2,12 @@ use super::*;
 use crate::node::WeakFlexBox;
 use crate::Border;
 
+const PROGRESS_BORDER_WIDTH: f32 = 1.0;
+
+fn inset_radius(radius: f32) -> f32 {
+    (radius - PROGRESS_BORDER_WIDTH).max(0.0)
+}
+
 #[derive(Clone, Copy)]
 struct ResolvedProgressBarSizing {
     length: f32,
@@ -157,7 +163,7 @@ impl ProgressBar {
 
     pub fn corner_radius(&self, radius: f32) -> &Self {
         self.root.corner_radius(radius);
-        self.fill.corner_radius(radius);
+        self.fill.corner_radius(inset_radius(radius));
         self
     }
 
@@ -314,13 +320,16 @@ fn sync_progress_geometry(
     } else {
         0.0
     };
-    let fill_length = sizing.length * fraction;
+    let inset = PROGRESS_BORDER_WIDTH * 2.0;
+    let inner_length = (sizing.length - inset).max(0.0);
+    let inner_thickness = (sizing.thickness - inset).max(0.0);
+    let fill_length = inner_length * fraction;
     if orientation == Orientation::Vertical {
         root.flex_direction(FlexDirection::Column)
             .justify_content(JustifyContent::End)
             .width(sizing.thickness, Unit::Pixel)
             .height(sizing.length, Unit::Pixel);
-        fill.width(sizing.thickness, Unit::Pixel)
+        fill.width(inner_thickness, Unit::Pixel)
             .height(fill_length, Unit::Pixel);
     } else {
         root.flex_direction(FlexDirection::Row)
@@ -328,7 +337,7 @@ fn sync_progress_geometry(
             .width(sizing.length, Unit::Pixel)
             .height(sizing.thickness, Unit::Pixel);
         fill.width(fill_length, Unit::Pixel)
-            .height(sizing.thickness, Unit::Pixel);
+            .height(inner_thickness, Unit::Pixel);
     }
     root.semantic_value_range(current_value, min, max)
         .default_semantic_label(format!(
@@ -355,7 +364,7 @@ fn sync_progress_visual_state(
     root.apply_presenter_style(
         crate::PresenterHostStyle::new()
             .background(track_color)
-            .border(Border::solid(1.0, theme.colors.border))
+            .border(Border::solid(PROGRESS_BORDER_WIDTH, theme.colors.border))
             .corners(crate::Corners::all(sizing.thickness * 0.5)),
     );
     let corners = root
@@ -363,10 +372,10 @@ fn sync_progress_visual_state(
         .corners
         .unwrap_or_else(|| crate::Corners::all(sizing.thickness * 0.5));
     fill.corners(
-        corners.top_left,
-        corners.top_right,
-        corners.bottom_right,
-        corners.bottom_left,
+        inset_radius(corners.top_left),
+        inset_radius(corners.top_right),
+        inset_radius(corners.bottom_right),
+        inset_radius(corners.bottom_left),
     )
     .bg_color(fill_color);
 }

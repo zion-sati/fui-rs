@@ -30,7 +30,7 @@
     "typescript-eslint": "^8.59.2"
   },
   "allowScripts": {
-    "esbuild@0.27.7": true,
+    "esbuild@0.28.1": true,
     "fsevents@2.3.2": true
   }
 }

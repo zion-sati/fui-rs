@@ -194,6 +194,7 @@ impl SliderPresenter for DefaultSliderPresenter {
         let cross_axis_inset = cross_axis_extra * 0.5;
         let track_offset = cross_axis_inset + ((thumb_size - track_thickness) * 0.5);
         if state.orientation == Orientation::Vertical {
+            let fill_length = (available * fraction).round();
             self.root
                 .width(thumb_size + cross_axis_extra, Unit::Pixel)
                 .height(length, Unit::Pixel);
@@ -203,10 +204,10 @@ impl SliderPresenter for DefaultSliderPresenter {
                 .position(track_offset, thumb_size * 0.5);
             self.fill_node
                 .width(track_thickness, Unit::Pixel)
-                .height(available * fraction, Unit::Pixel)
+                .height(fill_length, Unit::Pixel)
                 .position(
                     track_offset,
-                    thumb_size * 0.5 + (available * (1.0 - fraction)),
+                    thumb_size * 0.5 + available - fill_length,
                 );
             self.thumb_node
                 .position(cross_axis_inset, available - (available * fraction));

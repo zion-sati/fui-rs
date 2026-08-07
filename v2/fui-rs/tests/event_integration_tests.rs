@@ -2306,8 +2306,8 @@ fn progress_bar_sets_fill_geometry_and_value_range() {
 
     assert!(calls.iter().any(|call| matches!(call, Call::SetSemanticValueRange { has_value_range, value_now, value_min, value_max, .. } if *has_value_range && *value_now == 50.0 && *value_min == 0.0 && *value_max == 200.0)));
     assert!(calls.iter().any(|call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "Progress bar, value 50, range 0 to 200")));
-    assert!(calls.iter().any(|call| matches!(call, Call::SetWidth { value, unit_enum, .. } if *value == 75.0 && *unit_enum == Unit::Pixel as u32)));
-    assert!(calls.iter().any(|call| matches!(call, Call::SetHeight { value, unit_enum, .. } if *value == 12.0 && *unit_enum == Unit::Pixel as u32)));
+    assert!(calls.iter().any(|call| matches!(call, Call::SetWidth { value, unit_enum, .. } if *value == 74.5 && *unit_enum == Unit::Pixel as u32)));
+    assert!(calls.iter().any(|call| matches!(call, Call::SetHeight { value, unit_enum, .. } if *value == 10.0 && *unit_enum == Unit::Pixel as u32)));
 }
 
 #[test]

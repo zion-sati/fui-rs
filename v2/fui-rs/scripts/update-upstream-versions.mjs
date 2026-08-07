@@ -9,7 +9,7 @@ const cargoPath = join(packageDirectory, 'Cargo.toml');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const versionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
-const runtimeVersion = execFileSync(
+const runtimeVersion = process.env.EFFINDOM_RUNTIME_VERSION ?? execFileSync(
   npm,
   ['view', '@effindomv2/runtime', 'dist-tags.latest'],
   { encoding: 'utf8' },

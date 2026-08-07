@@ -2728,6 +2728,18 @@ fn slider_default_presenter_uses_sizing_for_geometry() {
     Application::mount(slider.clone());
     let calls = ffi::test::take_calls();
     let handle = slider.retained_node_ref().handle().raw();
+    let presenter_root_handle = child_handles_for_parent(&calls, handle)
+        .into_iter()
+        .next()
+        .expect("slider presenter root");
+    let track_handle = child_handles_for_parent(&calls, presenter_root_handle)
+        .into_iter()
+        .next()
+        .expect("slider track");
+    let fill_handle = child_handles_for_parent(&calls, presenter_root_handle)
+        .into_iter()
+        .nth(1)
+        .expect("slider fill");
 
     assert!(calls.iter().any(|call| matches!(
         call,
@@ -2752,6 +2764,63 @@ fn slider_default_presenter_uses_sizing_for_geometry() {
         Call::SetHeight { handle: call_handle, value, .. }
             if *call_handle == handle && (*value - 130.0).abs() < f32::EPSILON
     )));
+
+    for (value, expected_fill_length) in [
+        (25.0, 24.0),
+        (26.0, 25.0),
+        (48.0, 46.0),
+        (49.0, 47.0),
+        (75.0, 72.0),
+        (76.0, 73.0),
+    ] {
+        slider.value(value);
+        let calls = ffi::test::take_calls();
+        let fill_length = calls
+            .iter()
+            .rev()
+            .find_map(|call| match call {
+                Call::SetHeight { handle, value, .. } if *handle == fill_handle => Some(*value),
+                _ => None,
+            })
+            .expect("vertical slider fill height");
+        let fill_top = calls
+            .iter()
+            .rev()
+            .find_map(|call| match call {
+                Call::SetPosition { handle, top, .. } if *handle == fill_handle => Some(*top),
+                _ => None,
+            })
+            .expect("vertical slider fill position");
+        assert_eq!(fill_length, expected_fill_length);
+        assert_eq!(fill_top + fill_length, 108.0);
+    }
+
+    slider.value(50.0);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, .. }
+            if *handle == track_handle && (*value - 96.0).abs() < f32::EPSILON
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetPosition { handle, left, top, .. }
+            if *handle == track_handle && (*left - 9.0).abs() < f32::EPSILON
+                && (*top - 12.0).abs() < f32::EPSILON
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle, value, .. }
+            if *handle == fill_handle && (*value - 48.0).abs() < f32::EPSILON
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetPosition { handle, left, top, right, bottom }
+            if *handle == fill_handle && (*left - 9.0).abs() < f32::EPSILON
+                && (*top - 60.0).abs() < f32::EPSILON
+                && right.is_nan() && bottom.is_nan()
+    )));
+
 }
 
 #[test]
@@ -3418,12 +3487,12 @@ fn progress_bar_maps_length_and_thickness_to_orientation() {
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetWidth { handle, value, unit_enum }
-            if *handle == fill_handle && *value == 18.0 && *unit_enum == Unit::Pixel as u32
+            if *handle == fill_handle && *value == 16.0 && *unit_enum == Unit::Pixel as u32
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetHeight { handle, value, unit_enum }
-            if *handle == fill_handle && *value == 75.0 && *unit_enum == Unit::Pixel as u32
+            if *handle == fill_handle && *value == 74.5 && *unit_enum == Unit::Pixel as u32
     )));
     assert!(calls.iter().any(|call| matches!(
         call,
@@ -3508,11 +3577,11 @@ fn progress_bar_overrides_survive_theme_changes() {
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetBoxStyle { handle, radius_tl, radius_tr, radius_br, radius_bl, .. }
-            if (*handle == root_handle || *handle == fill_handle)
-                && *radius_tl == 9.0
-                && *radius_tr == 9.0
-                && *radius_br == 9.0
-                && *radius_bl == 9.0
+            if *handle == fill_handle
+                && *radius_tl == 8.0
+                && *radius_tr == 8.0
+                && *radius_br == 8.0
+                && *radius_bl == 8.0
     )));
 
     use_system_theme();
