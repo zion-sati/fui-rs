@@ -45,7 +45,7 @@ projection only.
 | `ComboBox` | ComboBox/Textbox hybrid | current text or selected item | expanded/collapsed and options |
 | `TextInput` | Textbox | placeholder, explicit label, or default label | focus, edit, selection state |
 | `TextArea` | Textbox | placeholder, explicit label, or default label | focus, edit, selection state |
-| `NavLink` | Link | constructor label or explicit label | link URL |
+| `NavLink` | Link | caller-authored content or explicit semantic label | link URL |
 | `Dialog` | Dialog | title/body text | modal semantic scope while open |
 | `Form` | Form | none by default | grouped form fields |
 | `Text` | Static text when applicable | content text | n/a |

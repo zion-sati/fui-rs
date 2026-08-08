@@ -1013,7 +1013,7 @@ impl Stage4Showcase {
             .child(&spacer(12.0))
             .child(&ui! {
             nav_link("https://example.com/docs")
-                .text("Stage 4 example docs")
+                .child(&text("Stage 4 example docs").selectable(false))
                 .semantic_label("Stage 4 example docs nav link")
             })
             .child(&spacer(16.0))
@@ -2290,8 +2290,10 @@ impl Stage4Showcase {
 
 fn demo_route_nav_link(href: &str, label: &str, active: bool) -> NavLink {
     let theme = current_theme();
+    let label_node = text(label);
+    label_node.selectable(false);
     let link = ui! {
-    nav_link(href).text(label)
+    nav_link(href)
         .padding(12.0, 8.0, 12.0, 8.0)
         .corner_radius(999.0)
         .bg_color(if active {
@@ -2308,6 +2310,17 @@ fn demo_route_nav_link(href: &str, label: &str, active: bool) -> NavLink {
             },
         )
     };
+    link.child(&label_node).semantic_label(label);
+    let label_for_interaction = label_node.clone();
+    link.bind_interaction_state(move |state, theme| {
+        label_for_interaction.text_color(if active {
+            theme.colors.text_on_accent
+        } else if state.hovered || state.pressed {
+            theme.colors.accent_hovered
+        } else {
+            theme.colors.text_primary
+        });
+    });
     link.bind_theme({
         move |link, theme| {
             link.bg_color(if active {

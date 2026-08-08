@@ -49,7 +49,7 @@ style overrides that derive values from the active theme.
 | `ContextMenu` | panel/item/separator/shadow/theme metrics | item and panel styling APIs |
 | `Dialog` | backdrop, card surface, border, radius, shadow, text styles | backdrop/card/action styling APIs |
 | `ScrollBar` | track/thumb colors | track/thumb colors and geometry APIs |
-| `NavLink` | link cursor, focus chrome, inherited text/box style | `font_family(...)`, `font_size(...)`, `text_color(...)`, inherited box styling |
+| `NavLink` | link cursor and focus chrome | inherited box styling plus caller-owned child styling through `bind_interaction_state(...)` |
 
 ## Node style matrix
 

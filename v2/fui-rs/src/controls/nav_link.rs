@@ -1,11 +1,10 @@
 use super::*;
-use crate::bindings::ui;
 use crate::event::{PointerButton, PointerType};
 use crate::ffi::{CursorStyle, HandleValue, SemanticRole};
 use crate::navigation;
-use crate::node::{text, NodeHandle, NodeRef, WeakFlexBox};
+use crate::node::{NodeRef, WeakFlexBox};
 use crate::platform;
-use crate::theme::{current_theme, subscribe};
+use crate::theme::{current_theme, subscribe, Theme};
 use crate::{focus_adorner, focus_visibility};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -31,11 +30,19 @@ pub struct NavigateEventArgs {
 }
 
 type NavigateCallback = Rc<dyn Fn(NavigateEventArgs)>;
+type InteractionStateCallback = Rc<dyn Fn(NavLinkInteractionState, Theme)>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NavLinkInteractionState {
+    pub hovered: bool,
+    pub pressed: bool,
+    pub focused: bool,
+    pub enabled: bool,
+}
 
 #[derive(Clone)]
 pub struct NavLink {
     root: FlexBox,
-    label: TextNode,
     href: Rc<RefCell<String>>,
     open_in_new_tab: Rc<Cell<bool>>,
     navigate: Rc<RefCell<Option<NavigateCallback>>>,
@@ -46,42 +53,25 @@ pub struct NavLink {
     enter_pressed: Rc<Cell<bool>>,
     enter_pressed_open_in_new_tab: Rc<Cell<bool>>,
     preview_pinned_for_context_menu: Rc<Cell<bool>>,
-    text_color_override: Rc<Cell<Option<u32>>>,
+    interaction_state_callback: Rc<RefCell<Option<InteractionStateCallback>>>,
 }
 
 impl NavLink {
     pub fn new(href: impl Into<String>) -> Self {
         let href = href.into();
-        Self::with_label(href.clone(), href)
-    }
-
-    pub fn with_label(href: impl Into<String>, label: impl Into<String>) -> Self {
-        let href = href.into();
-        let label = label.into();
         let root = row();
-        let label_node = text(&label);
-        let theme = current_theme();
-        label_node
-            .font_family(theme.fonts.body_family.clone())
-            .font_size(15.0)
-            .text_color(theme.colors.accent)
-            .selectable(false)
-            .cursor(CursorStyle::Pointer);
         root.justify_content(JustifyContent::Start)
             .align_items(AlignItems::Center)
             .interactive(true)
             .focusable(true, 0)
             .cursor(CursorStyle::Pointer)
             .semantic_role(SemanticRole::Link)
-            .semantic_label(label)
-            .reflect_semantic_disabled_from_enabled()
-            .child(&label_node);
+            .reflect_semantic_disabled_from_enabled();
         root.retained_node_ref()
             .set_link_url_for_routing(Some(href.clone()));
 
         let link = Self {
             root,
-            label: label_node,
             href: Rc::new(RefCell::new(href)),
             open_in_new_tab: Rc::new(Cell::new(false)),
             navigate: Rc::new(RefCell::new(None)),
@@ -92,7 +82,7 @@ impl NavLink {
             enter_pressed: Rc::new(Cell::new(false)),
             enter_pressed_open_in_new_tab: Rc::new(Cell::new(false)),
             preview_pinned_for_context_menu: Rc::new(Cell::new(false)),
-            text_color_override: Rc::new(Cell::new(None)),
+            interaction_state_callback: Rc::new(RefCell::new(None)),
         };
         let node_ref = link.root.retained_node_ref();
         let pin_target = link.event_target();
@@ -107,7 +97,6 @@ impl NavLink {
         );
         link.install_subscriptions();
         link.bind_events();
-        link.sync_visual_state();
         link.sync_focus_chrome();
         link
     }
@@ -116,7 +105,7 @@ impl NavLink {
         let target = self.event_target();
         self.root.on_pointer_enter(move |_event| {
             target.hovered.set(true);
-            target.sync_visual_state();
+            target.notify_interaction_state();
             target.show_preview();
         });
         let target = self.event_target();
@@ -124,7 +113,7 @@ impl NavLink {
             target.hovered.set(false);
             target.pointer_pressed.set(false);
             target.pointer_pressed_open_in_new_tab.set(false);
-            target.sync_visual_state();
+            target.notify_interaction_state();
             if !target.focused.get() && !target.preview_pinned_for_context_menu.get() {
                 target.hide_preview();
             }
@@ -134,12 +123,14 @@ impl NavLink {
             if !is_activation_pointer(event) {
                 target.pointer_pressed.set(false);
                 target.pointer_pressed_open_in_new_tab.set(false);
+                target.notify_interaction_state();
                 return;
             }
             target.pointer_pressed.set(true);
             target.pointer_pressed_open_in_new_tab.set(
                 is_middle_mouse_button(event) || target.should_open_in_new_tab(event.modifiers),
             );
+            target.notify_interaction_state();
             event.handled = true;
         });
         let target = self.event_target();
@@ -152,6 +143,7 @@ impl NavLink {
                 event.handled = true;
             }
             target.pointer_pressed_open_in_new_tab.set(false);
+            target.notify_interaction_state();
         });
         let target = self.event_target();
         self.root.on_key_down(move |event| {
@@ -166,6 +158,7 @@ impl NavLink {
             target
                 .enter_pressed_open_in_new_tab
                 .set(target.should_open_in_new_tab(event.modifiers));
+            target.notify_interaction_state();
             event.handled = true;
         });
         let target = self.event_target();
@@ -180,6 +173,7 @@ impl NavLink {
                 event.handled = true;
             }
             target.enter_pressed_open_in_new_tab.set(false);
+            target.notify_interaction_state();
         });
         let target = self.event_target();
         self.root.on_focus_changed(move |event| {
@@ -189,6 +183,7 @@ impl NavLink {
                 target.enter_pressed_open_in_new_tab.set(false);
             }
             target.sync_focus_chrome();
+            target.notify_interaction_state();
             if event.focused {
                 target.show_preview();
             } else if !target.hovered.get() && !target.preview_pinned_for_context_menu.get() {
@@ -200,8 +195,8 @@ impl NavLink {
     fn install_subscriptions(&self) {
         let target = self.event_target();
         let theme_guard = subscribe(move |_theme| {
-            target.sync_visual_state();
             target.sync_focus_chrome();
+            target.notify_interaction_state();
         });
         self.root
             .retained_node_ref()
@@ -218,7 +213,6 @@ impl NavLink {
     fn event_target(&self) -> NavLinkEventTarget {
         NavLinkEventTarget {
             weak_root: self.root.downgrade(),
-            label: self.label.clone(),
             href: self.href.clone(),
             open_in_new_tab: self.open_in_new_tab.clone(),
             navigate: self.navigate.clone(),
@@ -229,22 +223,8 @@ impl NavLink {
             enter_pressed: self.enter_pressed.clone(),
             enter_pressed_open_in_new_tab: self.enter_pressed_open_in_new_tab.clone(),
             preview_pinned_for_context_menu: self.preview_pinned_for_context_menu.clone(),
-            text_color_override: self.text_color_override.clone(),
+            interaction_state_callback: self.interaction_state_callback.clone(),
         }
-    }
-
-    fn set_explicit_font_family(&self, family: crate::FontFamily) {
-        self.label.font_family(family);
-    }
-
-    fn set_explicit_font_size(&self, size: f32) {
-        self.label.font_size(size);
-    }
-
-    fn set_explicit_text_color(&self, color: u32) {
-        self.text_color_override.set(Some(color));
-        self.label.text_color(color);
-        self.sync_visual_state();
     }
 
     pub fn href(&self) -> String {
@@ -263,17 +243,6 @@ impl NavLink {
         self
     }
 
-    pub fn text(&self, value: impl Into<String>) -> &Self {
-        let value = value.into();
-        self.label.text(value.clone());
-        self.root.semantic_label(value);
-        self
-    }
-
-    pub fn label_node(&self) -> TextNode {
-        self.label.clone()
-    }
-
     pub fn open_in_new_tab(&self, open: bool) -> &Self {
         self.open_in_new_tab.set(open);
         self
@@ -284,8 +253,29 @@ impl NavLink {
         self
     }
 
-    fn sync_visual_state(&self) {
-        self.event_target().sync_visual_state();
+    pub fn bind_interaction_state(
+        &self,
+        handler: impl Fn(NavLinkInteractionState, Theme) + 'static,
+    ) -> &Self {
+        self.interaction_state_callback
+            .replace(Some(Rc::new(handler)));
+        self.event_target().notify_interaction_state();
+        self
+    }
+
+    pub fn enabled(&self, enabled: bool) -> &Self {
+        self.root.enabled(enabled);
+        if !enabled {
+            self.hovered.set(false);
+            self.focused.set(false);
+            self.pointer_pressed.set(false);
+            self.pointer_pressed_open_in_new_tab.set(false);
+            self.enter_pressed.set(false);
+            self.enter_pressed_open_in_new_tab.set(false);
+        }
+        self.sync_focus_chrome();
+        self.event_target().notify_interaction_state();
+        self
     }
 
     fn sync_focus_chrome(&self) {
@@ -300,7 +290,6 @@ impl Node for NavLink {
 
     fn build_self(&self) {
         self.root.build_self();
-        self.sync_visual_state();
     }
 }
 
@@ -321,24 +310,9 @@ impl ThemeBindable for NavLink {
     }
 }
 
-impl LabeledControlTextStyle for NavLink {
-    fn set_label_font_family(&self, family: crate::FontFamily) {
-        self.set_explicit_font_family(family);
-    }
-
-    fn set_label_font_size(&self, size: f32) {
-        self.set_explicit_font_size(size);
-    }
-
-    fn set_label_text_color(&self, color: u32) {
-        self.set_explicit_text_color(color);
-    }
-}
-
 #[derive(Clone)]
 struct NavLinkEventTarget {
     weak_root: WeakFlexBox,
-    label: TextNode,
     href: Rc<RefCell<String>>,
     open_in_new_tab: Rc<Cell<bool>>,
     navigate: Rc<RefCell<Option<NavigateCallback>>>,
@@ -349,14 +323,13 @@ struct NavLinkEventTarget {
     enter_pressed: Rc<Cell<bool>>,
     enter_pressed_open_in_new_tab: Rc<Cell<bool>>,
     preview_pinned_for_context_menu: Rc<Cell<bool>>,
-    text_color_override: Rc<Cell<Option<u32>>>,
+    interaction_state_callback: Rc<RefCell<Option<InteractionStateCallback>>>,
 }
 
 impl NavLinkEventTarget {
     fn upgrade(&self) -> Option<NavLink> {
         Some(NavLink {
             root: self.weak_root.upgrade()?,
-            label: self.label.clone(),
             href: self.href.clone(),
             open_in_new_tab: self.open_in_new_tab.clone(),
             navigate: self.navigate.clone(),
@@ -367,7 +340,7 @@ impl NavLinkEventTarget {
             enter_pressed: self.enter_pressed.clone(),
             enter_pressed_open_in_new_tab: self.enter_pressed_open_in_new_tab.clone(),
             preview_pinned_for_context_menu: self.preview_pinned_for_context_menu.clone(),
-            text_color_override: self.text_color_override.clone(),
+            interaction_state_callback: self.interaction_state_callback.clone(),
         })
     }
 
@@ -443,20 +416,6 @@ impl NavLinkEventTarget {
         }
     }
 
-    fn sync_visual_state(&self) {
-        let theme = current_theme();
-        let color = if self.hovered.get() {
-            theme.colors.accent_hovered
-        } else {
-            self.text_color_override
-                .get()
-                .unwrap_or(theme.colors.accent)
-        };
-        if self.label.handle() != NodeHandle::INVALID {
-            ui::set_text_color(self.label.handle().raw(), color);
-        }
-    }
-
     fn sync_focus_chrome(&self) {
         let Some(root) = self.weak_root.upgrade() else {
             return;
@@ -466,5 +425,20 @@ impl NavLinkEventTarget {
             return;
         }
         focus_adorner::hide_owner(&root);
+    }
+
+    fn notify_interaction_state(&self) {
+        let Some(callback) = self.interaction_state_callback.borrow().clone() else {
+            return;
+        };
+        callback(
+            NavLinkInteractionState {
+                hovered: self.hovered.get(),
+                pressed: self.pointer_pressed.get() || self.enter_pressed.get(),
+                focused: self.focused.get(),
+                enabled: self.is_enabled(),
+            },
+            current_theme(),
+        );
     }
 }

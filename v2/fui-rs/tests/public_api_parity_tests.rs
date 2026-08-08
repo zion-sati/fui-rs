@@ -1368,7 +1368,6 @@ fn labeled_controls_share_fluent_text_styling_and_selection_properties_are_indep
     let root = ui! {
         column() {
             button("Button").font_family(family.clone()).font_size(18.0).text_color(0x112233FF),
-            NavLink::with_label("/docs", "Docs").font_family(family.clone()).font_size(19.0).text_color(0x223344FF),
             checkbox("Check").font_family(family.clone()).font_size(20.0).text_color(0x334455FF),
             radio_button("Radio").font_family(family.clone()).font_size(21.0).text_color(0x445566FF),
             switch("Switch").font_family(family).font_size(22.0).text_color(0x556677FF),
@@ -1381,7 +1380,7 @@ fn labeled_controls_share_fluent_text_styling_and_selection_properties_are_indep
 
     Application::mount(root);
     let calls = ffi::test::take_calls();
-    for color in [0x112233FF, 0x223344FF, 0x334455FF, 0x445566FF, 0x556677FF] {
+    for color in [0x112233FF, 0x334455FF, 0x445566FF, 0x556677FF] {
         assert!(
             calls.iter().any(
                 |call| matches!(call, Call::SetTextColor { color: actual, .. } if *actual == color)

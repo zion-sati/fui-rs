@@ -5,7 +5,7 @@ use crate::ffi::{
     SemanticCheckedState, SemanticRole, Unit,
 };
 use crate::node::{
-    flex_box, row, FlexBox, HasFlexBoxRoot, Node, NodeRef, TextNode, ThemeBindable, WeakNodeRef,
+    flex_box, row, FlexBox, HasFlexBoxRoot, Node, NodeRef, ThemeBindable, WeakNodeRef,
 };
 use crate::theme::{current_theme, subscribe};
 use std::cell::{Cell, RefCell};
@@ -156,7 +156,7 @@ pub use control_tokens::{
 pub use dialog::{Dialog, DialogShownEventArgs};
 pub use dropdown::{Dropdown, DropdownItem};
 pub use form::Form;
-pub use nav_link::{NavLink, NavigateEventArgs};
+pub use nav_link::{NavLink, NavLinkInteractionState, NavigateEventArgs};
 pub use popup::Popup;
 pub use progress_bar::ProgressBar;
 pub use radio_button::RadioButton;

@@ -29,14 +29,18 @@ For the complete export list, see:
 | `Dialog` | Modal overlay with actions | `dialog(title, body)`, `show()`, `hide()`, `on_accept(...)`, `on_cancel(...)`, `appearance(...)`, `clear_appearance()` |
 | `ContextMenu` / `MenuItem` | Retained context menu surface | `context_menu(items)`, `ContextMenu::new()`, `show(...)`, `hide()`, `appearance(...)`, `clear_appearance()` |
 
-`Button`, `NavLink`, `Checkbox`, `RadioButton`, and `Switch` share
+`Button`, `Checkbox`, `RadioButton`, and `Switch` share
 `LabeledControlTextStyle`, providing `font_family(...)`, `font_size(...)`, and
 `text_color(...)` with explicit overrides that survive theme updates.
+
+`NavLink` is intentionally different: it is a `FlexBox`-backed navigation
+behavior host. The application owns its child content and styles that content
+through `bind_interaction_state(...)`.
 
 `Grid` uses typed `GridTrack` values: `GridTrack::px(...)`,
 `GridTrack::star(...)`, and `GridTrack::auto()`.
 | `Popup` | Generic popup overlay | `popup()`, child overlay content, show/hide behavior, `appearance(...)`, `clear_appearance()` |
-| `NavLink` | Route/link control | `nav_link(href)`, `href_to(...)`, `on_navigate(...)` |
+| `NavLink` | Arbitrary-content route/link host | `nav_link(href)`, child composition, `href_to(...)`, `on_navigate(...)`, `bind_interaction_state(...)` |
 | `SelectionArea` | Cross-node text selection host | `selection_area()`, selected text callbacks and mobile selection affordances |
 | `AntiSelectionArea` | Selection barrier island | `anti_selection_area()` prevents ancestor selection collection |
 | `ToolTip` | Hover/focus tooltip behavior | attach via node tooltip APIs |

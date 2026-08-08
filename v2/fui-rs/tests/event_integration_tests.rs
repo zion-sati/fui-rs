@@ -10,7 +10,7 @@ use fui::{
     PopupPresenter,
 };
 use fui::{DragDataObject, DragDropEffects, DropProposal};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 fn created_handles_of_type(calls: &[Call], node_type: NodeType) -> Vec<u64> {
@@ -3807,17 +3807,9 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
     ffi::test::reset();
     ffi::test::set_platform_family(1);
     let link = nav_link("https://example.com/docs");
-    link.text("Example docs");
+    link.child(&text("Example docs"));
     Application::mount(link.clone());
-    let mount_calls = ffi::test::take_calls();
-    let label_handle = *created_handles_of_type(&mount_calls, NodeType::Text)
-        .last()
-        .expect("nav link label handle");
-    assert!(mount_calls.iter().any(|call| matches!(
-        call,
-        Call::SetTextColor { handle, color }
-            if *handle == label_handle && *color == current_theme().colors.accent
-    )));
+    ffi::test::take_calls();
 
     let handle = link.handle().raw();
     pointer_event(PointerEventType::Enter, handle, 24.0, 36.0, 0, 0, 0);
@@ -3826,29 +3818,13 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
         |call| matches!(call, Call::ShowUrlPreview { url } if url == "https://example.com/docs")
     ));
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Pointer as u32]);
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetTextColor { handle, color }
-            if *handle == label_handle && *color == current_theme().colors.accent_hovered
-    )));
 
     pointer_event(PointerEventType::Leave, handle, 24.0, 36.0, 0, 0, 0);
     let calls = ffi::test::take_calls();
     assert!(calls
         .iter()
         .any(|call| matches!(call, Call::HideUrlPreview)));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetTextColor { handle, color }
-            if *handle == label_handle && *color == current_theme().colors.accent
-    )));
     assert_eq!(cursor_styles(&calls), vec![CursorStyle::Default as u32]);
-
-    pointer_event(PointerEventType::Enter, label_handle, 24.0, 36.0, 0, 0, 0);
-    let calls = ffi::test::take_calls();
-    assert_eq!(cursor_styles(&calls), vec![CursorStyle::Pointer as u32]);
-    pointer_event(PointerEventType::Leave, label_handle, 24.0, 36.0, 0, 0, 0);
-    ffi::test::take_calls();
 
     primary_click(handle, 1);
     let calls = ffi::test::take_calls();
@@ -3914,6 +3890,66 @@ fn nav_link_shows_preview_and_navigates_via_pointer_and_keyboard() {
             open_in_new_tab: true,
         } if target == "https://example.com/docs"
     )));
+}
+
+#[test]
+fn nav_link_interaction_binding_is_retained_replaceable_and_tracks_state() {
+    ffi::test::reset();
+    let states = Rc::new(RefCell::new(Vec::<NavLinkInteractionState>::new()));
+    let states_for_binding = states.clone();
+    let link = nav_link("https://example.com/state");
+    link.bind_interaction_state(move |state, _theme| {
+        states_for_binding.borrow_mut().push(state);
+    });
+    assert_eq!(
+        states.borrow().last().copied(),
+        Some(NavLinkInteractionState {
+            hovered: false,
+            pressed: false,
+            focused: false,
+            enabled: true,
+        })
+    );
+
+    Application::mount(link.clone());
+    ffi::test::take_calls();
+    let handle = link.handle().raw();
+
+    pointer_event(PointerEventType::Enter, handle, 12.0, 18.0, 0, 0, 0);
+    assert!(states.borrow().last().expect("hover state").hovered);
+
+    pointer_event(PointerEventType::Down, handle, 12.0, 18.0, 1, 0, 1);
+    assert!(states.borrow().last().expect("pressed state").pressed);
+
+    pointer_event(PointerEventType::Up, handle, 12.0, 18.0, 1, 0, 1);
+    assert!(!states.borrow().last().expect("released state").pressed);
+
+    event::__fui_on_focus_changed(handle, true);
+    assert!(states.borrow().last().expect("focused state").focused);
+
+    link.enabled(false);
+    assert_eq!(
+        states.borrow().last().copied(),
+        Some(NavLinkInteractionState {
+            hovered: false,
+            pressed: false,
+            focused: false,
+            enabled: false,
+        })
+    );
+
+    let replacement_count = Rc::new(Cell::new(0));
+    let replacement_count_for_binding = replacement_count.clone();
+    link.bind_interaction_state(move |_state, _theme| {
+        replacement_count_for_binding.set(replacement_count_for_binding.get() + 1);
+    });
+    assert_eq!(replacement_count.get(), 1);
+    link.enabled(true);
+    assert_eq!(replacement_count.get(), 2);
+
+    drop(link);
+    pointer_event(PointerEventType::Enter, handle, 12.0, 18.0, 0, 0, 0);
+    assert_eq!(replacement_count.get(), 3);
 }
 
 #[test]

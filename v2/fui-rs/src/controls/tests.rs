@@ -1109,17 +1109,14 @@ fn overlay_partial_appearances_follow_live_theme_and_clear_atomically() {
 }
 
 #[test]
-fn retained_button_and_nav_link_keep_theme_subscriptions_after_wrappers_drop() {
+fn retained_button_keeps_theme_subscription_after_wrapper_drop() {
     ffi::test::reset();
     let root = column();
     let button = button("Themed button");
-    let link = NavLink::with_label("/next", "Themed link");
-    root.child(&button).child(&link);
+    root.child(&button);
     Application::mount(root);
     let button_handle = button.handle().raw();
-    let link_label_handle = link.label_node().handle().raw();
     drop(button);
-    drop(link);
     let _ = ffi::test::take_calls();
 
     let mut theme = current_theme();
@@ -1138,11 +1135,6 @@ fn retained_button_and_nav_link_keep_theme_subscriptions_after_wrappers_drop() {
         Call::SetBoxStyle { handle, border_color, .. }
             if *handle == button_handle && *border_color == theme.colors.border
     )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetTextColor { handle, color }
-            if *handle == link_label_handle && *color == theme.colors.accent
-    )));
     use_system_theme();
 }
 
@@ -1151,15 +1143,15 @@ fn nav_link_bind_theme_preserves_concrete_control_dx_and_retained_lifetime() {
     ffi::test::reset();
     let previous_theme = current_theme();
     let parent = column();
-    let link = NavLink::with_label("/docs", "Docs");
+    let label = text("Docs");
+    let link = NavLink::new("/docs");
+    link.child(&label);
     link.bind_theme(|link, theme| {
-        link.bg_color(theme.colors.surface)
-            .text_color(theme.colors.text_muted);
+        link.bg_color(theme.colors.surface);
     });
     parent.child(&link);
     Application::mount(parent);
     let link_handle = link.handle().raw();
-    let label_handle = link.label_node().handle().raw();
     drop(link);
     ffi::test::take_calls();
 
@@ -1171,13 +1163,43 @@ fn nav_link_bind_theme_preserves_concrete_control_dx_and_retained_lifetime() {
         Call::SetBgColor { handle, color }
             if *handle == link_handle && *color == changed.colors.surface
     )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetTextColor { handle, color }
-            if *handle == label_handle && *color == changed.colors.text_muted
-    )));
-
     use_custom_theme(previous_theme);
+}
+
+#[test]
+fn nav_link_has_no_implicit_label_and_hosts_arbitrary_children() {
+    ffi::test::reset();
+    let content = row();
+    let icon = text("icon");
+    let label = text("Documentation");
+    content.child(&icon).child(&label);
+    let link = NavLink::new("/docs");
+    link.child(&content).semantic_label("Documentation");
+
+    Application::mount(link.clone());
+    let calls = ffi::test::take_calls();
+    let link_handle = link.handle().raw();
+    let content_handle = content.handle().raw();
+    let icon_handle = icon.handle().raw();
+    let label_handle = label.handle().raw();
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|call| matches!(call, Call::CreateNode { node_type, .. } if *node_type == crate::generated::ffi::NodeType::Text as u32))
+            .count(),
+        2
+    );
+    for (parent, child) in [
+        (link_handle, content_handle),
+        (content_handle, icon_handle),
+        (content_handle, label_handle),
+    ] {
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::NodeAddChild { parent: actual_parent, child: actual_child }
+                if *actual_parent == parent && *actual_child == child
+        )));
+    }
 }
 
 #[test]

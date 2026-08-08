@@ -62,7 +62,7 @@
     "prepublishOnly": "npm run check:abi && npm run lint && npm run lint:rust && npm run typecheck && npm run test:docs && npm run test:crate-package"
   },
   "dependencies": {
-    "@effindomv2/runtime": "0.2.13"
+    "@effindomv2/runtime": "0.2.14"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
