@@ -1,4 +1,4 @@
-# FUI-RS — retained Rust UI for WebAssembly and native desktop
+# FUI-RS — cross-platform retained Rust UI for web and native desktop
 
 [![FUI-RS CI](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml/badge.svg)](https://github.com/zion-sati/fui-rs/actions/workflows/fui-rs-ci.yml)
 [![crates.io](https://img.shields.io/crates/v/fui-rs)](https://crates.io/crates/fui-rs)
@@ -6,10 +6,10 @@
 [![npm](https://img.shields.io/npm/v/@effindomv2/fui-rs?label=web%20tooling)](https://www.npmjs.com/package/@effindomv2/fui-rs)
 [![License: AGPL-3.0 or commercial](https://img.shields.io/badge/license-AGPL--3.0%20or%20commercial-green.svg)](LICENSE.md)
 
-FUI-RS is a web-born retained-mode Rust UI SDK. It runs application UI in the
-browser through WebAssembly and carries the same retained application model to
-native macOS, Windows, and Linux. Native applications do not use Electron or a
-WebView.
+FUI-RS is a web-born, cross-platform retained-mode UI framework for Rust. One
+application model runs in browsers through WebAssembly and as a real native
+application on macOS, Windows, and Linux, without Electron or a WebView. Android
+and iOS are not supported yet.
 
 The browser is a primary target, not a compatibility layer. FUI-RS supports the
 web platform facilities application UI depends on, including accessibility,
@@ -21,7 +21,11 @@ The SDK includes retained nodes, controls, layout, themes, events, popups,
 dialogs, editable text, selection, custom drawing, workers, host services,
 accessibility semantics, and Rust-specific authoring macros.
 
-- [Run the browser demo](https://fui-rs-demo.effindom.dev/)
+- [Run the live browser demo](https://fui-rs-demo.effindom.dev/)
+- [Explore the shared web/native demo source](https://github.com/zion-sati/fui-rs-demo/tree/main/fui-rs-demo-source)
+- [Download unsigned native developer previews](https://github.com/zion-sati/fui-rs-demo/releases)
+- [Scaffold and package an application with `cargo-fui`](https://github.com/zion-sati/cargo-fui)
+- [Install the official FUI-RS Agent Skills](https://github.com/zion-sati/fui-rs-skills)
 - [Play Galaga-RS](https://jatm80.github.io/galaga-rs/), a Galaga-style space
   shooter and the first known community-built FUI-RS application
 

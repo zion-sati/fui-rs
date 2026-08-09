@@ -1,13 +1,20 @@
-# FUI-RS - retained Rust UI for WebAssembly and native desktop
+# FUI-RS - cross-platform retained Rust UI for web and native desktop
 
-FUI-RS is the web-born retained-mode Rust UI SDK for EffinDOM. One application
-model runs in the browser through WebAssembly and as a real native macOS,
-Windows, or Linux desktop application. Native applications embed neither
-Chromium nor a system WebView.
+FUI-RS is the web-born, cross-platform retained-mode Rust UI framework for
+EffinDOM. One application model runs in browsers through WebAssembly and as a
+real native application on macOS, Windows, and Linux, without Chromium or a
+system WebView. Android and iOS are not supported yet.
 
 The SDK provides retained controls, layout nodes, text input, overlays, custom
 drawing, host services, workers, accessibility semantics, routing support, and
 application lifecycle macros.
+
+- [Run the live browser demo](https://fui-rs-demo.effindom.dev/)
+- [Explore the shared web/native demo source](https://github.com/zion-sati/fui-rs-demo/tree/main/fui-rs-demo-source)
+- [Download unsigned native developer previews](https://github.com/zion-sati/fui-rs-demo/releases)
+- [Scaffold and package an application with `cargo-fui`](https://github.com/zion-sati/cargo-fui)
+- [Play Galaga-RS](https://jatm80.github.io/galaga-rs/)
+- [Install the official FUI-RS Agent Skills](https://github.com/zion-sati/fui-rs-skills)
 
 The Cargo package is named `fui-rs`, while application code imports its
 library as `fui`:
