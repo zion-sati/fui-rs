@@ -537,8 +537,18 @@ fn default_dropdown_option_row_presenter_retained_tree_matches_fui_as_shape() {
     let calls = ffi::test::take_calls();
     let root_handle = presenter.root().retained_node_ref().handle().raw();
     let label_handle = presenter.label_node().retained_node_ref().handle().raw();
+    // The label sits in a clipping host inside the padded root.
     let child_handles = child_handles_for_parent(&calls, root_handle);
-    assert_eq!(child_handles, vec![label_handle]);
+    assert_eq!(child_handles.len(), 1);
+    let label_host_handle = child_handles[0];
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetClipToBounds { handle, clip } if *handle == label_host_handle && *clip
+    )));
+    assert_eq!(
+        child_handles_for_parent(&calls, label_host_handle),
+        vec![label_handle]
+    );
     assert_eq!(
         node_type_for_handle(&calls, label_handle),
         Some(NodeType::Text)

@@ -55,11 +55,15 @@ export async function writeGeneratedFile(
   check: boolean,
   staleMessage: string,
 ): Promise<void> {
+  const current = await fs.readFile(outputPath, "utf8").catch(() => null);
   if (check) {
-    const current = await fs.readFile(outputPath, "utf8").catch(() => "");
     if (current !== generated) {
       throw new Error(staleMessage);
     }
+    return;
+  }
+  // An unchanged file keeps its timestamp, so incremental builds do not recompile what depends on it.
+  if (current === generated) {
     return;
   }
   await fs.mkdir(path.dirname(outputPath), { recursive: true });

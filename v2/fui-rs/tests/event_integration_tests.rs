@@ -1136,6 +1136,33 @@ fn popup_presenter_dispose_hides_and_deletes_overlay_tree() {
 }
 
 #[test]
+fn popup_backdrop_click_ignores_clicks_inside_the_panel() {
+    ffi::test::reset();
+    let root = portal();
+    let popup = popup();
+    root.child(&popup);
+    Application::mount(root.clone());
+    ffi::test::take_calls();
+
+    popup.show_at_point(0.0, 0.0, 100.0, 100.0);
+    let calls = ffi::test::take_calls();
+    let surface_handle = calls
+        .iter()
+        .find_map(|call| match call {
+            Call::PushSemanticScope { handle, .. } => Some(*handle),
+            _ => None,
+        })
+        .expect("surface semantic scope");
+    let overlay_handle = parent_for_child(&calls, surface_handle);
+
+    // The test host reports every node at (0, 0, 100, 100), so (50, 50) is on the panel.
+    primary_click_at(overlay_handle, 50.0, 50.0, 1);
+    assert!(popup.is_open());
+    primary_click_at(overlay_handle, 400.0, 300.0, 1);
+    assert!(!popup.is_open());
+}
+
+#[test]
 fn popup_control_show_hide_and_reshow_reuses_overlay_handles() {
     ffi::test::reset();
     let root = portal();
@@ -1197,7 +1224,7 @@ fn popup_control_backdrop_click_hides_only_when_enabled() {
     ffi::test::take_calls();
 
     popup.dismiss_on_backdrop_click(true);
-    primary_click(overlay_handle, 1);
+    primary_click_at(overlay_handle, 500.0, 500.0, 1);
     assert!(!popup.is_open());
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(

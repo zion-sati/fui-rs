@@ -1,6 +1,6 @@
 # `v2/abi`
 
-ABI code generation for `fui-as` and `fui-rs`.
+ABI code generation for `fui-as`, `fui-rs` and `fui-cs`.
 
 ## Layout
 
@@ -10,6 +10,7 @@ ABI code generation for `fui-as` and `fui-rs`.
 - `fui-as/strategies/`: `fui-as`-only generators and specs
 - `fui-rs/strategies/`: `fui-rs` orchestration entrypoints
 - `fui-rs/render/`: Rust-only projection/render helpers
+- `fui-cs/strategies/`, `fui-cs/render/`: C# and JSImport-shim projection for `fui-cs`
 
 ## Design rules
 
@@ -58,3 +59,4 @@ ABI code generation for `fui-as` and `fui-rs`.
 - `fui-as-host`
 - `fui-as-enums`
 - `fui-rs-ffi`
+- `fui-cs-ffi`: value-level `IFuiAbi`, its JSImport implementation, JavaScript shims and a recording test double, for the ABI functions `fui-cs` C# code calls

@@ -105,6 +105,15 @@ pub struct TextInputCore {
     focus_visibility_guard: RefCell<Option<SubscriptionGuard>>,
 }
 
+/// A new presenter lays out the placeholder from scratch, not on top of the previous presenter's geometry.
+fn reset_placeholder_geometry(placeholder_host: &FlexBox) {
+    placeholder_host
+        .position(0.0, 0.0)
+        .padding(0.0, 0.0, 0.0, 0.0)
+        .width(0.0, Unit::Auto)
+        .height(0.0, Unit::Auto);
+}
+
 impl TextInputCore {
     pub fn new() -> Self {
         Self::with_profile(TextInputProfile::single_line())
@@ -151,6 +160,7 @@ impl TextInputCore {
             None
         };
         let presenter = create_presenter(None);
+        reset_placeholder_geometry(&placeholder_host);
         presenter.bind(editor_text.clone(), placeholder_host.clone());
 
         let this = Self {
@@ -401,6 +411,7 @@ impl TextInputCore {
     fn set_template(&self, template: Option<Rc<dyn TextInputTemplate>>) -> &Self {
         *self.template.borrow_mut() = template.clone();
         let presenter = create_presenter(template);
+        reset_placeholder_geometry(&self.placeholder_host);
         presenter.bind(self.editor_text.clone(), self.placeholder_host.clone());
         *self.presenter.borrow_mut() = presenter;
         self.sync_theme_state();
@@ -664,18 +675,6 @@ impl TextInputCore {
             .text_color(text_color)
             .caret_color(caret_color)
             .wrapping(self.wrapping_value.get());
-        self.placeholder_host.width(100.0, Unit::Percent).height(
-            if self.profile.multiline {
-                0.0
-            } else {
-                line_height
-            },
-            if self.profile.multiline {
-                Unit::Auto
-            } else {
-                Unit::Pixel
-            },
-        );
         self.placeholder_text
             .width(100.0, Unit::Percent)
             .height(

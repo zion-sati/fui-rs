@@ -102,10 +102,18 @@ impl DefaultDropdownOptionRowPresenter {
         label_node
             .text_overflow_fade(true, false)
             .text_vertical_align(TextVerticalAlign::Center);
+        // The label sits in a host that clips the rest of a long label where its fade ends; the row's padding
+        // surrounds it.
+        let label_host = flex_box();
+        label_host
+            .fill_size()
+            .align_items(AlignItems::Center)
+            .clip_to_bounds(true)
+            .child(&label_node);
         let root = flex_box();
         root.fill_size()
             .align_items(AlignItems::Center)
-            .child(&label_node);
+            .child(&label_host);
         Self {
             root,
             label_node: label_node.clone(),

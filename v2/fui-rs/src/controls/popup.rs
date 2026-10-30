@@ -34,11 +34,18 @@ impl Popup {
         let dismiss_on_backdrop_click = Rc::new(Cell::new(true));
         let dismiss_flag = dismiss_on_backdrop_click.clone();
         let presenter_target = presenter.event_target();
+        let panel = surface_node.clone();
         presenter
             .overlay_node()
             .interactive(true)
-            .on_pointer_click(move |_event| {
-                if dismiss_flag.get() {
+            .on_pointer_click(move |event| {
+                // Clicks on the panel's own background reach the overlay too, since the panel is not a hit target.
+                let [x, y, width, height] = panel.get_bounds();
+                let inside_panel = event.scene_x >= x
+                    && event.scene_x < x + width
+                    && event.scene_y >= y
+                    && event.scene_y < y + height;
+                if dismiss_flag.get() && !inside_panel {
                     presenter_target.hide();
                 }
             });

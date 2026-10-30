@@ -79,9 +79,18 @@ impl TextInputPresenter for DefaultTextInputPresenter {
             .unwrap_or(theme.colors.border);
 
         editor_host.cursor(editable_cursor);
+        // The placeholder covers the field inside its border, with the field's padding, so its text sits where the
+        // editor's does and its box ends at the field's edge.
         placeholder_host
-            .position(horizontal_padding, vertical_padding)
+            .position(0.0, 0.0)
             .width(100.0, Unit::Percent)
+            .height(100.0, Unit::Percent)
+            .padding(
+                horizontal_padding,
+                vertical_padding,
+                horizontal_padding,
+                vertical_padding,
+            )
             .cursor(editable_cursor);
         PresenterHostStyle::new()
             .background(bg)

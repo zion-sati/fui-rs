@@ -968,12 +968,13 @@ impl Stage4Showcase {
         reorder_row.child(&reorder_panel);
         page.child(&reorder_row);
 
+        // Both cards fill the row's width, so the tooling card wraps onto its own line below the context card.
         let context_row = ui! {
-            row().fill_width().margin(0.0, 18.0, 0.0, 0.0)
+            row().fill_width().flex_wrap(FlexWrap::Wrap).margin(0.0, 18.0, 0.0, 0.0)
         };
 
         let context_card = ui! {
-        stage4_panel("Context targets", 0xFFFFFFFF).fill_width()
+        stage4_panel("Context targets", 0xFFFFFFFF).fill_width().margin(0.0, 0.0, 0.0, 18.0)
         };
         context_card.semantic_label("Stage 4 context targets card");
         let route_relative_state = demo_text(
@@ -1122,8 +1123,9 @@ impl Stage4Showcase {
             .fill_width()
             .semantic_label("Stage 4 workers card")
         };
+        // The buttons wrap onto another line when the card is too narrow for them.
         let worker_button_row = ui! {
-            row().fill_width()
+            row().fill_width().flex_wrap(FlexWrap::Wrap)
         };
         let worker_start_button = button("Start prime worker");
         let worker_fail_button = button("Start failing worker");
@@ -1131,18 +1133,19 @@ impl Stage4Showcase {
         worker_button_row
             .child(&ui! {
                 flex_box()
+                .margin(0.0, 0.0, 14.0, 8.0)
                 .semantic_label("Stage 4 start worker button")
                 .child(&worker_start_button)
             })
-            .child(&spacer(14.0))
             .child(&ui! {
                 flex_box()
+                .margin(0.0, 0.0, 14.0, 8.0)
                 .semantic_label("Stage 4 failing worker button")
                 .child(&worker_fail_button)
             })
-            .child(&spacer(14.0))
             .child(&ui! {
                 flex_box()
+                .margin(0.0, 0.0, 0.0, 8.0)
                 .semantic_label("Stage 4 cancel worker button")
                 .child(&worker_cancel_button)
             });
@@ -1194,7 +1197,7 @@ impl Stage4Showcase {
         );
         fetch_body.wrapping(true).text_limits(i32::MAX, 4);
         let fetch_button_row = ui! {
-            row().fill_width()
+            row().fill_width().flex_wrap(FlexWrap::Wrap)
         };
         let fetch_get_button = ui! {
         button("GET /posts/1").width_len(px(156.0))
@@ -1206,13 +1209,14 @@ impl Stage4Showcase {
             .child(&ui! {
                 flex_box()
                 .width_len(px(156.0))
+                .margin(0.0, 0.0, 12.0, 8.0)
                 .semantic_label("Stage 4 fetch GET button")
                 .child(&fetch_get_button)
             })
-            .child(&spacer(12.0))
             .child(&ui! {
                 flex_box()
                 .width_len(px(156.0))
+                .margin(0.0, 0.0, 0.0, 8.0)
                 .semantic_label("Stage 4 fetch POST button")
                 .child(&fetch_post_button)
             });
@@ -1282,20 +1286,17 @@ impl Stage4Showcase {
         demo_text("Picked file: none", 14.0, 0x475569FF).semantic_label("Picked file: none")
         };
         let file_button_row = ui! {
-            row().fill_width()
+            row().fill_width().flex_wrap(FlexWrap::Wrap)
         };
         let pick_file_button = button("Pick file");
         let save_text_button = button("Save sample text");
         let save_bytes_button = button("Save sample bytes");
         let copy_file_button = button("Copy picked file");
         file_button_row
-            .child(&pick_file_button)
-            .child(&spacer(14.0))
-            .child(&save_text_button)
-            .child(&spacer(14.0))
-            .child(&save_bytes_button)
-            .child(&spacer(14.0))
-            .child(&copy_file_button);
+            .child(&ui! { flex_box().margin(0.0, 0.0, 14.0, 8.0).child(&pick_file_button) })
+            .child(&ui! { flex_box().margin(0.0, 0.0, 14.0, 8.0).child(&save_text_button) })
+            .child(&ui! { flex_box().margin(0.0, 0.0, 14.0, 8.0).child(&save_bytes_button) })
+            .child(&ui! { flex_box().margin(0.0, 0.0, 0.0, 8.0).child(&copy_file_button) });
         file_card
             .child(&demo_text("File picker and background copy", 18.0, 0x111827FF))
             .child(&spacer(8.0))

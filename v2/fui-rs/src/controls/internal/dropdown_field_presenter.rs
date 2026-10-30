@@ -147,8 +147,12 @@ impl DefaultDropdownFieldPresenter {
         value_node
             .text_overflow_fade(true, false)
             .text_vertical_align(TextVerticalAlign::Center);
+        // The value fades at the host's edge, which clips the rest of a long label.
         let value_host = flex_box();
-        value_host.fill_size().child(&value_node);
+        value_host
+            .fill_size()
+            .clip_to_bounds(true)
+            .child(&value_node);
         let chevron_host = flex_box();
         chevron_host
             .width(metrics.chevron_box_size, Unit::Pixel)

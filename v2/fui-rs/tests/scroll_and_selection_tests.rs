@@ -6,19 +6,25 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 #[test]
-fn flex_box_clips_to_bounds_by_default_and_portal_opts_out() {
+fn flex_box_overflows_by_default_and_clips_when_asked() {
     ffi::test::reset();
 
     let root = column();
+    let clipped = column().clip_to_bounds(true).clone();
     let overlay = portal();
-    root.child(&overlay);
+    root.child(&clipped).child(&overlay);
     Application::mount(root.clone());
 
     let calls = ffi::test::take_calls();
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetClipToBounds { handle, clip }
-        if *handle == root.handle().raw() && *clip
+        if *handle == root.handle().raw() && !*clip
+    )));
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetClipToBounds { handle, clip }
+        if *handle == clipped.handle().raw() && *clip
     )));
     assert!(calls.iter().any(|call| matches!(
         call,

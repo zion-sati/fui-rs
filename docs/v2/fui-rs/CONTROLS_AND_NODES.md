@@ -67,6 +67,8 @@ through `bind_interaction_state(...)`.
 | `CustomDrawable` | Retained host-neutral custom drawing surface | `custom_drawable(|ctx| ...)`, primitives/transforms/clips/paths/text/images/SVG, weak invalidation, web/native parity |
 | `GradientStop` | Linear gradient stop value | `GradientStop::new(offset, color)` |
 
+A `FlexBox` does not clip its children by default, as CSS's `overflow: visible` does: content and drop shadows may extend past it, over what lies beneath. Call `clip_to_bounds(true)` where overflow must be hidden, such as a rounded card that cuts its image at the corners. Scroll views always clip their content.
+
 ## Helpers
 
 - `row()`

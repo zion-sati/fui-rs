@@ -61,7 +61,8 @@ typedef enum SceneOpcode {
     OP_PUSH_LAYER = 3,
     OP_POP = 4,
     OP_PUSH_TRANSLATE = 5,
-    OP_DRAW_CUSTOM = 6
+    OP_DRAW_CUSTOM = 6,
+    OP_PUSH_GROUP_LAYER = 7
 } SceneOpcode;
 
 typedef enum EdClipMode {

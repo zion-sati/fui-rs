@@ -20,7 +20,7 @@ pub struct FlexBox {
 impl Default for FlexBox {
     fn default() -> Self {
         let mut core = NodeCore::new(NodeKind::FlexBox);
-        core.behavior.clip_to_bounds = Some(true);
+        core.behavior.clip_to_bounds = Some(false);
         Self {
             core: Rc::new(RefCell::new(core)),
             props: Rc::new(RefCell::new(FlexBoxProps::default())),

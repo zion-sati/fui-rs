@@ -1132,12 +1132,14 @@ fn build_page() -> FlexBox {
             "Use the quick toggles for common changes, or the radio groups when you want an exact scrollbar or line-height setting. The CJK sample exercises incremental tofu-swap while remaining editable.",
             true,
         ))
+        // The option columns wrap onto another line when the card is too narrow for both.
         .child(&ui! {
             row()
             .fill_width()
+            .flex_wrap(FlexWrap::Wrap)
             .align_items(AlignItems::Stretch) {
                 ui! {
-                        column().width_len(auto()) {
+                        column().width_len(auto()).margin(0.0, 0.0, 18.0, 12.0) {
                             read_only_toggle,
                             wrapping_toggle,
                             accepts_tab_toggle,
@@ -1146,11 +1148,6 @@ fn build_page() -> FlexBox {
                             always_horizontal_toggle,
                             never_horizontal_toggle,
                         }
-                },
-                ui! {
-                        flex_box()
-                            .width(18.0, Unit::Pixel)
-                            .height(1.0, Unit::Pixel)
                 },
                 ui! {
                         column().width_len(auto()) {
