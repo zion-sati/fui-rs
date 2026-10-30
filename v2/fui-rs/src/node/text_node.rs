@@ -717,7 +717,7 @@ impl TextNode {
         if props.has_font && props.font_id != 0 {
             font_ids.push(props.font_id);
         }
-        for chunk in props.style_runs.chunks_exact(7) {
+        for chunk in props.style_runs.as_chunks::<7>().0 {
             let font_id = chunk[2];
             if !font_ids.contains(&font_id) {
                 font_ids.push(font_id);

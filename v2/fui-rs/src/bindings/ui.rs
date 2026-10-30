@@ -430,7 +430,9 @@ pub fn get_text_range_rects(handle: u64, start: u32, end: u32) -> Vec<TextRangeR
         return Vec::new();
     }
     rect_words
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .take(copied_count)
         .map(|words| TextRangeRect {
             x: words[0],

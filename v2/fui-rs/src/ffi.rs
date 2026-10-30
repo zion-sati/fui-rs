@@ -2533,8 +2533,8 @@ pub unsafe fn fui_render_node_to_rgba(
     if out_ptr != 0 && out_capacity >= 4 {
         let output =
             unsafe { std::slice::from_raw_parts_mut(out_ptr as *mut u8, out_capacity as usize) };
-        for pixel in output.chunks_exact_mut(4) {
-            pixel.copy_from_slice(&[0x3a, 0xc5, 0x6c, 0xff]);
+        for pixel in output.as_chunks_mut::<4>().0 {
+            *pixel = [0x3a, 0xc5, 0x6c, 0xff];
         }
     }
     push_call(Call::RenderNodeToRgba {

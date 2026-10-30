@@ -414,7 +414,7 @@ mod tests {
         assert!(calls.iter().any(|call| matches!(
             call,
             Call::BitmapCommit { bytes, .. }
-                if bytes.chunks_exact(4).any(|pixel| pixel == [0x3a, 0xc5, 0x6c, 0xff])
+                if bytes.as_chunks::<4>().0.contains(&[0x3a, 0xc5, 0x6c, 0xff])
         )));
     }
 }
