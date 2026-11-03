@@ -14,6 +14,32 @@ handwritten FFI.
 5. Regenerate whenever the source contract changes; never edit generated Rust
    bindings by hand.
 
+### Generating the bindings
+
+The generators ship in the `@effindomv2/fui-rs` npm package; use the version that
+matches the `fui-rs` crate. A `create-fui-rs-app` project already has them as
+`npm run generate:host`. In a `cargo fui` project, add the package and `tsx` as
+development dependencies:
+
+```sh
+npm install --save-dev --save-exact @effindomv2/fui-rs@<fui-rs version> tsx
+```
+
+then define `generate:host` in `package.json`. `cargo fui build` and `cargo fui
+dev` run it before compiling any WebAssembly:
+
+```json
+"generate:host": "npm run generate:host-services && npm run generate:host-events",
+"generate:host-services": "tsx ./node_modules/@effindomv2/fui-rs/scripts/generate-host-services.ts host/host-services.ts appHostServices crates/shared/src/generated/host_services.rs fui::host_services",
+"generate:host-events": "tsx ./node_modules/@effindomv2/fui-rs/scripts/generate-host-events.ts host/host-events.ts appHostEvents crates/shared/src/generated/host_events.rs"
+```
+
+The arguments are the contract module, its exported name, the Rust file to write
+and, for services, the Rust path of the runtime helpers. Worker contracts add the
+import module `fui_host_service` and `worker`, which also generates the
+registration functions native workers call. Commit the generated files: native
+builds compile them without running Node.
+
 Keep values ABI-safe and use generated string/buffer helpers. A missing callable
 WASM import normally indicates mismatched runtime/package versions, stale
 generated bindings, or stale harness output rather than a reason to add
@@ -23,7 +49,8 @@ application behavior keyed by semantic metadata.
 
 Define host events in the source event contract and generate their Rust
 subscriptions. Keep the returned subscription guard in a retained page,
-component owner, or other RAII field for exactly the desired lifetime. Dropping
+component owner, or other RAII field for exactly the desired lifetime, or hand it
+to the node that shows the events with `node.own(guard)`. Dropping
 the guard unsubscribes; route disposal must not leak callbacks into a later
 route instance.
 
@@ -65,14 +92,14 @@ and error callbacks are marshalled onto the application UI thread. Use
 transferable buffers for large payloads where the browser host contract
 supports them.
 
-The routed demo shows the complete source contracts, generation scripts,
+The routed demo shows the complete source contracts, generated bindings,
 subscription ownership, worker allowlist, progress, and cancellation:
 
-- [`package.json`](https://github.com/zion-sati/fui-rs-demo/blob/main/package.json)
-- [`host-services.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/src/host/host-services.ts)
-- [`host-events.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/src/host/host-events.ts)
-- [`worker-host-services.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/src/host/worker-host-services.ts)
-- [`worker_section.rs`](https://github.com/zion-sati/fui-rs-demo/blob/main/crates/routes/advanced/src/worker_section.rs)
+- [`package.json`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/package.json)
+- [`host-services.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/host/host-services.ts)
+- [`host-events.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/host/host-events.ts)
+- [`worker-host-services.ts`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/host/worker-host-services.ts)
+- [`worker_section.rs`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/crates/routes/advanced/src/worker_section.rs)
 
 Browser-specific contracts need equivalent native application adapters for a
 universal application. The shared abstraction is intended to cover common

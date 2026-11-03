@@ -15,7 +15,7 @@ Applications should not allocate or split internal runtime font IDs.
 
 The routed demo contains complete family, direct-stack, mixed-script, and emoji
 examples in
-[`custom_font_section.rs`](https://github.com/zion-sati/fui-rs-demo/blob/main/crates/routes/text-fonts/src/custom_font_section.rs).
+[`custom_font_section.rs`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/crates/routes/text-fonts/src/custom_font_section.rs).
 
 ## Readiness
 

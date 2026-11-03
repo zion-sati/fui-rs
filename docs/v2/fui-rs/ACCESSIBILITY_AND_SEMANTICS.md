@@ -56,7 +56,7 @@ projection only.
 Use explicit semantic APIs when visible text is ambiguous:
 
 ```rust
-image("/logo.png").alt_text("Contoso logo");
+image(0).source("/logo.png").alt_text("Contoso logo");
 button("?").semantic_label("Open help");
 ```
 

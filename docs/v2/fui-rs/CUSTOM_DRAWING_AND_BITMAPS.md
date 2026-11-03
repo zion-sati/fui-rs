@@ -168,7 +168,7 @@ drawable. Cancel the outstanding handle when pausing or disposing owner state.
 | Animation never advances | Rearm the one-shot timer and invalidate after each state mutation; keep cancellation state app-owned. |
 
 Complete examples are available in the demo's
-[`immediate-drawing widgets`](https://github.com/zion-sati/fui-rs-demo/tree/main/crates/routes/immediate-drawing/src/widgets),
-the [`bitmap sample`](https://github.com/zion-sati/fui-rs-demo/blob/main/crates/routes/home/src/bitmap.rs),
+[`immediate-drawing widgets`](https://github.com/zion-sati/fui-rs-demo/tree/main/fui-rs-demo-source/crates/routes/immediate-drawing/src/widgets),
+the [`bitmap sample`](https://github.com/zion-sati/fui-rs-demo/blob/main/fui-rs-demo-source/crates/routes/home/src/bitmap.rs),
 and the internal native FUI-RS showcase in
 `v2/fui-rs/native-demo/src/lib.rs`.

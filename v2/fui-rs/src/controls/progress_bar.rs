@@ -39,6 +39,7 @@ pub struct ProgressBar {
     value: Rc<Cell<f32>>,
     orientation: Rc<Cell<Orientation>>,
     sizing_value: Rc<Cell<Option<ProgressBarSizing>>>,
+    fills_length: Rc<Cell<bool>>,
     colors_value: Rc<Cell<Option<ProgressBarColors>>>,
     weak_root: WeakFlexBox,
     weak_fill: WeakFlexBox,
@@ -67,6 +68,7 @@ impl ProgressBar {
             value: Rc::new(Cell::new(0.0)),
             orientation: Rc::new(Cell::new(Orientation::Horizontal)),
             sizing_value: Rc::new(Cell::new(None)),
+            fills_length: Rc::new(Cell::new(false)),
             colors_value: Rc::new(Cell::new(None)),
         };
         control.install_visual_subscriptions();
@@ -106,6 +108,15 @@ impl ProgressBar {
             sizing = sizing.thickness(current.thickness_px());
         }
         self.sizing_value.set(Some(sizing));
+        self.fills_length.set(false);
+        self.sync_geometry();
+        self
+    }
+
+    /// Fills the container along the bar's orientation, as `fill_width` or `fill_height` does, instead of a fixed
+    /// [`length`](Self::length).
+    pub fn fill_length(&self) -> &Self {
+        self.fills_length.set(true);
         self.sync_geometry();
         self
     }
@@ -214,6 +225,7 @@ impl ProgressBar {
             self.value.get(),
             self.orientation.get(),
             resolve_sizing(self.sizing_value.get()),
+            self.fills_length.get(),
         );
     }
 
@@ -236,6 +248,7 @@ struct ProgressBarThemeTarget {
     value: Rc<Cell<f32>>,
     orientation: Rc<Cell<Orientation>>,
     sizing_value: Rc<Cell<Option<ProgressBarSizing>>>,
+    fills_length: Rc<Cell<bool>>,
     colors_value: Rc<Cell<Option<ProgressBarColors>>>,
 }
 
@@ -249,6 +262,7 @@ impl ProgressBarThemeTarget {
             value: self.value.clone(),
             orientation: self.orientation.clone(),
             sizing_value: self.sizing_value.clone(),
+            fills_length: self.fills_length.clone(),
             colors_value: self.colors_value.clone(),
             weak_root: self.root.clone(),
             weak_fill: self.fill.clone(),
@@ -299,12 +313,16 @@ impl ThemeBindable for ProgressBar {
             value: self.value.clone(),
             orientation: self.orientation.clone(),
             sizing_value: self.sizing_value.clone(),
+            fills_length: self.fills_length.clone(),
             colors_value: self.colors_value.clone(),
         };
         Box::new(move || target.upgrade())
     }
 }
 
+/// Sizes the bar, its fixed length or the length it fills, and its fill as the value's share of the bar inside its
+/// border.
+#[allow(clippy::too_many_arguments)]
 fn sync_progress_geometry(
     root: &FlexBox,
     fill: &FlexBox,
@@ -313,31 +331,36 @@ fn sync_progress_geometry(
     current_value: f32,
     orientation: Orientation,
     sizing: ResolvedProgressBarSizing,
+    fills_length: bool,
 ) {
     let range = max - min;
-    let fraction = if range > 0.0 {
-        ((current_value - min) / range).clamp(0.0, 1.0)
+    let percent = if range > 0.0 {
+        ((current_value - min) / range).clamp(0.0, 1.0) * 100.0
     } else {
         0.0
     };
-    let inset = PROGRESS_BORDER_WIDTH * 2.0;
-    let inner_length = (sizing.length - inset).max(0.0);
-    let inner_thickness = (sizing.thickness - inset).max(0.0);
-    let fill_length = inner_length * fraction;
     if orientation == Orientation::Vertical {
         root.flex_direction(FlexDirection::Column)
             .justify_content(JustifyContent::End)
-            .width(sizing.thickness, Unit::Pixel)
-            .height(sizing.length, Unit::Pixel);
-        fill.width(inner_thickness, Unit::Pixel)
-            .height(fill_length, Unit::Pixel);
+            .width(sizing.thickness, Unit::Pixel);
+        if fills_length {
+            root.fill_height();
+        } else {
+            root.height(sizing.length, Unit::Pixel);
+        }
+        fill.width(100.0, Unit::Percent)
+            .height(percent, Unit::Percent);
     } else {
         root.flex_direction(FlexDirection::Row)
             .justify_content(JustifyContent::Start)
-            .width(sizing.length, Unit::Pixel)
             .height(sizing.thickness, Unit::Pixel);
-        fill.width(fill_length, Unit::Pixel)
-            .height(inner_thickness, Unit::Pixel);
+        if fills_length {
+            root.fill_width();
+        } else {
+            root.width(sizing.length, Unit::Pixel);
+        }
+        fill.width(percent, Unit::Percent)
+            .height(100.0, Unit::Percent);
     }
     root.semantic_value_range(current_value, min, max)
         .default_semantic_label(format!(

@@ -4,7 +4,7 @@ FUI-RS events use typed EventArgs structs and ordinary Rust closures.
 
 ```rust
 button("Save").on_click(|_| {
-    logger::info("Button", "Save activated");
+    logger::log("Button", "Save activated");
 });
 ```
 
@@ -17,7 +17,9 @@ created them. Clone only the retained handles or state values you need:
 let status = text("Idle");
 button("Run").on_click({
     let status = status.clone();
-    move |_| status.text("Running")
+    move |_| {
+        status.text("Running");
+    }
 });
 ```
 

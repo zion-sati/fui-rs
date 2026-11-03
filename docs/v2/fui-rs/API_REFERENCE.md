@@ -84,12 +84,29 @@ it gives another Rust handle to the same retained object.
 let label = text("Idle");
 button("Run").on_click({
     let label = label.clone();
-    move |_| label.text("Running")
+    move |_| {
+        label.text("Running");
+    }
 });
 ```
 
 Subscriptions and guards use RAII: dropping the guard unregisters or cancels the
 operation where the API exposes a guard.
+
+A node can own a guard so the work ends with the node. `bind_subscription` passes
+the node to its callback and holds it weakly, so the subscription never keeps the
+node alive; `own(guard)` keeps any other guard for the node's lifetime:
+
+```rust
+let panel = column();
+panel.bind_subscription(
+    |notify| viewport_width_signal().subscribe(notify),
+    |panel, width| {
+        let gutter = if width < 860.0 { 12.0 } else { 24.0 };
+        panel.padding(gutter, gutter, gutter, gutter);
+    },
+);
+```
 
 ## Rust SDK conventions
 
@@ -106,7 +123,7 @@ FUI-RS follows Rust conventions while keeping the UI model retained and explicit
   retained root must keep weak callback state or RAII guards alive and no
   enclosing retained object already owns them.
 - Use ordinary Rust closure capture for event handlers and callbacks.
-- Keep RAII guards alive for subscriptions, pending file requests, timers, workers, and similar resources when the API returns one.
+- Keep RAII guards alive for subscriptions, pending file requests, timers, workers, and similar resources when the API returns one; `node.own(guard)` or `node.bind_subscription(...)` ties one to a node's lifetime.
 - Treat cloned controls as cheap handles to the same retained UI object, not as duplicated controls.
 - Public editable-text positions are Unicode scalar-value character positions. Internally FUI-RS converts to UTF-8 byte offsets for the runtime boundary.
 - Prefer `Text`, `Image`, and `Svg` in public app code; lower-level node names such as `TextNode`, `ImageNode`, and `SvgNode` are also available where surfaced.
@@ -165,8 +182,9 @@ Constructors and types:
 - `radio_button(label)`, `RadioButton`, `RadioButtonChangedEventArgs`
 - `radio_group()`, `RadioGroup`, `RadioGroupChangedEventArgs`
 - `tab_view()`, `tab_item(label)`, `tab_items![...]`, `TabView`, `TabItem`, `TabSelectionChangedEventArgs`
-- `progress_bar()`, `ProgressBar`: `min`, `max`, `value`, `length`, `thickness`, `orientation`, `sizing`, `colors`
-- `slider()`, `Slider`, `SliderChangedEventArgs`
+- `progress_bar()`, `ProgressBar`: `min`, `max`, `value`, `length`, `fill_length`, `thickness`, `orientation`, `sizing`,
+  `colors`
+- `slider()`, `Slider` (`length`, `fill_length`), `SliderChangedEventArgs`
 - `dropdown()`, `Dropdown`, `DropdownItem`, `DropdownChangedEventArgs<T>`
 - `combo_box()`, `ComboBox`, `ComboBoxItem`, `ComboBoxChangedEventArgs<T>`, `ComboBoxFilterMode`, `ComboBoxCommitMode`
 - `text_input()`, `TextInput`
@@ -312,8 +330,8 @@ Public fetch APIs:
 Example:
 
 ```rust
-Fetch::get("/api/status")
-    .on_complete(|response| logger::info("Fetch", response.status.to_string()))
+Fetch::request("/api/status")
+    .on_complete(|response| logger::log("Fetch", &response.status.to_string()))
     .on_error(|error| logger::warn("Fetch", &error.message))
     .start();
 ```
@@ -332,8 +350,8 @@ Example:
 
 ```rust
 let worker = Worker::new("/workers/report.wasm", "run_report")
-    .on_progress(|event| logger::info("Worker", &event.message))
-    .on_complete(|event| logger::info("Worker", &event.result))
+    .on_progress(|event| logger::log("Worker", &event.message))
+    .on_complete(|event| logger::log("Worker", &event.result))
     .on_error(|event| logger::warn("Worker", &event.message))
     .start("input payload");
 ```
@@ -426,7 +444,7 @@ persistence methods before reaching for low-level adapters.
   explicit cloning or conversion.
 - `rich_text![...]` creates `RichText` from fluent literal, dynamic, or prebuilt spans.
 - `Configure::configure(...)` lets retained controls receive multiple `&self`
-  setters while still returning the owned handle:
+  setters while still returning the owned handle, in `ui!` as anywhere else:
 
 ```rust
 let input = text_input().configure(|input| {

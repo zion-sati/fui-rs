@@ -57,7 +57,9 @@ input
     .fill_width()
     .on_changed({
         let value = value.clone();
-        move |event| value.text(format!("Value: {}", event.text))
+        move |event| {
+            value.text(format!("Value: {}", event.text));
+        }
     });
 ```
 

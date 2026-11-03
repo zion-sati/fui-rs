@@ -44,7 +44,6 @@ const requiredPaths = [join(repositoryRoot, 'v2', 'fui-rs', 'native-demo', 'src'
 if (existsSync(join(repositoryRoot, 'v2', 'native'))) {
   requiredPaths.push(
     join(repositoryRoot, 'v2', 'native', 'common', 'tests', 'test_native_custom_drawing.cpp'),
-    join(repositoryRoot, 'v2', 'native', 'common', 'tests', 'test_native_demo_drawing_showcase.cpp'),
   );
 }
 if (existsSync(join(repositoryRoot, 'skills'))) {

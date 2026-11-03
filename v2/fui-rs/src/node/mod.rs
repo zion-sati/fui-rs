@@ -101,6 +101,47 @@ pub trait ThemeBindable: Sized + 'static {
     }
 }
 
+/// Ties subscriptions, timers and other guards to a node, so they end when the node does.
+///
+/// A callback given to `bind_subscription` receives the node and holds it weakly, so the subscription
+/// never keeps the node alive.
+pub trait NodeOwnership: ThemeBindable {
+    /// Keeps `resource`, such as a subscription guard, alive for as long as this node exists.
+    fn own(&self, resource: impl std::any::Any) -> &Self {
+        self.theme_binding_node()
+            .retain_attachment(Rc::new(resource));
+        self
+    }
+
+    /// Subscribes `handler` through `subscribe`, passing it this node with each value, and keeps the
+    /// subscription for the node's lifetime:
+    ///
+    /// ```no_run
+    /// use fui::prelude::*;
+    ///
+    /// let panel = column();
+    /// panel.bind_subscription(
+    ///     |notify| viewport_width_signal().subscribe(notify),
+    ///     |panel, width| { panel.width(width.min(640.0), Unit::Pixel); },
+    /// );
+    /// ```
+    fn bind_subscription<A: 'static, G: std::any::Any>(
+        &self,
+        subscribe: impl FnOnce(Box<dyn Fn(A)>) -> G,
+        handler: impl Fn(&Self, A) + 'static,
+    ) -> &Self {
+        let target = self.weak_theme_target();
+        let guard = subscribe(Box::new(move |value| {
+            if let Some(node) = target() {
+                handler(&node, value);
+            }
+        }));
+        self.own(guard)
+    }
+}
+
+impl<T: ThemeBindable> NodeOwnership for T {}
+
 impl HasFlexBoxRoot for FlexBox {
     fn flex_box_root(&self) -> &FlexBox {
         self

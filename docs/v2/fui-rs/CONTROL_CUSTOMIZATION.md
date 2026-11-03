@@ -83,9 +83,9 @@ control host directly:
 ```rust
 fn present(
     &self,
-    theme: Theme,
-    state: ButtonVisualState,
-    _colors: Option<ButtonColors>,
+    theme: &Theme,
+    state: &ButtonVisualState,
+    _colors: Option<&ButtonColors>,
 ) -> PresenterHostStyle {
     self.label.text_color(theme.colors.text_primary);
     PresenterHostStyle::new()
@@ -102,7 +102,7 @@ Use one recipe per overlay instead of setting unrelated visual fields:
 ```rust
 dialog("Sign in", "Enter your credentials").appearance(
     DialogAppearance::new()
-        .backdrop(OverlayBackdropAppearance::new().background(0x00000080))
+        .backdrop(OverlayBackdropAppearance::new().color(0x00000080))
         .card(
             SurfaceAppearance::new()
                 .background(0xFFFFFFFF)
@@ -120,6 +120,11 @@ live theme recipe atomically.
 
 Templates create presenter instances for controls. Presenters own the retained
 visual subtree for that template.
+
+A `SliderPresenter` lays out relative to its root: the slider sizes that root to
+its track area, a fixed `length` or the length `fill_length` gives it, and
+`layout` receives only the visual state. Use percentages along the track, as the
+default presenter does, rather than pixel offsets.
 
 Public template families:
 
@@ -177,8 +182,9 @@ explicitly asks for it.
 Templates and presenters are retained objects. Node-owned theme subscriptions
 are retained for the node lifetime and unsubscribe on unmount. Do not create
 `Rc` self-cycles: subscription closures should capture weak targets or only the
-retained fields they need. Use RAII guards for subscriber-owned non-node
-subscriptions.
+retained fields they need. Use `bind_subscription(...)` to tie any other
+subscription to a node the same way, and RAII guards for subscriptions that no
+node owns.
 
 ## See also
 

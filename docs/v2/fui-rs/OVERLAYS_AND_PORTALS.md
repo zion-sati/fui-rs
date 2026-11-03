@@ -21,24 +21,28 @@ Create menus with `ContextMenu::new()` or `context_menu(items)`:
 
 ```rust
 let menu = context_menu(vec![
-    MenuItem::action("Copy", || logger::info("Menu", "Copy")),
+    MenuItem::command("Rename", || logger::log("Menu", "Rename")),
+    MenuItem::command("Delete", || logger::log("Menu", "Delete")),
     MenuItem::separator(),
-    MenuItem::action("Delete", || logger::info("Menu", "Delete")),
+    MenuItem::new("Copy", ContextMenuAction::CopyCurrentSelection),
+    MenuItem::new("Select all", ContextMenuAction::SelectAllText),
 ]);
 
-menu.show(None, 120.0, 80.0);
+menu.show(120.0, 80.0);
 ```
 
-Use `show(None, x, y)` for absolute scene coordinates. Use
-`show(Some(&control), x, y)` for coordinates relative to a control.
+`MenuItem::command(label, callback)` is an application command; the other items
+run a built-in `ContextMenuAction`, and `on_invoke(...)` adds a callback that runs
+before it. Use `show(x, y)` for absolute scene coordinates and
+`show_relative_to(&control, x, y)` for coordinates relative to a control.
 
 ## Dialogs
 
 ```rust
 let sign_in = dialog("Sign in", "Enter your credentials");
 sign_in
-    .on_accept(|_| logger::info("Dialog", "accepted"))
-    .on_cancel(|_| logger::info("Dialog", "cancelled"));
+    .on_accept(|| logger::log("Dialog", "accepted"))
+    .on_cancel(|| logger::log("Dialog", "cancelled"));
 
 button("Open dialog").on_click({
     let sign_in = sign_in.clone();

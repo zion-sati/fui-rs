@@ -8,7 +8,7 @@ Determinate progress visualization.
 
 ## Key APIs
 
-- `value`, `min`, `max`, `length`, `thickness`, `orientation`,
+- `value`, `min`, `max`, `length`, `fill_length`, `thickness`, `orientation`,
   `sizing(ProgressBarSizing)`, `clear_sizing`,
   `colors(ProgressBarColors)`, `clear_colors`, inherited node/layout APIs.
 
@@ -16,7 +16,9 @@ Determinate progress visualization.
 
 `ProgressBar` defaults to horizontal. `length(...)` controls the orientation
 axis and `thickness(...)` controls the cross axis. Horizontal bars fill
-left-to-right; vertical bars fill bottom-to-top.
+left-to-right; vertical bars fill bottom-to-top. `fill_length()` makes the bar
+fill its container along its orientation instead of a fixed length; the value's
+share of the bar follows whatever length layout gives it.
 
 ```rust
 use fui::prelude::*;

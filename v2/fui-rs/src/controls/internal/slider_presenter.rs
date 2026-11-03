@@ -1,5 +1,5 @@
 use crate::controls::{SliderColors, SliderSizing};
-use crate::ffi::{Orientation, PositionType, Unit};
+use crate::ffi::{AlignItems, FlexDirection, JustifyContent, Orientation, PositionType, Unit};
 use crate::node::{flex_box, FlexBox};
 use crate::theme::Theme;
 use std::rc::Rc;
@@ -128,10 +128,12 @@ impl SliderVisualState {
     }
 }
 
+/// A slider's visuals. The slider sizes the presenter's root to its track area, a fixed length or the length it
+/// fills, so a presenter lays out relative to its root rather than in pixels along the track.
 pub trait SliderPresenter {
     fn root(&self) -> FlexBox;
     fn metrics(&self) -> SliderPresenterMetrics;
-    fn layout(&self, state: SliderVisualState, length: f32);
+    fn layout(&self, state: SliderVisualState);
     fn apply(&self, theme: Theme, state: SliderVisualState, colors: Option<SliderColors>);
 }
 
@@ -143,29 +145,46 @@ pub trait SliderTemplate {
 pub struct DefaultSliderPresenter {
     root: FlexBox,
     metrics: SliderPresenterMetrics,
+    rail: FlexBox,
     track_node: FlexBox,
+    fill_box: FlexBox,
     fill_node: FlexBox,
+    spacer: FlexBox,
     thumb_node: FlexBox,
 }
 
 impl DefaultSliderPresenter {
     pub fn new(metrics: SliderPresenterMetrics) -> Self {
+        // The rail runs between the thumb's centre at each end. The track and fill lie on it; a spacer as long as the
+        // value's share of the rail puts the thumb, shifted back half its size onto the spacer's end, where the value
+        // is.
         let root = flex_box();
+        let rail = flex_box();
         let track_node = flex_box();
         track_node.position_type(PositionType::Absolute);
+        let fill_box = flex_box();
+        fill_box.position_type(PositionType::Absolute);
         let fill_node = flex_box();
-        fill_node.position_type(PositionType::Absolute);
+        fill_box.child(&fill_node);
+        let spacer = flex_box();
         let thumb_node = flex_box();
         thumb_node
-            .position_type(PositionType::Absolute)
             .width(metrics.thumb_size, Unit::Pixel)
             .height(metrics.thumb_size, Unit::Pixel);
-        root.child(&track_node).child(&fill_node).child(&thumb_node);
+        rail.align_items(AlignItems::Center)
+            .child(&track_node)
+            .child(&fill_box)
+            .child(&spacer)
+            .child(&thumb_node);
+        root.child(&rail);
         Self {
             root,
             metrics,
+            rail,
             track_node,
+            fill_box,
             fill_node,
+            spacer,
             thumb_node,
         }
     }
@@ -180,53 +199,65 @@ impl SliderPresenter for DefaultSliderPresenter {
         self.metrics
     }
 
-    fn layout(&self, state: SliderVisualState, length: f32) {
+    fn layout(&self, state: SliderVisualState) {
         let metrics = self.metrics;
         let thumb_size = resolve_thumb_size(metrics);
         let track_thickness = resolve_track_thickness(metrics);
-        let cross_axis_extra = resolve_cross_axis_extra(metrics);
-        let available = if length > thumb_size {
-            length - thumb_size
-        } else {
-            0.0
-        };
+        let cross_axis_inset = resolve_cross_axis_extra(metrics) * 0.5;
         let fraction = clamp(state.normalized_value, 0.0, 1.0);
-        let cross_axis_inset = cross_axis_extra * 0.5;
-        let track_offset = cross_axis_inset + ((thumb_size - track_thickness) * 0.5);
+        let half_thumb = thumb_size * 0.5;
+        let track_offset = (thumb_size - track_thickness) * 0.5;
         if state.orientation == Orientation::Vertical {
-            let fill_length = (available * fraction).round();
-            self.root
-                .width(thumb_size + cross_axis_extra, Unit::Pixel)
-                .height(length, Unit::Pixel);
+            self.root.flex_direction(FlexDirection::Row);
+            self.rail
+                .flex_direction(FlexDirection::Column)
+                .width(thumb_size, Unit::Pixel)
+                .fill_height()
+                .margin(cross_axis_inset, half_thumb, cross_axis_inset, half_thumb);
             self.track_node
                 .width(track_thickness, Unit::Pixel)
-                .height(available, Unit::Pixel)
-                .position(track_offset, thumb_size * 0.5);
-            self.fill_node
+                .height(100.0, Unit::Percent)
+                .position(track_offset, 0.0);
+            // The fill grows up from the rail's bottom.
+            self.fill_box
+                .flex_direction(FlexDirection::Column)
+                .justify_content(JustifyContent::End)
                 .width(track_thickness, Unit::Pixel)
-                .height(fill_length, Unit::Pixel)
-                .position(
-                    track_offset,
-                    thumb_size * 0.5 + available - fill_length,
-                );
-            self.thumb_node
-                .position(cross_axis_inset, available - (available * fraction));
+                .height(100.0, Unit::Percent)
+                .position(track_offset, 0.0);
+            self.fill_node
+                .width(100.0, Unit::Percent)
+                .height(fraction * 100.0, Unit::Percent);
+            self.spacer
+                .width(1.0, Unit::Pixel)
+                .height((1.0 - fraction) * 100.0, Unit::Percent);
+            self.thumb_node.position(0.0, -half_thumb);
             return;
         }
 
-        self.root
-            .width(length, Unit::Pixel)
-            .height(thumb_size + cross_axis_extra, Unit::Pixel);
+        self.root.flex_direction(FlexDirection::Column);
+        self.rail
+            .flex_direction(FlexDirection::Row)
+            .height(thumb_size, Unit::Pixel)
+            .fill_width()
+            .margin(half_thumb, cross_axis_inset, half_thumb, cross_axis_inset);
         self.track_node
-            .width(available, Unit::Pixel)
+            .width(100.0, Unit::Percent)
             .height(track_thickness, Unit::Pixel)
-            .position(thumb_size * 0.5, track_offset);
+            .position(0.0, track_offset);
+        self.fill_box
+            .flex_direction(FlexDirection::Row)
+            .justify_content(JustifyContent::Start)
+            .width(100.0, Unit::Percent)
+            .height(track_thickness, Unit::Pixel)
+            .position(0.0, track_offset);
         self.fill_node
-            .width(available * fraction, Unit::Pixel)
-            .height(track_thickness, Unit::Pixel)
-            .position(thumb_size * 0.5, track_offset);
-        self.thumb_node
-            .position(available * fraction, cross_axis_inset);
+            .width(fraction * 100.0, Unit::Percent)
+            .height(100.0, Unit::Percent);
+        self.spacer
+            .width(fraction * 100.0, Unit::Percent)
+            .height(1.0, Unit::Pixel);
+        self.thumb_node.position(-half_thumb, 0.0);
     }
 
     fn apply(&self, theme: Theme, state: SliderVisualState, colors: Option<SliderColors>) {

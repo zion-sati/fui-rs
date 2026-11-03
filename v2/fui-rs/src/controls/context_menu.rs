@@ -69,6 +69,8 @@ pub enum ContextMenuAction {
     SelectAllText = 10,
     OpenImage = 11,
     OpenImageInNewTab = 12,
+    /// An application command: the item runs its `on_invoke` callback and nothing else.
+    Command = 13,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -109,6 +111,11 @@ impl MenuItem {
             on_invoke: None,
             kind: MenuItemKind::Action,
         }
+    }
+
+    /// An application command, such as Rename or Delete, that runs `invoke` when chosen.
+    pub fn command(label: impl Into<String>, invoke: impl Fn() + 'static) -> Self {
+        Self::new(label, ContextMenuAction::Command).on_invoke(invoke)
     }
 
     pub fn separator() -> Self {
@@ -1375,6 +1382,50 @@ mod tests {
                 let count = count.clone();
                 move || count.set(count.get() + 1)
             });
+
+        run_context_menu_action(&item);
+
+        assert_eq!(count.get(), 0);
+    }
+
+    #[test]
+    fn command_items_run_only_their_callback_on_any_host() {
+        ffi::test::reset();
+        ffi::test::set_host_environment(3);
+        ffi::test::set_host_capabilities(0);
+        let count = Rc::new(Cell::new(0));
+        let item = MenuItem::command("Rename", {
+            let count = count.clone();
+            move || count.set(count.get() + 1)
+        });
+        ffi::test::take_calls();
+
+        run_context_menu_action(&item);
+
+        assert_eq!(item.action, ContextMenuAction::Command);
+        assert_eq!(count.get(), 1);
+        // Reading the host context is the only runtime traffic; no built-in action runs.
+        let calls = ffi::test::take_calls();
+        assert!(
+            calls.iter().all(|call| matches!(
+                call,
+                ffi::Call::GetPlatformFamily
+                    | ffi::Call::GetHostEnvironment
+                    | ffi::Call::GetHostCapabilities
+            )),
+            "{calls:?}"
+        );
+    }
+
+    #[test]
+    fn disabled_command_items_do_not_run() {
+        ffi::test::reset();
+        let count = Rc::new(Cell::new(0));
+        let item = MenuItem::command("Delete", {
+            let count = count.clone();
+            move || count.set(count.get() + 1)
+        })
+        .disabled(true);
 
         run_context_menu_action(&item);
 

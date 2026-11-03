@@ -420,7 +420,7 @@ macro_rules! ui {
     ($type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* }) => {{
         let __fui_node = $type_name::$ctor($($args)*);
         $(
-            __fui_node.$method($($method_args)*);
+            (&__fui_node).$method($($method_args)*);
         )*
         $crate::__fui_rs_ui_children!(__fui_node; $($children)*);
         __fui_node
@@ -428,7 +428,7 @@ macro_rules! ui {
     ($ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )* { $($children:tt)* }) => {{
         let __fui_node = $ctor($($args)*);
         $(
-            __fui_node.$method($($method_args)*);
+            (&__fui_node).$method($($method_args)*);
         )*
         $crate::__fui_rs_ui_children!(__fui_node; $($children)*);
         __fui_node
@@ -436,14 +436,14 @@ macro_rules! ui {
     ($ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )*) => {{
         let __fui_node = $ctor($($args)*);
         $(
-            __fui_node.$method($($method_args)*);
+            (&__fui_node).$method($($method_args)*);
         )*
         __fui_node
     }};
     ($type_name:ident :: $ctor:ident ( $($args:tt)* ) $( . $method:ident ( $($method_args:tt)* ) )*) => {{
         let __fui_node = $type_name::$ctor($($args)*);
         $(
-            __fui_node.$method($($method_args)*);
+            (&__fui_node).$method($($method_args)*);
         )*
         __fui_node
     }};
@@ -535,22 +535,22 @@ pub mod prelude {
         DropdownFieldPresenter, DropdownFieldTemplate, DropdownFieldVisualState, DropdownItem,
         DropdownOptionRowMetrics, DropdownOptionRowPresenter, DropdownOptionRowTemplate,
         DropdownOptionRowVisualState, DropdownSizing, Form, LabeledControlColors,
-        LabeledControlSizing, LabeledControlTextStyle, MenuItem, NavLink,
-        NavLinkInteractionState, NavigateEventArgs, OverlayBackdropAppearance, Popup,
-        PopupAppearance, PressableIndicatorMetrics,
-        PressableIndicatorPresenter, PressableIndicatorVisualState, ProgressBar, ProgressBarColors,
-        ProgressBarSizing, RadioButton, RadioButtonChangedEventArgs, RadioGroup,
-        RadioGroupChangedEventArgs, RadioIndicatorPresenter, RadioIndicatorTemplate,
-        RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
-        SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
-        SurfaceAppearance, Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter,
-        SwitchIndicatorTemplate, SwitchIndicatorVisualState, TabContentFactory, TabItem,
-        TabSelectionChangedEventArgs, TabView, TextArea, TextEditorSurface, TextInput,
-        TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
-        DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
-        DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
-        DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
-        DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
+        LabeledControlSizing, LabeledControlTextStyle, MenuItem, NavLink, NavLinkInteractionState,
+        NavigateEventArgs, OverlayBackdropAppearance, Popup, PopupAppearance,
+        PressableIndicatorMetrics, PressableIndicatorPresenter, PressableIndicatorVisualState,
+        ProgressBar, ProgressBarColors, ProgressBarSizing, RadioButton,
+        RadioButtonChangedEventArgs, RadioGroup, RadioGroupChangedEventArgs,
+        RadioIndicatorPresenter, RadioIndicatorTemplate, RadioIndicatorVisualState, SelectionArea,
+        Slider, SliderChangedEventArgs, SliderColors, SliderPresenter, SliderPresenterMetrics,
+        SliderSizing, SliderTemplate, SliderVisualState, SurfaceAppearance, Switch,
+        SwitchChangedEventArgs, SwitchIndicatorPresenter, SwitchIndicatorTemplate,
+        SwitchIndicatorVisualState, TabContentFactory, TabItem, TabSelectionChangedEventArgs,
+        TabView, TextArea, TextEditorSurface, TextInput, TextInputColors, TextInputPresenter,
+        TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
+        DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
+        DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
+        DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE,
+        DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
     };
     pub use crate::drag_drop::{
         DragCompletedEventArgs, DragDataObject, DragDropEffects, DragEventArgs, DragSession,
@@ -594,14 +594,18 @@ pub mod prelude {
         BoxStyleSurface, Child, ChildContainerSurface, ContextMenuEventArgs, Corners,
         CustomDrawable, DrawableInvalidator, EdgeInsets, FlexBox, FlexBoxSurface,
         FlexLayoutSurface, GradientStop, Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image,
-        ImageNode, LayoutSurface, Length, Node, Portal, PresenterHostStyle, ScrollBar,
-        ScrollBarStyle, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow, Svg,
-        SvgNode, Text, TextContentSurface, TextEditingSurface, TextEventSurface, TextLayoutSurface,
-        TextNode, TextSelectionSurface, TextSurface, TextTypographySurface, ThemeBindable,
-        VirtualList,
+        ImageNode, LayoutSurface, Length, Node, NodeOwnership, Portal, PresenterHostStyle,
+        ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox, ScrollState, ScrollView, Shadow,
+        Svg, SvgNode, Text, TextContentSurface, TextEditingSurface, TextEventSurface,
+        TextLayoutSurface, TextNode, TextSelectionSurface, TextSurface, TextTypographySurface,
+        ThemeBindable, VirtualList,
     };
     pub use crate::persisted;
     pub use crate::platform;
+    pub use crate::platform::{
+        has_host_capability, host_context, host_environment, HostCapability, HostContext,
+        HostEnvironment,
+    };
     pub use crate::popup_presenter::PopupPlacement;
     pub use crate::retained_view::{retained_view, RetainedView};
     pub use crate::signal::Subscription;
@@ -669,19 +673,18 @@ pub use controls::{
     DropdownOptionRowVisualState, DropdownSizing, Form, LabeledControlColors, LabeledControlSizing,
     MenuItem, NavLink, NavLinkInteractionState, NavigateEventArgs, OverlayBackdropAppearance,
     Popup, PopupAppearance, PressableIndicatorMetrics, PressableIndicatorPresenter,
-    PressableIndicatorVisualState,
-    ProgressBar, ProgressBarColors, ProgressBarSizing, RadioButton, RadioButtonChangedEventArgs,
-    RadioGroup, RadioGroupChangedEventArgs, RadioIndicatorPresenter, RadioIndicatorTemplate,
-    RadioIndicatorVisualState, SelectionArea, Slider, SliderChangedEventArgs, SliderColors,
-    SliderPresenter, SliderPresenterMetrics, SliderSizing, SliderTemplate, SliderVisualState,
-    SurfaceAppearance, Switch, SwitchChangedEventArgs, SwitchIndicatorPresenter,
-    SwitchIndicatorTemplate, SwitchIndicatorVisualState, TabContentFactory, TabItem,
-    TabSelectionChangedEventArgs, TabView, TextArea, TextEditorSurface, TextInput, TextInputColors,
-    TextInputPresenter, TextInputTemplate, TextInputVisualState, DEFAULT_BUTTON_TEMPLATE,
-    DEFAULT_CHECKBOX_INDICATOR_TEMPLATE, DEFAULT_DROPDOWN_CHEVRON_TEMPLATE,
-    DEFAULT_DROPDOWN_FIELD_TEMPLATE, DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE,
-    DEFAULT_RADIO_INDICATOR_TEMPLATE, DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE,
-    DEFAULT_TEXT_INPUT_TEMPLATE,
+    PressableIndicatorVisualState, ProgressBar, ProgressBarColors, ProgressBarSizing, RadioButton,
+    RadioButtonChangedEventArgs, RadioGroup, RadioGroupChangedEventArgs, RadioIndicatorPresenter,
+    RadioIndicatorTemplate, RadioIndicatorVisualState, SelectionArea, Slider,
+    SliderChangedEventArgs, SliderColors, SliderPresenter, SliderPresenterMetrics, SliderSizing,
+    SliderTemplate, SliderVisualState, SurfaceAppearance, Switch, SwitchChangedEventArgs,
+    SwitchIndicatorPresenter, SwitchIndicatorTemplate, SwitchIndicatorVisualState,
+    TabContentFactory, TabItem, TabSelectionChangedEventArgs, TabView, TextArea, TextEditorSurface,
+    TextInput, TextInputColors, TextInputPresenter, TextInputTemplate, TextInputVisualState,
+    DEFAULT_BUTTON_TEMPLATE, DEFAULT_CHECKBOX_INDICATOR_TEMPLATE,
+    DEFAULT_DROPDOWN_CHEVRON_TEMPLATE, DEFAULT_DROPDOWN_FIELD_TEMPLATE,
+    DEFAULT_DROPDOWN_OPTION_ROW_TEMPLATE, DEFAULT_RADIO_INDICATOR_TEMPLATE,
+    DEFAULT_SLIDER_TEMPLATE, DEFAULT_SWITCH_INDICATOR_TEMPLATE, DEFAULT_TEXT_INPUT_TEMPLATE,
 };
 pub use debug::*;
 pub use drag_drop::{
@@ -721,10 +724,10 @@ pub use node::{
     Child, ChildContainerSurface, ContextMenuEventArgs, Corners, CustomDrawable,
     DrawableInvalidator, EdgeInsets, FlexBox, FlexBoxSurface, FlexLayoutSurface, GradientStop,
     Grid, GridTrack, HasFlexBoxRoot, HasTextNode, Image, ImageNode, LayoutSurface, Length, Node,
-    Portal, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility, ScrollBox,
-    ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextContentSurface, TextEditingSurface,
-    TextEventSurface, TextLayoutSurface, TextNode, TextSelectionSurface, TextSurface,
-    TextTypographySurface, ThemeBindable, VirtualList,
+    NodeOwnership, Portal, PresenterHostStyle, ScrollBar, ScrollBarStyle, ScrollBarVisibility,
+    ScrollBox, ScrollState, ScrollView, Shadow, Svg, SvgNode, Text, TextContentSurface,
+    TextEditingSurface, TextEventSurface, TextLayoutSurface, TextNode, TextSelectionSurface,
+    TextSurface, TextTypographySurface, ThemeBindable, VirtualList,
 };
 pub use persisted::*;
 pub use platform::*;

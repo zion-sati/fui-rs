@@ -9,8 +9,9 @@ for the full public docs map.
 ## Prerequisites
 
 Application development requires Node.js 18 or newer, npm, stable Rust, and the
-`wasm32-unknown-unknown` target. Binaryen is optional and optimizes release
-builds when its `wasm-opt` executable is available.
+`wasm32-unknown-unknown` target. Release builds optimize WebAssembly for size
+with the Binaryen version the project pins in `package.json`, so it needs no
+separate install.
 
 ### macOS
 
@@ -18,7 +19,6 @@ builds when its `wasm-opt` executable is available.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
-brew install binaryen # optional
 ```
 
 ### Linux (Debian / Ubuntu)
@@ -27,11 +27,10 @@ brew install binaryen # optional
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 rustup target add wasm32-unknown-unknown
-sudo apt-get install -y binaryen # optional
 ```
 
-The generated development workflow does not require Binaryen. Optimized release
-builds run `wasm-opt -O3` when available.
+Release builds run Rust at `opt-level = "z"`, then `wasm-opt -Oz`, which strips
+the function names and toolchain sections the browser never reads.
 
 ## Create a new app
 
@@ -80,7 +79,7 @@ fn build_page() -> FlexBox {
         column().fill_size().padding(24.0, 24.0, 24.0, 24.0) {
             text("Hello from FUI-RS").font_size(28.0),
             button("Click me").on_click(|_| {
-                logger::info("App", "Button clicked");
+                logger::log("App", "Button clicked");
             }),
         }
     }
@@ -154,13 +153,11 @@ noise.
 
 ```rust
 let page = ui! {
-    column().gap(12.0).fill_width() {
+    column().fill_width() {
         text("Profile"),
-        row().gap(8.0) {
-            text_input().configure(|input| {
-                input.placeholder("Name").fill_width();
-            }),
-            button("Save"),
+        row().fill_width().margin(0.0, 12.0, 0.0, 0.0) {
+            text_input().placeholder("Name").fill_width(),
+            button("Save").margin(8.0, 0.0, 0.0, 0.0),
         },
     }
 };

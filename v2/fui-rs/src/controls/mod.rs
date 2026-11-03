@@ -1,8 +1,8 @@
 use crate::bindings::ui;
 use crate::event::{KeyEventArgs, PointerEventArgs};
 use crate::ffi::{
-    AlignItems, CursorStyle, FlexDirection, JustifyContent, Orientation, PositionType,
-    SemanticCheckedState, SemanticRole, Unit,
+    AlignItems, CursorStyle, FlexDirection, JustifyContent, Orientation, SemanticCheckedState,
+    SemanticRole, Unit,
 };
 use crate::node::{
     flex_box, row, FlexBox, HasFlexBoxRoot, Node, NodeRef, ThemeBindable, WeakNodeRef,

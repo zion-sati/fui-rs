@@ -128,8 +128,8 @@ capabilities as their underlying retained types.
 use fui::prelude::*;
 
 let page = ui! {
-    row().fill_size().gap(12.0) {
-        column().fill_width_percent(35.0).fill_height() {
+    row().fill_size() {
+        column().fill_width_percent(35.0).fill_height().margin(0.0, 0.0, 12.0, 0.0) {
             text("Sidebar"),
         },
         column().fill_width().fill_height() {
@@ -160,10 +160,10 @@ Use `ui!` for static mixed child trees:
 
 ```rust
 let root = ui! {
-    column().gap(8.0) {
+    column() {
         text("Settings"),
-        checkbox("Enable sync"),
-        button("Save"),
+        checkbox("Enable sync").margin(0.0, 8.0, 0.0, 0.0),
+        button("Save").margin(0.0, 8.0, 0.0, 0.0),
     }
 };
 ```

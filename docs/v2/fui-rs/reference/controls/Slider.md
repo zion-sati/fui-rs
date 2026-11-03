@@ -8,7 +8,24 @@ Single-value range input.
 
 ## Key APIs
 
-- `min`, `max`, `step`, `value`, `orientation`, `on_changed`, `template`, `sizing`, `colors`, inherited node/layout APIs.
+- `min`, `max`, `step`, `value`, `orientation`, `length`, `fill_length`, `on_changed`, `template`, `sizing`, `colors`,
+  inherited node/layout APIs.
+
+## Length
+
+`length(...)` sets the track's length along the slider's orientation in pixels; the focus chrome adds a few pixels
+around it. `fill_length()` makes the slider fill its container along its orientation instead, as `fill_width` or
+`fill_height` does, so it follows the container on any screen. Calling `length(...)` again returns to a fixed length.
+
+```rust
+use fui::prelude::*;
+
+let volume = slider();
+volume.min(0.0).max(100.0).value(40.0).fill_length();
+```
+
+A template's `SliderPresenter` lays out relative to its root, which the slider sizes to its track area; `layout`
+receives the visual state but no length.
 
 ## Notes
 

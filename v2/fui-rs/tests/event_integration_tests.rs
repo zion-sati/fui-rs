@@ -2333,8 +2333,9 @@ fn progress_bar_sets_fill_geometry_and_value_range() {
 
     assert!(calls.iter().any(|call| matches!(call, Call::SetSemanticValueRange { has_value_range, value_now, value_min, value_max, .. } if *has_value_range && *value_now == 50.0 && *value_min == 0.0 && *value_max == 200.0)));
     assert!(calls.iter().any(|call| matches!(call, Call::SetSemanticLabel { label, .. } if label == "Progress bar, value 50, range 0 to 200")));
-    assert!(calls.iter().any(|call| matches!(call, Call::SetWidth { value, unit_enum, .. } if *value == 74.5 && *unit_enum == Unit::Pixel as u32)));
-    assert!(calls.iter().any(|call| matches!(call, Call::SetHeight { value, unit_enum, .. } if *value == 10.0 && *unit_enum == Unit::Pixel as u32)));
+    assert!(calls.iter().any(|call| matches!(call, Call::SetWidth { value, unit_enum, .. } if *value == 300.0 && *unit_enum == Unit::Pixel as u32)));
+    assert!(calls.iter().any(|call| matches!(call, Call::SetWidth { value, unit_enum, .. } if *value == 25.0 && *unit_enum == Unit::Percent as u32)));
+    assert!(calls.iter().any(|call| matches!(call, Call::SetHeight { value, unit_enum, .. } if *value == 100.0 && *unit_enum == Unit::Percent as u32)));
 }
 
 #[test]
@@ -2447,6 +2448,43 @@ fn slider_pointer_drag_horizontal_updates_value_and_pointer_capture() {
     assert!(calls
         .iter()
         .any(|call| matches!(call, Call::ReleasePointerCapture)));
+}
+
+#[test]
+fn filling_slider_maps_the_pointer_over_its_laid_out_length() {
+    ffi::test::reset();
+    let last_value = Rc::new(Cell::new(0.0));
+    let last_value_clone = last_value.clone();
+    let slider = slider();
+    slider
+        .min(0.0)
+        .max(100.0)
+        .step(5.0)
+        .fill_length()
+        .value(0.0)
+        .on_changed(move |event| last_value_clone.set(event.value));
+    Application::mount(slider);
+    let calls = ffi::test::take_calls();
+    let handle = handle_with_semantic_role(&calls, SemanticRole::Slider);
+
+    // The test host lays every node out 100 wide: a 90 px track inside the chrome, 72 px between the thumb's ends.
+    pointer_event_with_metadata_defaults(
+        PointerEventType::Down as u32,
+        handle,
+        50.0,
+        15.0,
+        0,
+        1,
+        PointerType::Mouse as u32,
+        0,
+        1,
+        0.0,
+        0.0,
+        0.0,
+        1,
+    );
+
+    assert_eq!(last_value.get(), 50.0);
 }
 
 #[test]

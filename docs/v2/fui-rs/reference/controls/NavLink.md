@@ -17,7 +17,7 @@ explicit semantic label when the child content does not project a sufficient
 accessible name:
 
 ```rust
-let label = text("Documentation").selectable(false);
+let label = text("Documentation").selectable(false).clone();
 let link = nav_link("/docs");
 link.child(&label).semantic_label("Documentation");
 

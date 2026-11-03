@@ -1322,6 +1322,86 @@ fn rust_ui_macro_accepts_borrowed_fluent_nodes_without_changing_identity() {
 }
 
 #[test]
+fn rust_ui_macro_applies_configure_without_moving_the_node() {
+    ffi::test::reset();
+
+    let root = ui! {
+        column().configure(|column| {
+            column.semantic_label("Configured column");
+        }) {
+            text_input().configure(|input| {
+                input.placeholder("Name").node_id("configured-input");
+            }),
+        }
+    };
+
+    Application::mount(root);
+
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(|call| {
+        matches!(call, Call::SetSemanticLabel { label, .. } if label == "Configured column")
+    }));
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetNodeId { node_id, .. } if node_id == "configured-input")
+    ));
+}
+
+#[test]
+fn nodes_own_subscriptions_without_being_kept_alive_by_them() {
+    use std::cell::{Cell, RefCell};
+    use std::rc::Rc;
+
+    struct Guard(Rc<Cell<bool>>);
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            self.0.set(true);
+        }
+    }
+
+    ffi::test::reset();
+    type Notify = Rc<RefCell<Option<Box<dyn Fn(f32)>>>>;
+    let notify: Notify = Rc::new(RefCell::new(None));
+    let dropped = Rc::new(Cell::new(false));
+    let seen = Rc::new(Cell::new(0.0_f32));
+    {
+        let panel = flex_box();
+        panel.bind_subscription(
+            |callback| {
+                *notify.borrow_mut() = Some(callback);
+                Guard(dropped.clone())
+            },
+            {
+                let seen = seen.clone();
+                move |panel: &FlexBox, width| {
+                    panel.width(width, Unit::Pixel);
+                    seen.set(width);
+                }
+            },
+        );
+        (notify.borrow().as_ref().expect("subscribed"))(320.0);
+        assert_eq!(seen.get(), 320.0);
+        assert!(!dropped.get());
+    }
+
+    assert!(dropped.get(), "the subscription ends with its node");
+    (notify.borrow().as_ref().expect("subscribed"))(640.0);
+    assert_eq!(
+        seen.get(),
+        320.0,
+        "a dropped node no longer receives values"
+    );
+
+    // Controls and text nodes own subscriptions the same way.
+    button("Save").bind_subscription(
+        |_notify: Box<dyn Fn(bool)>| (),
+        |button: &Button, busy| {
+            button.enabled(!busy);
+        },
+    );
+    text("Status").own(Guard(Rc::new(Cell::new(false))));
+}
+
+#[test]
 fn rust_children_macro_builds_mixed_child_vectors() {
     ffi::test::reset();
 

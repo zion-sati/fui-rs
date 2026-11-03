@@ -40,6 +40,7 @@ pub struct Slider {
     step: Rc<Cell<f32>>,
     value: Rc<Cell<f32>>,
     length: Rc<Cell<f32>>,
+    fills_length: Rc<Cell<bool>>,
     orientation: Rc<Cell<Orientation>>,
     changed: Rc<RefCell<Option<SliderChangedCallback>>>,
     hovered_state: Rc<Cell<bool>>,
@@ -60,7 +61,6 @@ impl Slider {
         let root = flex_box();
         let slider_presenter = create_slider_presenter(None, None);
         let presenter_root = slider_presenter.root();
-        presenter_root.position_type(PositionType::Absolute);
 
         root.interactive(true)
             .focusable(true, 0)
@@ -85,6 +85,7 @@ impl Slider {
             step: Rc::new(Cell::new(1.0)),
             value: Rc::new(Cell::new(0.0)),
             length: Rc::new(Cell::new(DEFAULT_SLIDER_LENGTH)),
+            fills_length: Rc::new(Cell::new(false)),
             orientation: Rc::new(Cell::new(Orientation::Horizontal)),
             changed: Rc::new(RefCell::new(None)),
             hovered_state: Rc::new(Cell::new(false)),
@@ -202,6 +203,15 @@ impl Slider {
         } else {
             thumb_size + 1.0
         });
+        self.fills_length.set(false);
+        self.sync_presentation();
+        self
+    }
+
+    /// Fills the container along the slider's orientation, as `fill_width` or `fill_height` does, instead of a fixed
+    /// [`length`](Self::length).
+    pub fn fill_length(&self) -> &Self {
+        self.fills_length.set(true);
         self.sync_presentation();
         self
     }
@@ -334,13 +344,18 @@ impl Slider {
         )
     }
 
+    /// The track's fixed length, or `None` when the slider fills its container.
+    fn track_length(&self) -> Option<f32> {
+        (!self.fills_length.get()).then(|| self.length.get())
+    }
+
     fn sync_presentation(&self) {
         let state = self.create_visual_state();
         sync_slider_geometry_with_state(
             &self.root,
             self.slider_presenter.borrow().as_ref(),
             state,
-            self.length.get(),
+            self.track_length(),
         );
         sync_slider_visual_state_with_state(
             &self.root,
@@ -384,7 +399,6 @@ impl Slider {
         }
         let previous_root = previous.root();
         let next_root = next_presenter.root();
-        next_root.position_type(PositionType::Absolute);
         self.root.remove_child(&previous_root);
         self.root.child(&next_root);
         previous_root.dispose();
@@ -433,6 +447,7 @@ struct SliderEventTarget {
     step: Rc<Cell<f32>>,
     value: Rc<Cell<f32>>,
     length: Rc<Cell<f32>>,
+    fills_length: Rc<Cell<bool>>,
     orientation: Rc<Cell<Orientation>>,
     changed: Rc<RefCell<Option<SliderChangedCallback>>>,
     focused_state: Rc<Cell<bool>>,
@@ -454,6 +469,7 @@ impl SliderEventTarget {
             step: slider.step.clone(),
             value: slider.value.clone(),
             length: slider.length.clone(),
+            fills_length: slider.fills_length.clone(),
             orientation: slider.orientation.clone(),
             changed: slider.changed.clone(),
             focused_state: slider.focused_state.clone(),
@@ -475,6 +491,7 @@ impl SliderEventTarget {
             step: self.step.clone(),
             value: self.value.clone(),
             length: self.length.clone(),
+            fills_length: self.fills_length.clone(),
             orientation: self.orientation.clone(),
             changed: self.changed.clone(),
             hovered_state: self.hovered_state.clone(),
@@ -593,19 +610,27 @@ impl SliderEventTarget {
 
     fn update_value_from_pointer(&self, x: f32, y: f32, emit: bool, announce: bool) {
         let thumb_size = self.slider_presenter.borrow().metrics().thumb_size;
-        let available = self.length.get() - thumb_size;
+        let vertical = self.orientation.get() == Orientation::Vertical;
+        let bounds =
+            upgraded_handle(&self.weak_root).and_then(|handle| ui::get_bounds(handle.raw()));
+        // A filling slider's length is whatever layout gave it.
+        let length = match bounds {
+            Some(bounds) if self.fills_length.get() => {
+                (if vertical { bounds[3] } else { bounds[2] }) - (SLIDER_OUTER_INSET * 2.0)
+            }
+            _ => self.length.get(),
+        };
+        let available = length - thumb_size;
         if available <= 0.0 {
             return;
         }
         let (mut local_x, mut local_y) = (x, y);
-        if let Some(handle) = upgraded_handle(&self.weak_root) {
-            if let Some(bounds) = ui::get_bounds(handle.raw()) {
-                local_x = x - bounds[0];
-                local_y = y - bounds[1];
-            }
+        if let Some(bounds) = bounds {
+            local_x = x - bounds[0];
+            local_y = y - bounds[1];
         }
         let leading_inset = SLIDER_OUTER_INSET + (thumb_size * 0.5);
-        let offset = if self.orientation.get() == Orientation::Vertical {
+        let offset = if vertical {
             available - clamp(local_y - leading_inset, 0.0, available)
         } else {
             clamp(local_x - leading_inset, 0.0, available)
@@ -634,7 +659,8 @@ impl SliderEventTarget {
         };
         let presenter = self.slider_presenter.borrow().clone();
         let state = self.create_visual_state();
-        sync_slider_geometry_with_state(&root, presenter.as_ref(), state, self.length.get());
+        let length = (!self.fills_length.get()).then(|| self.length.get());
+        sync_slider_geometry_with_state(&root, presenter.as_ref(), state, length);
         sync_slider_visual_state_with_state(
             &root,
             presenter.as_ref(),
@@ -697,31 +723,36 @@ fn create_slider_visual_state(
     )
 }
 
+/// Sizes the slider: `length` is its track's fixed length, or `None` when it fills its container. The presenter's root
+/// fills the slider inside its focus chrome.
 fn sync_slider_geometry_with_state(
     root: &FlexBox,
     presenter: &dyn SliderPresenter,
     state: SliderVisualState,
-    length: f32,
+    length: Option<f32>,
 ) {
     let metrics = presenter.metrics();
+    let thickness = metrics.thumb_size + (SLIDER_OUTER_INSET * 2.0) + metrics.cross_axis_extra;
     if state.orientation == Orientation::Vertical {
-        root.width(
-            metrics.thumb_size + (SLIDER_OUTER_INSET * 2.0) + metrics.cross_axis_extra,
-            Unit::Pixel,
-        )
-        .height(length + (SLIDER_OUTER_INSET * 2.0), Unit::Pixel);
+        root.width(thickness, Unit::Pixel);
+        match length {
+            Some(length) => root.height(length + (SLIDER_OUTER_INSET * 2.0), Unit::Pixel),
+            None => root.fill_height(),
+        };
     } else {
-        root.width(length + (SLIDER_OUTER_INSET * 2.0), Unit::Pixel)
-            .height(
-                metrics.thumb_size + (SLIDER_OUTER_INSET * 2.0) + metrics.cross_axis_extra,
-                Unit::Pixel,
-            );
+        root.height(thickness, Unit::Pixel);
+        match length {
+            Some(length) => root.width(length + (SLIDER_OUTER_INSET * 2.0), Unit::Pixel),
+            None => root.fill_width(),
+        };
     }
-    presenter
-        .root()
-        .position_type(PositionType::Absolute)
-        .position(SLIDER_CHILD_INSET, SLIDER_CHILD_INSET);
-    presenter.layout(state, length);
+    presenter.root().fill_size().margin(
+        SLIDER_CONTENT_INSET,
+        SLIDER_CONTENT_INSET,
+        SLIDER_CONTENT_INSET,
+        SLIDER_CONTENT_INSET,
+    );
+    presenter.layout(state);
     root.semantic_value_range(state.value, state.min, state.max);
     root.default_semantic_label(if state.orientation == Orientation::Vertical {
         "Vertical slider"

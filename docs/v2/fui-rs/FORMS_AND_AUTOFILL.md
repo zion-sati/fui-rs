@@ -35,10 +35,10 @@ password
 
 let login_form = ui! {
     form() {
-        column().gap(12.0).fill_width() {
+        column().fill_width() {
             username.clone(),
-            password.clone(),
-            button("Sign in"),
+            password.clone().margin(0.0, 12.0, 0.0, 0.0),
+            button("Sign in").margin(0.0, 12.0, 0.0, 0.0),
         }
     }
 };

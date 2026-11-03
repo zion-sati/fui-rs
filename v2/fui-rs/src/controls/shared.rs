@@ -7,7 +7,6 @@ pub(crate) const SLIDER_PADDING: f32 = 2.0;
 pub(crate) const SLIDER_CONTENT_INSET: f32 = 1.0;
 pub(crate) const SLIDER_OUTER_INSET: f32 =
     SLIDER_FOCUS_BORDER_WIDTH + SLIDER_PADDING + SLIDER_CONTENT_INSET;
-pub(crate) const SLIDER_CHILD_INSET: f32 = SLIDER_PADDING + SLIDER_CONTENT_INSET;
 
 pub(crate) type ClickCallback = Rc<dyn Fn(ClickEventArgs)>;
 pub(crate) type CheckboxChangedCallback = Rc<dyn Fn(CheckboxChangedEventArgs)>;

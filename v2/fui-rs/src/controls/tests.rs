@@ -2519,7 +2519,6 @@ struct TestSliderPresenter {
     root: FlexBox,
     metrics: SliderPresenterMetrics,
     last_layout_state: Rc<RefCell<Option<SliderVisualState>>>,
-    last_layout_length: Rc<Cell<f32>>,
     last_apply_state: Rc<RefCell<Option<SliderVisualState>>>,
     last_apply_colors: Rc<Cell<Option<SliderColors>>>,
 }
@@ -2528,7 +2527,6 @@ impl TestSliderPresenter {
     fn new(
         metrics: SliderPresenterMetrics,
         last_layout_state: Rc<RefCell<Option<SliderVisualState>>>,
-        last_layout_length: Rc<Cell<f32>>,
         last_apply_state: Rc<RefCell<Option<SliderVisualState>>>,
         last_apply_colors: Rc<Cell<Option<SliderColors>>>,
     ) -> Self {
@@ -2536,7 +2534,6 @@ impl TestSliderPresenter {
             root: flex_box(),
             metrics,
             last_layout_state,
-            last_layout_length,
             last_apply_state,
             last_apply_colors,
         }
@@ -2552,9 +2549,8 @@ impl SliderPresenter for TestSliderPresenter {
         self.metrics
     }
 
-    fn layout(&self, state: SliderVisualState, length: f32) {
+    fn layout(&self, state: SliderVisualState) {
         *self.last_layout_state.borrow_mut() = Some(state);
-        self.last_layout_length.set(length);
     }
 
     fn apply(
@@ -2572,7 +2568,6 @@ struct TestSliderTemplate {
     created: Rc<Cell<u32>>,
     metrics: SliderPresenterMetrics,
     last_layout_state: Rc<RefCell<Option<SliderVisualState>>>,
-    last_layout_length: Rc<Cell<f32>>,
     last_apply_state: Rc<RefCell<Option<SliderVisualState>>>,
     last_apply_colors: Rc<Cell<Option<SliderColors>>>,
 }
@@ -2583,7 +2578,6 @@ impl SliderTemplate for TestSliderTemplate {
         Rc::new(TestSliderPresenter::new(
             self.metrics,
             self.last_layout_state.clone(),
-            self.last_layout_length.clone(),
             self.last_apply_state.clone(),
             self.last_apply_colors.clone(),
         ))
@@ -2750,8 +2744,24 @@ fn switch_sizing_updates_default_indicator_and_recreates_custom_template() {
     assert_eq!(created.get(), 2);
 }
 
+fn last_size_call(calls: &[Call], target: u64, height: bool) -> Option<(f32, u32)> {
+    calls.iter().rev().find_map(|call| match call {
+        Call::SetWidth {
+            handle,
+            value,
+            unit_enum,
+        } if !height && *handle == target => Some((*value, *unit_enum)),
+        Call::SetHeight {
+            handle,
+            value,
+            unit_enum,
+        } if height && *handle == target => Some((*value, *unit_enum)),
+        _ => None,
+    })
+}
+
 #[test]
-fn slider_default_presenter_uses_sizing_for_geometry() {
+fn slider_default_presenter_lays_out_relative_to_its_track() {
     ffi::test::reset();
     let slider = slider();
     slider
@@ -2760,99 +2770,72 @@ fn slider_default_presenter_uses_sizing_for_geometry() {
     Application::mount(slider.clone());
     let calls = ffi::test::take_calls();
     let handle = slider.retained_node_ref().handle().raw();
-    let presenter_root_handle = child_handles_for_parent(&calls, handle)
-        .into_iter()
-        .next()
-        .expect("slider presenter root");
-    let track_handle = child_handles_for_parent(&calls, presenter_root_handle)
-        .into_iter()
-        .next()
-        .expect("slider track");
-    let fill_handle = child_handles_for_parent(&calls, presenter_root_handle)
-        .into_iter()
-        .nth(1)
-        .expect("slider fill");
+    let presenter_root = child_handles_for_parent(&calls, handle)[0];
+    let rail = child_handles_for_parent(&calls, presenter_root)[0];
+    let rail_children = child_handles_for_parent(&calls, rail);
+    let (track, fill_box, spacer, thumb) = (
+        rail_children[0],
+        rail_children[1],
+        rail_children[2],
+        rail_children[3],
+    );
+    let fill = child_handles_for_parent(&calls, fill_box)[0];
+    let pixel = Unit::Pixel as u32;
+    let percent = Unit::Percent as u32;
 
+    // The slider is its track plus its focus chrome; the rail runs between the thumb's centre at each end.
+    assert_eq!(last_size_call(&calls, handle, false), Some((130.0, pixel)));
+    assert_eq!(last_size_call(&calls, handle, true), Some((36.0, pixel)));
     assert!(calls.iter().any(|call| matches!(
         call,
-        Call::SetWidth { handle: call_handle, value, .. }
-            if *call_handle == handle && (*value - 130.0).abs() < f32::EPSILON
+        Call::SetMargin { handle, left, top, right, bottom }
+            if *handle == rail && *left == 12.0 && *top == 1.0 && *right == 12.0 && *bottom == 1.0
     )));
+    assert_eq!(last_size_call(&calls, track, false), Some((100.0, percent)));
+
+    slider.value(25.0);
+    let calls = ffi::test::take_calls();
+    assert_eq!(last_size_call(&calls, fill, false), Some((25.0, percent)));
+    assert_eq!(last_size_call(&calls, spacer, false), Some((25.0, percent)));
     assert!(calls.iter().any(|call| matches!(
         call,
-        Call::SetHeight { handle: call_handle, value, .. }
-            if *call_handle == handle && (*value - 36.0).abs() < f32::EPSILON
+        Call::SetPosition { handle, left, top, .. } if *handle == thumb && *left == -12.0 && *top == 0.0
     )));
+
+    slider.orientation(Orientation::Vertical).value(75.0);
+    let calls = ffi::test::take_calls();
+    assert_eq!(last_size_call(&calls, handle, false), Some((36.0, pixel)));
+    assert_eq!(last_size_call(&calls, handle, true), Some((130.0, pixel)));
+    assert_eq!(last_size_call(&calls, track, true), Some((100.0, percent)));
+    // The fill grows from the bottom; the spacer above the thumb holds what is left.
+    assert_eq!(last_size_call(&calls, fill, true), Some((75.0, percent)));
+    assert_eq!(last_size_call(&calls, spacer, true), Some((25.0, percent)));
+}
+
+#[test]
+fn slider_fill_length_fills_its_container_along_its_orientation() {
+    ffi::test::reset();
+    let slider = slider();
+    slider.length(120.0).fill_length();
+    Application::mount(slider.clone());
+    let calls = ffi::test::take_calls();
+    let handle = slider.retained_node_ref().handle().raw();
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetFillWidth { handle: target, fill: true } if *target == handle)
+    ));
 
     slider.orientation(Orientation::Vertical);
     let calls = ffi::test::take_calls();
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetWidth { handle: call_handle, value, .. }
-            if *call_handle == handle && (*value - 36.0).abs() < f32::EPSILON
-    )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetHeight { handle: call_handle, value, .. }
-            if *call_handle == handle && (*value - 130.0).abs() < f32::EPSILON
-    )));
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetFillHeight { handle: target, fill: true } if *target == handle)
+    ));
 
-    for (value, expected_fill_length) in [
-        (25.0, 24.0),
-        (26.0, 25.0),
-        (48.0, 46.0),
-        (49.0, 47.0),
-        (75.0, 72.0),
-        (76.0, 73.0),
-    ] {
-        slider.value(value);
-        let calls = ffi::test::take_calls();
-        let fill_length = calls
-            .iter()
-            .rev()
-            .find_map(|call| match call {
-                Call::SetHeight { handle, value, .. } if *handle == fill_handle => Some(*value),
-                _ => None,
-            })
-            .expect("vertical slider fill height");
-        let fill_top = calls
-            .iter()
-            .rev()
-            .find_map(|call| match call {
-                Call::SetPosition { handle, top, .. } if *handle == fill_handle => Some(*top),
-                _ => None,
-            })
-            .expect("vertical slider fill position");
-        assert_eq!(fill_length, expected_fill_length);
-        assert_eq!(fill_top + fill_length, 108.0);
-    }
-
-    slider.value(50.0);
+    slider.length(90.0);
     let calls = ffi::test::take_calls();
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetHeight { handle, value, .. }
-            if *handle == track_handle && (*value - 96.0).abs() < f32::EPSILON
-    )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetPosition { handle, left, top, .. }
-            if *handle == track_handle && (*left - 9.0).abs() < f32::EPSILON
-                && (*top - 12.0).abs() < f32::EPSILON
-    )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetHeight { handle, value, .. }
-            if *handle == fill_handle && (*value - 48.0).abs() < f32::EPSILON
-    )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetPosition { handle, left, top, right, bottom }
-            if *handle == fill_handle && (*left - 9.0).abs() < f32::EPSILON
-                && (*top - 60.0).abs() < f32::EPSILON
-                && right.is_nan() && bottom.is_nan()
-    )));
-
+    assert_eq!(
+        last_size_call(&calls, handle, true),
+        Some((100.0, Unit::Pixel as u32))
+    );
 }
 
 #[test]
@@ -2860,7 +2843,6 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
     ffi::test::reset();
     let created = Rc::new(Cell::new(0));
     let last_layout_state = Rc::new(RefCell::new(None));
-    let last_layout_length = Rc::new(Cell::new(0.0));
     let last_apply_state = Rc::new(RefCell::new(None));
     let last_apply_colors = Rc::new(Cell::new(None));
     let slider = slider();
@@ -2871,7 +2853,6 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
         created: created.clone(),
         metrics: SliderPresenterMetrics::new(26.0, 8.0).with_cross_axis_extra(4.0),
         last_layout_state: last_layout_state.clone(),
-        last_layout_length: last_layout_length.clone(),
         last_apply_state: last_apply_state.clone(),
         last_apply_colors: last_apply_colors.clone(),
     });
@@ -2888,14 +2869,18 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
         .value(50.0);
 
     assert_eq!(created.get(), 1);
-    assert_eq!(last_layout_length.get(), 140.0);
+    let calls = ffi::test::take_calls();
+    let handle = slider.retained_node_ref().handle().raw();
+    assert!(calls.iter().any(|call| matches!(
+        call,
+        Call::SetHeight { handle: call_handle, value, .. }
+            if *call_handle == handle && (*value - 150.0).abs() < f32::EPSILON
+    )));
     let layout_state = last_layout_state.borrow().expect("slider layout state");
     assert_eq!(layout_state.orientation, Orientation::Vertical);
     let apply_state = last_apply_state.borrow().expect("slider apply state");
     assert_eq!(apply_state.value, 50.0);
     assert_eq!(last_apply_colors.get(), Some(colors));
-
-    let calls = ffi::test::take_calls();
     assert!(calls
         .iter()
         .any(|call| matches!(call, Call::NodeRemoveChild { .. })));
@@ -2905,7 +2890,6 @@ fn slider_template_replacement_and_colors_follow_fui_as_surface() {
 fn slider_presenter_receives_hover_drag_and_disabled_state() {
     ffi::test::reset();
     let last_layout_state = Rc::new(RefCell::new(None));
-    let last_layout_length = Rc::new(Cell::new(0.0));
     let last_apply_state = Rc::new(RefCell::new(None));
     let last_apply_colors = Rc::new(Cell::new(None));
     let slider = slider();
@@ -2913,7 +2897,6 @@ fn slider_presenter_receives_hover_drag_and_disabled_state() {
         created: Rc::new(Cell::new(0)),
         metrics: SliderPresenterMetrics::new(18.0, 6.0),
         last_layout_state: last_layout_state.clone(),
-        last_layout_length,
         last_apply_state: last_apply_state.clone(),
         last_apply_colors,
     }));
@@ -3516,16 +3499,15 @@ fn progress_bar_maps_length_and_thickness_to_orientation() {
         Call::SetHeight { handle, value, unit_enum }
             if *handle == root_handle && *value == 300.0 && *unit_enum == Unit::Pixel as u32
     )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetWidth { handle, value, unit_enum }
-            if *handle == fill_handle && *value == 16.0 && *unit_enum == Unit::Pixel as u32
-    )));
-    assert!(calls.iter().any(|call| matches!(
-        call,
-        Call::SetHeight { handle, value, unit_enum }
-            if *handle == fill_handle && *value == 74.5 && *unit_enum == Unit::Pixel as u32
-    )));
+    // The fill is the value's share of the bar inside its border.
+    assert_eq!(
+        last_size_call(&calls, fill_handle, false),
+        Some((100.0, Unit::Percent as u32))
+    );
+    assert_eq!(
+        last_size_call(&calls, fill_handle, true),
+        Some((25.0, Unit::Percent as u32))
+    );
     assert!(calls.iter().any(|call| matches!(
         call,
         Call::SetSemanticOrientation { handle, orientation_enum }
@@ -3545,6 +3527,37 @@ fn progress_bar_maps_length_and_thickness_to_orientation() {
         Call::SetHeight { handle, value, unit_enum }
             if *handle == root_handle && *value == 18.0 && *unit_enum == Unit::Pixel as u32
     )));
+}
+
+#[test]
+fn progress_bar_fill_length_fills_its_container_along_its_orientation() {
+    ffi::test::reset();
+    let progress = progress_bar();
+    progress.value(40.0).fill_length();
+    Application::mount(progress.clone());
+    let calls = ffi::test::take_calls();
+    let root_handle = progress.retained_node_ref().handle().raw();
+    let fill_handle = child_handles_for_parent(&calls, root_handle)[0];
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetFillWidth { handle, fill: true } if *handle == root_handle)
+    ));
+    assert_eq!(
+        last_size_call(&calls, fill_handle, false),
+        Some((40.0, Unit::Percent as u32))
+    );
+
+    progress.orientation(Orientation::Vertical);
+    let calls = ffi::test::take_calls();
+    assert!(calls.iter().any(
+        |call| matches!(call, Call::SetFillHeight { handle, fill: true } if *handle == root_handle)
+    ));
+
+    progress.length(200.0);
+    let calls = ffi::test::take_calls();
+    assert_eq!(
+        last_size_call(&calls, root_handle, true),
+        Some((200.0, Unit::Pixel as u32))
+    );
 }
 
 #[test]
