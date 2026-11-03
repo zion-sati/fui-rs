@@ -345,6 +345,7 @@ EFFINDOM_UI_API void ui_set_scroll_proxy_target(ui_handle_t handle, ui_handle_t 
 EFFINDOM_UI_API void ui_set_scroll_enabled(ui_handle_t handle, bool enabled_x, bool enabled_y);
 EFFINDOM_UI_API void ui_set_scroll_friction(ui_handle_t handle, float friction);
 EFFINDOM_UI_API void ui_set_smooth_scrolling(ui_handle_t handle, bool smooth_scrolling);
+EFFINDOM_UI_API void ui_set_scroll_wheel_latching(ui_handle_t handle, bool latching);
 EFFINDOM_UI_API void ui_set_focusable(ui_handle_t handle, bool focusable, int32_t tab_index);
 EFFINDOM_UI_API void ui_request_focus(ui_handle_t handle);
 EFFINDOM_UI_API void ui_set_scroll_offset(ui_handle_t handle, float offset_x, float offset_y);

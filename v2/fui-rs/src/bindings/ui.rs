@@ -647,6 +647,10 @@ pub fn set_smooth_scrolling(handle: u64, smooth_scrolling: bool) {
     unsafe { ffi::ui_set_smooth_scrolling(handle, smooth_scrolling) }
 }
 
+pub fn set_scroll_wheel_latching(handle: u64, latching: bool) {
+    unsafe { ffi::ui_set_scroll_wheel_latching(handle, latching) }
+}
+
 pub fn set_scroll_offset(handle: u64, offset_x: f32, offset_y: f32) {
     unsafe { ffi::ui_set_scroll_offset(handle, offset_x, offset_y) }
 }

@@ -320,6 +320,7 @@ pub(crate) fn apply_scroll_view_props(
     }
     ui::set_scroll_enabled(handle.raw(), props.enable_scroll_x, props.enable_scroll_y);
     ui::set_smooth_scrolling(handle.raw(), props.smooth_scrolling);
+    ui::set_scroll_wheel_latching(handle.raw(), props.wheel_latching);
     if let Some(friction) = props.friction {
         ui::set_scroll_friction(handle.raw(), friction);
     }

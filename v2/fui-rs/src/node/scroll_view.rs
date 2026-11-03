@@ -40,6 +40,7 @@ impl ScrollView {
                 enable_scroll_y: true,
                 friction: None,
                 smooth_scrolling: true,
+                wheel_latching: true,
                 scroll_offset: None,
                 content_size: None,
                 persist_scroll: true,
@@ -288,6 +289,16 @@ impl ScrollView {
         self.props.borrow_mut().smooth_scrolling = smooth_scrolling;
         if self.has_built_handle() {
             ui::set_smooth_scrolling(self.handle().raw(), smooth_scrolling);
+        }
+        self
+    }
+
+    /// Whether a mouse-wheel run that starts here stays here at the edges until the wheel pauses (true by default), as
+    /// browsers latch wheel scrolling. With `false` the rest of the run scrolls the nearest ancestor that can move.
+    pub fn wheel_latching(&self, latching: bool) -> &Self {
+        self.props.borrow_mut().wheel_latching = latching;
+        if self.has_built_handle() {
+            ui::set_scroll_wheel_latching(self.handle().raw(), latching);
         }
         self
     }
@@ -690,6 +701,28 @@ mod tests {
             call,
             Call::SetSmoothScrolling {
                 smooth_scrolling: false,
+                ..
+            }
+        )));
+    }
+
+    #[test]
+    fn wheel_latching_defaults_on_and_can_be_turned_off() {
+        ffi::test::reset();
+        let view = ScrollView::new();
+        view.build();
+
+        let calls = ffi::test::take_calls();
+        assert!(calls
+            .iter()
+            .any(|call| matches!(call, Call::SetScrollWheelLatching { latching: true, .. })));
+
+        view.wheel_latching(false);
+        let calls = ffi::test::take_calls();
+        assert!(calls.iter().any(|call| matches!(
+            call,
+            Call::SetScrollWheelLatching {
+                latching: false,
                 ..
             }
         )));

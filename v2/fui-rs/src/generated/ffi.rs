@@ -403,6 +403,7 @@ unsafe extern "C" {
     pub fn ui_set_scroll_enabled(handle: u64, enabled_x: bool, enabled_y: bool);
     pub fn ui_set_scroll_friction(handle: u64, friction: f32);
     pub fn ui_set_smooth_scrolling(handle: u64, smooth_scrolling: bool);
+    pub fn ui_set_scroll_wheel_latching(handle: u64, latching: bool);
     pub fn ui_set_focusable(handle: u64, focusable: bool, tab_index: i32);
     pub fn ui_request_focus(handle: u64);
     pub fn ui_set_scroll_offset(handle: u64, offset_x: f32, offset_y: f32);

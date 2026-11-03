@@ -9,6 +9,8 @@ High-level scroll container with owned scrollbars.
 ## Key APIs
 
 - per-axis enablement, scrollbar visibility, scroll offsets, animated scrolling, child composition.
+- `wheel_latching(true)` is the default: a mouse-wheel run stays in the box at its edges until the wheel pauses;
+  see [ScrollView](ScrollView.md).
 
 ## Notes
 

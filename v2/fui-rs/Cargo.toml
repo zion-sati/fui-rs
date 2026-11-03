@@ -27,7 +27,7 @@ include = [
 all-features = true
 
 [package.metadata.effindom]
-runtime-version = "0.4.0"
+runtime-version = "0.4.1"
 core-abi = 2
 ui-abi = 1
 

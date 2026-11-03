@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2026-11-03
+
+- Scroll views latch mouse-wheel runs as browsers do: a wheel run that starts in a scroll view stays in it at its edges, rather than scrolling an ancestor mid-run, until the wheel pauses for 150 ms, and the page does not scroll meanwhile; a trackpad gesture keeps its scroll view until it ends. It is on by default; turn it off per scroll view or scroll box with wheelLatching(false) in FUI-AS, wheel_latching(false) in FUI-RS or WheelLatching = false in FUI-CS (the runtime's ui_set_scroll_wheel_latching).
+
 ## 0.4.0 - 2026-11-03
 
 - The Rust examples in the FUI-RS guides match the current SDK: corrected the logger, fetch, context menu, dialog, overlay appearance, image, presenter and spacing examples, and the links to the public demo's source.

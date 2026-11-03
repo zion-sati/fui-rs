@@ -143,6 +143,13 @@ impl ScrollBox {
         self
     }
 
+    /// Whether a mouse-wheel run that starts in this box stays in it at the edges until the wheel pauses (true by
+    /// default); see [`ScrollView::wheel_latching`].
+    pub fn wheel_latching(&self, latching: bool) -> &Self {
+        self.inner.viewport.wheel_latching(latching);
+        self
+    }
+
     pub fn persist_scroll(&self, persist: bool) -> &Self {
         self.inner.persist_scroll.set(persist);
         if !persist {

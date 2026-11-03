@@ -438,6 +438,10 @@ pub enum Call {
         handle: u64,
         smooth_scrolling: bool,
     },
+    SetScrollWheelLatching {
+        handle: u64,
+        latching: bool,
+    },
     SetScrollOffset {
         handle: u64,
         offset_x: f32,
@@ -1991,6 +1995,11 @@ pub unsafe fn ui_set_smooth_scrolling(handle: u64, smooth_scrolling: bool) {
         handle,
         smooth_scrolling,
     });
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
+pub unsafe fn ui_set_scroll_wheel_latching(handle: u64, latching: bool) {
+    push_call(Call::SetScrollWheelLatching { handle, latching });
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "native-runtime")))]
